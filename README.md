@@ -37,7 +37,7 @@ You can import the library as an ES module directly from GitHub Releases:
 
 ```html
 <script type="module">
-  import { definition } from 'https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.0/custom-embedding.js';
+  import { definition } from 'https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.1/custom-embedding.js';
   
   // Initialize the embedding
   const embedding = definition.construct({
@@ -71,7 +71,7 @@ The library is automatically built and published when changes are pushed to the 
 
 The compiled JavaScript file is published to GitHub Releases and can be accessed at:
 ```
-https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.0/custom-embedding.js
+https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.1/custom-embedding.js
 ```
 
 ### Published to GitHub Packages

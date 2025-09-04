@@ -1,6 +1,6 @@
 {
   "name": "@trustedresearchenvironment/webpack-ts-example",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Embeddings library for Loome API",
   "type": "module",
   "scripts": {

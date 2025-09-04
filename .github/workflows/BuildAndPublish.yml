@@ -35,7 +35,7 @@ jobs:
       - name: Publish to GitHub Packages
         run: |
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish
+          npm publish --force
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -43,6 +43,12 @@ jobs:
       - name: Get version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
+        
+      # Delete existing tag if it exists (to allow overwriting)
+      - name: Delete existing tag if present
+        run: |
+          git tag -d v${{ steps.package-version.outputs.current-version }} || true
+          git push origin :refs/tags/v${{ steps.package-version.outputs.current-version }} || true
       
       # Create GitHub Release and upload asset
       - name: Create Release and Upload Asset
