@@ -35,7 +35,7 @@ class CustomEmbed extends LibraryBase {
     protected buildPage = async (): Promise<void> => {
         try {
             // Fetch and parse the project data
-            const projects = await window.loomeApi.runApiRequest(12, {
+            const projects = await window.loomeApi.runApiRequest(17, {
                 "token": this.token
             });
 
