@@ -93,14 +93,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      # Purge jsDelivr cache
-      - name: Purge jsDelivr cache
-        run: |
-          curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v${{ steps.unique-version.outputs.unique-version }}/dist/custom-embedding.js"
-          echo "Purged jsDelivr cache for version v${{ steps.unique-version.outputs.unique-version }}"
-          # also purge main branch
-          curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
-          echo "Purged jsDelivr cache for version main"
-          # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding2.js
-          curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
-          echo "Purged jsDelivr cache for version main"
+      # # Purge jsDelivr cache
+      # - name: Purge jsDelivr cache
+      #   run: |
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v${{ steps.unique-version.outputs.unique-version }}/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version v${{ steps.unique-version.outputs.unique-version }}"
+      #     # also purge main branch
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version main"
+      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding2.js
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version main"
