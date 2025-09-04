@@ -42,7 +42,7 @@ class CustomEmbed extends LibraryBase {
 
             // Display the raw JSON response
             const jsonString = JSON.stringify(projects, null, 2);
-            this.element.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">${jsonString}</pre>`;
+            this.element.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">Json: ${jsonString}</pre>`;
             return;
 
             // --- 1. Generate the HTML for the table body ---
