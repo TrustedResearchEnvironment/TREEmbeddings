@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+
+# Add permissions needed for creating releases
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,15 +34,12 @@ jobs:
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
       
-      # Create GitHub Release
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Create GitHub Release and upload asset
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.package-version.outputs.current-version }}
-          release_name: Release v${{ steps.package-version.outputs.current-version }}
+          name: Release v${{ steps.package-version.outputs.current-version }}
           body: |
             ## Webpack TypeScript Embeddings Library
             
@@ -49,16 +52,9 @@ jobs:
               // Use the library...
             </script>
             ```
+          files: |
+            ./dist/custom-embedding.js
           draft: false
           prerelease: false
-      
-      # Upload the built JavaScript file as a release asset
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/custom-embedding.js
-          asset_name: custom-embedding.js
-          asset_content_type: application/javascript
