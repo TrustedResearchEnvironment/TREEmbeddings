@@ -41,7 +41,8 @@ class CustomEmbed extends LibraryBase {
             // });
 
             // Display the raw JSON response
-            const jsonString = JSON.stringify(projects, null, 2);
+            const jsonString = "hello" 
+            //  JSON.stringify(projects, null, 2);
             this.element.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">${jsonString}</pre>`;
             return;
 
