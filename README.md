@@ -65,7 +65,27 @@ You can import the library as an ES module directly from GitHub Releases:
 
 ## Publishing
 
-The library is automatically built and published to GitHub Releases when changes are pushed to the main branch or when the workflow is manually triggered.
+The library is automatically built and published when changes are pushed to the main branch or when the workflow is manually triggered.
+
+### Published to GitHub Releases
+
+The compiled JavaScript file is published to GitHub Releases and can be accessed at:
+```
+https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.0/custom-embedding.js
+```
+
+### Published to GitHub Packages
+
+The library is also published to GitHub Packages. If your repository is private, you can install it using:
+
+```bash
+# Create .npmrc file with authentication
+echo "@trustedresearchenvironment:registry=https://npm.pkg.github.com" > .npmrc
+echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" >> .npmrc
+
+# Install the package
+npm install @trustedresearchenvironment/webpack-ts-example
+```
 
 To publish a new version:
 

@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '18'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@TrustedResearchEnvironment'
+          scope: '@trustedresearchenvironment'
       
       - name: Install dependencies
         run: npm install
@@ -33,7 +33,9 @@ jobs:
         
       # Publish to GitHub Packages
       - name: Publish to GitHub Packages
-        run: npm publish
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       

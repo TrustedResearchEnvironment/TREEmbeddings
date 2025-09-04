@@ -1,5 +1,5 @@
 {
-  "name": "webpack-ts-example",
+  "name": "@trustedresearchenvironment/webpack-ts-example",
   "version": "1.0.0",
   "description": "Embeddings library for Loome API",
   "type": "module",
@@ -7,6 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack",
     "serve": "npx http-server -p 8080 ."
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TrustedResearchEnvironment/webpack-ts-example.git"
   },
   "keywords": ["embeddings", "webpack", "typescript"],
   "author": "",
