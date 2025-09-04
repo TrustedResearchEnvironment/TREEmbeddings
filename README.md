@@ -1,2 +1,9 @@
 # webpack-ts-example
-example embedings
+example 
+
+
+npm install
+ 
+then
+ 
+npm run build

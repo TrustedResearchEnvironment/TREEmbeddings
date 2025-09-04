@@ -1,0 +1,202 @@
+import { LibraryBase } from "./library-base";
+import { Customization } from './customization';
+
+class CustomEmbed extends LibraryBase {
+    protected token: string = "";
+
+    constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
+        errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
+        super(element, entityUrl, params, settings, errorCallback);    
+        console.log(params)
+        this.loadResources();
+    }
+
+    private loadResources = async (): Promise<void> => {
+        await this.getAccessToken();
+        await this.buildPage();
+    }
+
+    protected getAccessToken = async (): Promise<void> => {
+        try {
+            // A way to get the runtime param passed down from the portal
+            const authId = this.getParamValue('ApiAuthRequestId')?.value
+
+            const authResponse = await window.loomeApi.runApiRequest(authId);
+            this.token = authResponse.access_token;
+        }
+        catch (ex: unknown) {
+            // Additional debug logs, won't hurt to get additional raw info
+            console.log(ex);
+            const error = ex as Error;
+            this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
+        }
+    }
+
+    protected buildPage = async (): Promise<void> => {
+        try {
+            // Fetch and parse the project data
+            const projects = await window.loomeApi.runApiRequest(12, {
+                "token": this.token
+            });
+
+            // --- 1. Generate the HTML for the table body ---
+            let tableRowsHtml = '';
+            if (!projects || projects.length === 0) {
+                tableRowsHtml = `<tr><td colspan="4" style="text-align: center; padding: 20px;">No projects found.</td></tr>`;
+            } else {
+                projects.forEach((project: any) => {
+                    const totalBudget = project.projectBudgetDto?.totalBudget || 0;
+                    const spend = project.spend || 0;
+                    const currency = project.currency || 'USD';
+                    const percentage = totalBudget > 0 ? (spend / totalBudget) * 100 : 0;
+
+                    tableRowsHtml += `
+                        <tr>
+                            <td class="project-name">${project.name}</td>
+                            <td class="project-description">${project.projectDescription}</td>
+                            <td class="budget-info">${currency} ${totalBudget.toFixed(2)}</td>
+                            <td>
+                                <div class="budget-info">${currency} ${spend.toFixed(2)}</div>
+                                <div class="progress-container">
+                                    <div class="progress-bar" style="width: ${percentage.toFixed(2)}%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // --- 2. Construct the final HTML with hardcoded CSS ---
+            const finalHtml = `
+                <style>
+                    /* Using a unique class to scope styles and prevent conflicts */
+                    .custom-embed-container {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        background-color: #f4f7f9;
+                        color: #333;
+                        padding: 20px;
+                        box-sizing: border-box;
+                    }
+                    .custom-embed-container h1 {
+                        color: #2c3e50;
+                        text-align: center;
+                        margin-top: 0;
+                        margin-bottom: 30px;
+                    }
+                    .custom-embed-container .table-container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        overflow: hidden;
+                        border-radius: 10px;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                    }
+                    .custom-embed-container .project-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        background-color: #ffffff;
+                    }
+                    .custom-embed-container .project-table thead tr {
+                        background-color: #34495e;
+                        color: #ffffff;
+                        text-align: left;
+                    }
+                    .custom-embed-container .project-table th {
+                        padding: 18px 20px;
+                        font-weight: 600;
+                        letter-spacing: 0.5px;
+                        text-transform: uppercase;
+                        font-size: 12px;
+                    }
+                    .custom-embed-container .project-table tbody td {
+                        padding: 18px 20px;
+                        border-bottom: 1px solid #e0e0e0;
+                        vertical-align: middle;
+                    }
+                    .custom-embed-container .project-table tbody tr:last-child td {
+                        border-bottom: none;
+                    }
+                    .custom-embed-container .project-table tbody tr:nth-of-type(even) {
+                        background-color: #f8f9fa;
+                    }
+                    .custom-embed-container .project-table tbody tr:hover {
+                        background-color: #e9ecef;
+                    }
+                    .custom-embed-container .project-name {
+                        font-weight: 600;
+                        color: #2980b9;
+                    }
+                    .custom-embed-container .project-description {
+                        font-size: 14px;
+                        color: #555;
+                        max-width: 400px;
+                    }
+                    .custom-embed-container .budget-info {
+                        white-space: nowrap;
+                    }
+                    .custom-embed-container .progress-container {
+                        width: 100%;
+                        background-color: #e0e0e0;
+                        border-radius: 5px;
+                        margin-top: 5px;
+                    }
+                    .custom-embed-container .progress-bar {
+                        height: 10px;
+                        background-color: #3498db;
+                        border-radius: 5px;
+                    }
+                </style>
+                <div class="custom-embed-container">
+                    <h1>Project Budget Overview</h1>
+                    <div class="table-container">
+                        <table class="project-table">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Description</th>
+                                    <th>Total Budget</th>
+                                    <th>Spend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // --- 3. Set the element's innerHTML ---
+            this.element.innerHTML = finalHtml;
+
+        } catch (ex: unknown) {
+            const error = ex as Error;
+            this.errorCallback("Error", "Failed to build the page", error.message, this.element);
+        }
+    }
+}
+
+export const definition: Customization.CustomizationLibrary = {
+    version: "1.0.0",
+    embedding: {
+        destroy: (element: Customization.HTMLElementWithCleanup): void => {
+            // Clear out the contents of the element
+            element.innerHTML = "";
+
+            // Grab the instance we saved earlier on the element
+            const embedInstance = element.instance;
+            if (embedInstance) {
+                // Call the dispose on the instance first
+                embedInstance.dispose();
+                // Then clean up the reference
+                delete element.instance; 
+                console.log('Instance disposed.')
+            }
+        },
+        run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
+                errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
+                const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+                // Store for proper disposal later when the destroy is called
+                element.instance = instance;
+            }
+    }
+};

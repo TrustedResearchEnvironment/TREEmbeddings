@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "module": "ESNext",
+      "target": "ES6",
+      // "module": "AMD",
+      // "target": "ES6",
+      "moduleResolution": "Node",
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "strict": true,
+      "allowJs": false,
+      "skipLibCheck": true,
+      "outDir": "./dist",
+    },
+    "include": ["**/*.ts"]
+  }
