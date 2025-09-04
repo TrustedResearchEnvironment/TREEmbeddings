@@ -74,49 +74,6 @@ The compiled JavaScript file is published to GitHub Releases and can be accessed
 https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v1.0.1/custom-embedding.js
 ```
 
-### Using with jsDelivr CDN
-
-For better performance, you can use jsDelivr CDN to load the library. This requires:
-
-1. Your repository must be public
-2. You must have pushed a tag (v1.0.1) to GitHub
-3. The file must be in the repository at the specified path
-
-For GitHub Releases (recommended):
-```
-https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v1.0.1/dist/custom-embedding.js
-```
-
-Alternative options:
-```
-# Using latest tag
-https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@latest/dist/custom-embedding.js
-
-# Using minified version (auto-minified by jsDelivr)
-https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v1.0.1/dist/custom-embedding.min.js
-
-# Using GitHub Packages (if published to npm)
-https://cdn.jsdelivr.net/npm/@trustedresearchenvironment/webpack-ts-example@1.0.1/dist/custom-embedding.js
-```
-
-Usage example:
-```html
-<script type="module">
-  import { definition } from 'https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v1.0.1/dist/custom-embedding.js';
-  // Use the library...
-</script>
-```
-
-#### Troubleshooting jsDelivr Access
-
-If you see "Failed to fetch version info" errors:
-1. Ensure your repository is public
-2. Verify the GitHub release with tag v1.0.1 exists
-3. Check that the file exists in your repository at the expected path
-4. Wait a few minutes for jsDelivr to cache your files
-
-You can test jsDelivr access using the included `jsdelivr-test.html` file.
-
 ### Published to GitHub Packages
 
 The library is also published to GitHub Packages. If your repository is private, you can install it using:
