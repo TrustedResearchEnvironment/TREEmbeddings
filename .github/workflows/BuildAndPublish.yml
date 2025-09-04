@@ -1,5 +1,5 @@
-# Github action to run build and publish
-name: Build and Publish 
+# Github action to build and publish to GitHub Releases
+name: Build and Publish ES Module to GitHub Releases
 on:
   push:
     branches:
@@ -11,16 +11,54 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+      
       - name: Install dependencies
         run: npm install
+      
       - name: Build project
         run: npm run build
-      - name: Publish to github packages
-        run: npm publish
+      
+      # Get version from package.json
+      - name: Get version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+      
+      # Create GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.package-version.outputs.current-version }}
+          release_name: Release v${{ steps.package-version.outputs.current-version }}
+          body: |
+            ## Webpack TypeScript Embeddings Library
+            
+            ### Installation
+            
+            Import as an ES module:
+            ```html
+            <script type="module">
+              import { definition } from 'https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v${{ steps.package-version.outputs.current-version }}/custom-embedding.js';
+              // Use the library...
+            </script>
+            ```
+          draft: false
+          prerelease: false
+      
+      # Upload the built JavaScript file as a release asset
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/custom-embedding.js
+          asset_name: custom-embedding.js
+          asset_content_type: application/javascript

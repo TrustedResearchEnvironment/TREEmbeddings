@@ -1,15 +1,18 @@
 {
-  "name": "webpack-ts-esm",
+  "name": "webpack-ts-example",
   "version": "1.0.0",
-  "description": "",
+  "description": "Embeddings library for Loome API",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
+    "build": "webpack",
+    "serve": "npx http-server -p 8080 ."
   },
-  "keywords": [],
+  "keywords": ["embeddings", "webpack", "typescript"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "http-server": "^14.1.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.7.2",
     "webpack": "^5.97.1",
