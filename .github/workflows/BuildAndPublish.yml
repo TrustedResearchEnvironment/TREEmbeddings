@@ -22,12 +22,20 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@TrustedResearchEnvironment'
       
       - name: Install dependencies
         run: npm install
       
       - name: Build project
         run: npm run build
+        
+      # Publish to GitHub Packages
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       # Get version from package.json
       - name: Get version
