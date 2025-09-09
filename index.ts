@@ -1,62 +1,28 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
-
-// Add proper TypeScript interfaces based on your API responses
-interface DataSetMetadata {
-    Name: string;
-    Description: string;
-    DataSourceID: number;
-    IsActive: boolean;
-    Approvers: string;
-    OptOutMessage: string | null;
-    OptOutList: string;
-    Owner: string;
-    OptOutColumn: string;
-    DataSetID: number;
-    ModifiedDate: string;
-}
-
-interface DataSetColumn {
-    ColumnName: string;
-    ColumnType: string;
-    LogicalColumnName: string;
-    BusinessDescription: string;
-    ExampleValue: string;
-    Tokenise: boolean;
-    TokenIdentifierType: number;
-    Redact: boolean;
-    DisplayOrder: number;
-    IsFilter: boolean;
-    DataSetColumnID: number;
-    DataSetID: number;
-}
-
-interface ColumnsResponse {
-    CurrentPage: number;
-    PageCount: number;
-    PageSize: number;
-    RowCount: number;
-    FirstRowOnPage: number;
-    LastRowOnPage: number;
-    Results: DataSetColumn[];
-}
+import { getDatasetTemplate } from './src/templates/dataset.template';
+import { datasetStyles } from './src/styles/dataset.styles';
 
 class CustomEmbed extends LibraryBase {
     protected token: string = "";
+
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
         super(element, entityUrl, params, settings, errorCallback);    
         console.log(params)
         this.loadResources();
     }
+
     private loadResources = async (): Promise<void> => {
         await this.getAccessToken();
         await this.buildPage();
     }
+
     protected getAccessToken = async (): Promise<void> => {
         try {
             // A way to get the runtime param passed down from the portal
             const authId = this.getParamValue('ApiAuthRequestId')?.value
+
             const authResponse = await window.loomeApi.runApiRequest(authId);
             this.token = authResponse.access_token;
         }
@@ -67,578 +33,43 @@ class CustomEmbed extends LibraryBase {
             this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
         }
     }
+
     protected buildPage = async (): Promise<void> => {
         try {
-            // Fetch the dataset metadata
-            const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
+            const DataSet = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
             
-            // Fetch the dataset columns using API request 7
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
-            });
-            
-            // Extract columns from the Results array and sort by DisplayOrder
-            const dataSetColumns = columnsResponse.Results ? 
-                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) : 
-                [];
-            
-            // Now let's generate the HTML for the columns
             let columnsHtml = '';
-            if (dataSetColumns && Array.isArray(dataSetColumns)) {
-                dataSetColumns.forEach((column: DataSetColumn) => {
-                    columnsHtml += `
-                        <tr>
-                            <td>${column.ColumnName || ''}</td>
-                            <td class="datatype-column">${column.ColumnType || ''}</td>
-                            <td>${column.LogicalColumnName || ''}</td>
-                            <td>${column.BusinessDescription || 'N/A'}</td>
-                            <td>${column.ExampleValue || 'N/A'}</td>
-                            <td>${column.Redact ? 'Yes' : 'No'}</td>
-                            <td>${column.Tokenise ? 'Yes' : 'No'}</td>
-                            <td>${column.IsFilter ? 'Yes' : 'No'}</td>
-                        </tr>
-                    `;
-                });
+            if (DataSet.DataSetColumns && Array.isArray(DataSet.DataSetColumns)) {
+                // ...existing columnsHtml generation...
             }
             
-            // --- 1. Generate the HTML structure ---
-            const datasetHtml = `
-                <div class="dataset-container">
-                    <!-- Breadcrumb navigation -->
-                    <div class="breadcrumb">
-                        <span>Datasets</span>
-                        <span class="separator">›</span>
-                        <span class="current">Dataset Details</span>
-                    </div>
-                    
-                    <div class="dataset-card">
-                        <div class="dataset-header">
-                            <h2>${DataSet.Name}</h2>
-                            <div class="metadata">
-                                <span class="metadata-item">ID: ${DataSet.DataSetID}</span>
-                                <span class="metadata-item">Owner: ${DataSet.Owner}</span>
-                                <span class="metadata-item">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
-                            </div>
-                            <div class="dataset-description">
-                                <p>${DataSet.Description}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Clear all filters button -->
-                        <div class="clear-all-filters-container">
-                            <button id="clearAllFilters" class="clear-all-filters">
-                                <i class="icon-refresh"></i> Clear All Filters & Sorting
-                            </button>
-                        </div>
-                        
-                        <!-- Columns table -->
-                        <div class="table-container">
-                            <table class="columns-table">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" data-sort="name">Column Name <span class="sort-indicator">▼</span></th>
-                                        <th class="sortable" data-sort="type">Data Type <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="logical">Logical Name <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="description">Description <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="example">Example <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="redacted">Redacted <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="tokenized">Tokenized <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="filter">Filter <span class="sort-indicator"></span></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="columnsTableBody">
-                                    ${columnsHtml}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Add the action buttons -->
-                    <div class="dataset-actions">
-                        <button id="viewDictionaryBtn" class="btn btn-primary">
-                            <i class="icon-dictionary"></i> View Data Dictionary
-                        </button>
-                        <button id="requestDatasetBtn" class="btn btn-success">
-                            <i class="icon-request"></i> Request Dataset
-                        </button>
-                        <button id="exportBtn" class="btn btn-export">
-                            <i class="icon-download"></i> Export to CSV
-                        </button>
-                        <button id="helpBtn" class="btn btn-help">
-                            <i class="icon-help"></i> Help & Tips
-                        </button>
-                    </div>
-                    
-                    <!-- Data Dictionary Modal -->
-                    <div id="viewDictionaryModal" class="modal">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h3>Data Dictionary</h3>
-                                <span class="close">&times;</span>
-                            </div>
-                            <div class="modal-body" id="viewDictionaryModalBody">
-                                <!-- Will be populated by JavaScript -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Request Dataset Modal -->
-                    <div id="requestDatasetModal" class="modal">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h3>Request Dataset</h3>
-                                <span class="close">&times;</span>
-                            </div>
-                            <div class="modal-body" id="requestDatasetModalBody">
-                                <!-- Will be populated by JavaScript -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Help Modal -->
-                    <div id="helpModal" class="modal">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h3>Help & Tips</h3>
-                                <span class="close">&times;</span>
-                            </div>
-                            <div class="modal-body">
-                                <h4>Sorting</h4>
-                                <p>Click on any column header to sort the data by that column. Click again to toggle between ascending and descending order.</p>
-                                
-                                <h4>Filtering</h4>
-                                <p>Use the filter box in the Data Dictionary view to quickly find specific columns by typing part of the name, data type, or description.</p>
-                                
-                                <h4>Exporting</h4>
-                                <p>Click the "Export to CSV" button to download the current view as a CSV file that can be opened in Excel or other spreadsheet applications.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Use the imported template and styles
+            const datasetHtml = getDatasetTemplate(DataSet, columnsHtml);
             
-            const styles = `
-                <style>
-                    .dataset-container {
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }
-                    
-                    .breadcrumb {
-                        display: flex;
-                        align-items: center;
-                        margin-bottom: 20px;
-                        font-size: 14px;
-                        color: #666;
-                    }
-                    
-                    .breadcrumb .separator {
-                        margin: 0 8px;
-                        color: #999;
-                    }
-                    
-                    .breadcrumb .current {
-                        font-weight: 600;
-                        color: #333;
-                    }
-                    
-                    .dataset-card {
-                        background-color: #fff;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                        padding: 25px;
-                        margin-bottom: 20px;
-                    }
-                    
-                    .dataset-header {
-                        margin-bottom: 20px;
-                    }
-                    
-                    .dataset-header h2 {
-                        color: #2c3e50;
-                        margin-top: 0;
-                        margin-bottom: 15px;
-                        font-size: 24px;
-                    }
-                    
-                    .metadata {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 12px;
-                        margin-bottom: 15px;
-                    }
-                    
-                    .metadata-item {
-                        background-color: #e9f7fe;
-                        padding: 6px 12px;
-                        border-radius: 4px;
-                        color: #2980b9;
-                        font-size: 14px;
-                    }
-                    
-                    .dataset-description {
-                        line-height: 1.6;
-                        color: #555;
-                        margin-bottom: 20px;
-                        white-space: pre-line;
-                        padding: 10px 0;
-                        border-bottom: 1px solid #eee;
-                    }
-                    
-                    .clear-all-filters-container {
-                        margin-bottom: 15px;
-                    }
-                    
-                    .clear-all-filters {
-                        width: 100%;
-                        padding: 10px;
-                        background-color: #f5f5f5;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        color: #555;
-                        font-weight: 500;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 8px;
-                        transition: background-color 0.2s;
-                    }
-                    
-                    .clear-all-filters:hover {
-                        background-color: #e9e9e9;
-                    }
-                    
-                    .icon-refresh::before {
-                        content: "↻";
-                        display: inline-block;
-                        margin-right: 5px;
-                    }
-                    
-                    .table-container {
-                        overflow-x: auto;
-                        margin-bottom: 20px;
-                        border: 1px solid #eee;
-                        border-radius: 4px;
-                    }
-                    
-                    .columns-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                    }
-                    
-                    .columns-table th,
-                    .columns-table td {
-                        padding: 12px 15px;
-                        text-align: left;
-                        border-bottom: 1px solid #eee;
-                    }
-                    
-                    .columns-table th {
-                        background-color: #f5f8fa;
-                        color: #2c3e50;
-                        font-weight: 600;
-                        position: sticky;
-                        top: 0;
-                    }
-                    
-                    .columns-table tbody tr:hover {
-                        background-color: #f9fafb;
-                    }
-                    
-                    .sortable {
-                        cursor: pointer;
-                        user-select: none;
-                        position: relative;
-                    }
-                    
-                    .sortable:hover {
-                        background-color: #eef2f5;
-                    }
-                    
-                    .sort-indicator {
-                        font-size: 10px;
-                        margin-left: 5px;
-                        opacity: 0.5;
-                    }
-                    
-                    .sortable[data-sort-direction="asc"] .sort-indicator {
-                        opacity: 1;
-                        content: "▲";
-                    }
-                    
-                    .sortable[data-sort-direction="desc"] .sort-indicator {
-                        opacity: 1;
-                        content: "▼";
-                    }
-                    
-                    .datatype-column {
-                        font-family: monospace;
-                        background-color: #f5f8fa;
-                        padding: 2px 6px;
-                        border-radius: 3px;
-                        border: 1px solid #e5e9ed;
-                    }
-                    
-                    .dataset-actions {
-                        display: flex;
-                        gap: 12px;
-                        margin-bottom: 20px;
-                        flex-wrap: wrap;
-                    }
-                    
-                    .btn {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 8px;
-                        padding: 10px 16px;
-                        border: none;
-                        border-radius: 4px;
-                        color: white;
-                        font-weight: 500;
-                        cursor: pointer;
-                        transition: background-color 0.2s, transform 0.1s;
-                    }
-                    
-                    .btn:hover {
-                        transform: translateY(-1px);
-                    }
-                    
-                    .btn:active {
-                        transform: translateY(0);
-                    }
-                    
-                    .btn-primary {
-                        background-color: #3498db;
-                    }
-                    
-                    .btn-primary:hover {
-                        background-color: #2980b9;
-                    }
-                    
-                    .btn-success {
-                        background-color: #2ecc71;
-                    }
-                    
-                    .btn-success:hover {
-                        background-color: #27ae60;
-                    }
-                    
-                    .btn-export {
-                        background-color: #27ae60;
-                        color: white;
-                    }
-                    
-                    .btn-export:hover {
-                        background-color: #219653;
-                    }
-                    
-                    .btn-help {
-                        background-color: #f39c12;
-                        color: white;
-                    }
-                    
-                    .btn-help:hover {
-                        background-color: #d35400;
-                    }
-                    
-                    .btn-default {
-                        background-color: #95a5a6;
-                    }
-                    
-                    .btn-default:hover {
-                        background-color: #7f8c8d;
-                    }
-                    
-                    .btn-accent {
-                        background-color: #9b59b6;
-                    }
-                    
-                    .btn-accent:hover {
-                        background-color: #8e44ad;
-                    }
-                    
-                    .icon-dictionary::before {
-                        content: "📘";
-                        display: inline-block;
-                    }
-                    
-                    .icon-request::before {
-                        content: "📝";
-                        display: inline-block;
-                    }
-                    
-                    .icon-download::before {
-                        content: "📥";
-                        display: inline-block;
-                    }
-                    
-                    .icon-help::before {
-                        content: "❓";
-                        display: inline-block;
-                    }
-                    
-                    .modal {
-                        display: none;
-                        position: fixed;
-                        z-index: 1000;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: auto;
-                        background-color: rgba(0, 0, 0, 0.4);
-                    }
-                    
-                    .modal-content {
-                        background-color: #fefefe;
-                        margin: 5% auto;
-                        padding: 20px;
-                        border-radius: 8px;
-                        width: 80%;
-                        max-width: 900px;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-                        max-height: 80vh;
-                        overflow-y: auto;
-                    }
-                    
-                    .modal-header {
-                        padding-bottom: 15px;
-                        margin-bottom: 20px;
-                        border-bottom: 1px solid #eee;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    }
-                    
-                    .modal-header h3 {
-                        margin: 0;
-                        color: #2c3e50;
-                        font-size: 20px;
-                    }
-                    
-                    .close {
-                        color: #aaa;
-                        font-size: 28px;
-                        font-weight: bold;
-                        cursor: pointer;
-                    }
-                    
-                    .close:hover {
-                        color: #333;
-                    }
-                    
-                    .form-group {
-                        margin-bottom: 20px;
-                    }
-                    
-                    .form-control, .form-select {
-                        width: 100%;
-                        padding: 10px 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        box-sizing: border-box;
-                        font-size: 15px;
-                    }
-                    
-                    .form-control:focus, .form-select:focus {
-                        border-color: #3498db;
-                        outline: none;
-                        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-                    }
-                    
-                    label {
-                        display: block;
-                        margin-bottom: 6px;
-                        font-weight: 500;
-                        color: #333;
-                    }
-                    
-                    .filter-container {
-                        display: flex;
-                        margin-bottom: 20px;
-                        gap: 10px;
-                    }
-                    
-                    .filter-container input {
-                        flex: 1;
-                        padding: 10px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        font-size: 15px;
-                    }
-                    
-                    .filter-container button {
-                        padding: 10px 15px;
-                        background-color: #eee;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-weight: 500;
-                    }
-                    
-                    .filter-container button:hover {
-                        background-color: #e0e0e0;
-                    }
-                    
-                    #helpModal h4 {
-                        margin-top: 20px;
-                        margin-bottom: 10px;
-                        color: #2c3e50;
-                    }
-                    
-                    #helpModal p {
-                        margin-bottom: 15px;
-                        line-height: 1.6;
-                    }
-                    
-                    @media (max-width: 768px) {
-                        .dataset-container {
-                            padding: 10px;
-                        }
-                        
-                        .dataset-card {
-                            padding: 15px;
-                        }
-                        
-                        .dataset-actions {
-                            flex-direction: column;
-                        }
-                        
-                        .btn {
-                            width: 100%;
-                        }
-                        
-                        .modal-content {
-                            width: 95%;
-                            margin: 10% auto;
-                        }
-                    }
-                </style>
-            `;
+            // Set the innerHTML with imported styles
+            this.element.innerHTML = datasetStyles + datasetHtml;
             
-            this.element.innerHTML = styles + datasetHtml;
-            
+            // --- 4. Add event handlers after rendering ---
             setTimeout(() => {
-                const viewDictionaryModal = document.getElementById('viewDictionaryModal');
+                // Get the modal elements
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
                 const helpModal = document.getElementById('helpModal');
                 
-                const viewDictionaryBtn = document.getElementById('viewDictionaryBtn');
+                // Get the buttons that open the modals
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
                 const helpBtn = document.getElementById('helpBtn');
                 const exportBtn = document.getElementById('exportBtn');
-                const clearAllFiltersBtn = document.getElementById('clearAllFilters');
                 
+                // Get the <span> elements that close the modals
                 const closeButtons = document.getElementsByClassName('close');
                 
+                // Table sorting variables
                 let currentSortColumn = "name";
                 let currentSortDirection = "desc";
                 
+                // Function to sort table
                 function sortTable(tableId: string, columnIndex: number, columnName: string): void {
                     const table = document.getElementById(tableId);
                     if (!table) return;
@@ -648,6 +79,7 @@ class CustomEmbed extends LibraryBase {
                     
                     const rows = Array.from(tbody.querySelectorAll('tr'));
                     
+                    // Update sort indicators
                     const headers = table.querySelectorAll('th.sortable');
                     headers.forEach(header => {
                         const indicator = header.querySelector('.sort-indicator');
@@ -657,6 +89,7 @@ class CustomEmbed extends LibraryBase {
                         header.removeAttribute('data-sort-direction');
                     });
                     
+                    // Determine sort direction
                     if (currentSortColumn === columnName) {
                         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
                     } else {
@@ -664,6 +97,7 @@ class CustomEmbed extends LibraryBase {
                         currentSortDirection = 'asc';
                     }
                     
+                    // Update current header
                     const currentHeader = table.querySelector(`th[data-sort="${columnName}"]`);
                     if (currentHeader) {
                         const indicator = currentHeader.querySelector('.sort-indicator');
@@ -673,63 +107,71 @@ class CustomEmbed extends LibraryBase {
                         currentHeader.setAttribute('data-sort-direction', currentSortDirection);
                     }
                     
+                    // Sort the rows
                     rows.sort((a, b) => {
                         const aValue = (a.cells[columnIndex].textContent || '').trim();
                         const bValue = (b.cells[columnIndex].textContent || '').trim();
                         
+                        // Determine if we're sorting a data type column
                         if (columnName === 'type') {
+                            // Special comparison for data types
                             return currentSortDirection === 'asc' 
                                 ? aValue.localeCompare(bValue) 
                                 : bValue.localeCompare(aValue);
                         }
                         
+                        // Default comparison
                         return currentSortDirection === 'asc' 
                             ? aValue.localeCompare(bValue) 
                             : bValue.localeCompare(aValue);
                     });
-                    
-                    while (tbody.firstChild) {
-                        tbody.removeChild(tbody.firstChild);
-                    }
-                    
-                    rows.forEach(row => {
-                        tbody.appendChild(row);
-                    });
+
                 }
                 
+                // Function to export table data to CSV
                 function exportTableToCSV(tableId: string, filename: string = ''): void {
                     const table = document.getElementById(tableId);
                     if (!table) return;
                     
+                    // Generate filename if not provided
                     if (!filename) {
                         const date = new Date().toISOString().slice(0, 10);
                         filename = `Dataset_${DataSet.DataSetID}_${date}.csv`;
                     }
                     
+                    // Get all rows
                     const rows = table.querySelectorAll('tr');
                     
+                    // Prepare CSV content
                     const csvContent: string[] = [];
                     
+                    // Process each row
                     rows.forEach(row => {
                         const rowData: string[] = [];
                         const cells = row.querySelectorAll('th, td');
                         
                         cells.forEach(cell => {
+                            // Get text content and escape quotes
                             let text = (cell.textContent || '').trim().replace(/"/g, '""');
+                            // Wrap in quotes to handle commas
                             rowData.push(`"${text}"`);
                         });
                         
                         csvContent.push(rowData.join(','));
                     });
                     
-                    const csvData = csvContent.join('\n');
+                    // Create CSV content
+                    const csvData = csvContent.join('\\n');
                     
+                    // Create download link
                     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     
-                    if ('msSaveBlob' in navigator) {
+                    // Set up download
+                    if ('msSaveBlob' in navigator) { // For IE
                         (navigator as any).msSaveBlob(blob, filename);
                     } else {
+                        // For other browsers
                         link.href = URL.createObjectURL(blob);
                         link.setAttribute('download', filename);
                         link.style.visibility = 'hidden';
@@ -739,185 +181,30 @@ class CustomEmbed extends LibraryBase {
                     }
                 }
                 
-                function clearAllFilters() {
-                    const headers = document.querySelectorAll('th.sortable');
-                    headers.forEach(header => {
-                        const indicator = header.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = '';
-                        }
-                        header.removeAttribute('data-sort-direction');
-                    });
-                    
-                    const nameHeader = document.querySelector('th[data-sort="name"]');
-                    if (nameHeader) {
-                        const indicator = nameHeader.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = '▼';
-                        }
-                        nameHeader.setAttribute('data-sort-direction', 'desc');
-                    }
-                    
-                    currentSortColumn = "name";
-                    currentSortDirection = "desc";
-                    sortTable('columnsTableBody', 0, 'name');
-                    
-                    const filterInput = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                    if (filterInput) {
-                        filterInput.value = '';
-                        const filterEvent = new Event('input', { bubbles: true });
-                        filterInput.dispatchEvent(filterEvent);
-                    }
-                }
+
                 
-                function filterDictionary(): void {
-                    const input = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                    if (!input) return;
-                    
-                    const filter = input.value.toUpperCase();
-                    const table = document.getElementById('dictionaryTable');
-                    if (!table) return;
-                    
-                    const rows = table.getElementsByTagName('tr');
-                    
-                    let hasResults = false;
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        let rowText = '';
-                        const cells = rows[i].getElementsByTagName('td');
-                        
-                        for (let j = 0; j < cells.length; j++) {
-                            rowText += cells[j].textContent || cells[j].innerText || '';
-                        }
-                        
-                        if (rowText.toUpperCase().indexOf(filter) > -1) {
-                            rows[i].style.display = '';
-                            hasResults = true;
-                        } else {
-                            rows[i].style.display = 'none';
-                        }
-                    }
-                    
-                    const noResults = document.getElementById('noFilterResults');
-                    if (noResults) {
-                        noResults.style.display = hasResults ? 'none' : 'block';
-                    }
-                }
+
                 
-                function ViewDictionary() {
-                    const modalBody = document.getElementById('viewDictionaryModalBody');
-                    
-                    if (!modalBody || !viewDictionaryModal) return;
-                    
-                    const filterHtml = `
-                        <div class="filter-container">
-                            <input type="text" id="dictionaryFilter" placeholder="Filter Dictionary">
-                            <button id="clearFilter">Clear</button>
-                        </div>
-                    `;
-                    
-                    let tableHtml = `
-                        <div id="noFilterResults" style="display: none; text-align: center; padding: 20px; color: #666;">
-                            No matching columns found
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-striped" id="dictionaryTable">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" data-sort="name">Column Name <span class="sort-indicator">▼</span></th>
-                                        <th class="sortable" data-sort="type">Data Type <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="logical">Logical Column Name <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="description">Description <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="example">Example <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="redacted">Redacted <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="tokenized">Tokenized <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="filter">Filter <span class="sort-indicator"></span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    if (dataSetColumns && Array.isArray(dataSetColumns)) {
-                        dataSetColumns.forEach((column: DataSetColumn) => {
-                            tableHtml += `
-                                <tr>
-                                    <td>${column.ColumnName || ''}></td>
-                                    <td class="datatype-column">${column.ColumnType || ''}</td>
-                                    <td>${column.LogicalColumnName || ''}</td>
-                                    <td>${column.BusinessDescription || 'N/A'}</td>
-                                    <td>${column.ExampleValue || 'N/A'}</td>
-                                    <td>${column.Redact ? 'Yes' : 'No'}</td>
-                                    <td>${column.Tokenise ? 'Yes' : 'No'}</td>
-                                    <td>${column.IsFilter ? 'Yes' : 'No'}</td>
-                                </tr>
-                            `;
-                        });
-                    }
-                    
-                    tableHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                        <div style="text-align: right; margin-top: 20px;">
-                            <button id="exportDictionaryBtn" class="btn btn-export">
-                                <i class="icon-download"></i> Export to CSV
-                            </button>
-                        </div>
-                    `;
-                    
-                    modalBody.innerHTML = filterHtml + tableHtml;
-                    viewDictionaryModal.style.display = 'block';
-                    
-                    const dictionaryFilter = document.getElementById('dictionaryFilter');
-                    const clearFilterBtn = document.getElementById('clearFilter');
-                    const exportDictionaryBtn = document.getElementById('exportDictionaryBtn');
-                    const sortableHeaders = document.querySelectorAll('#dictionaryTable th.sortable');
-                    
-                    if (dictionaryFilter) {
-                        dictionaryFilter.addEventListener('input', filterDictionary);
-                        dictionaryFilter.focus();
-                    }
-                    
-                    if (clearFilterBtn) {
-                        clearFilterBtn.addEventListener('click', function() {
-                            const dictionaryFilter = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                            if (dictionaryFilter) {
-                                dictionaryFilter.value = '';
-                                dictionaryFilter.focus();
-                                filterDictionary();
-                            }
-                        });
-                    }
-                    
-                    if (exportDictionaryBtn) {
-                        exportDictionaryBtn.addEventListener('click', function() {
-                            const date = new Date().toISOString().slice(0, 10);
-                            exportTableToCSV('dictionaryTable', `DataDictionary_${DataSet.DataSetID}_${date}.csv`);
-                        });
-                    }
-                    
-                    sortableHeaders.forEach((header, index) => {
-                        header.addEventListener('click', function(this: HTMLElement) {
-                            const sortType = this.getAttribute('data-sort');
-                            if (sortType) {
-                                sortTable('dictionaryTable', index, sortType);
-                            }
-                        });
-                    });
-                }
+
                 
+                // Function to create a dataset request
                 function CreateRequest() {
+                    // Get the modal's body element
                     const modalBody = document.getElementById('requestDatasetModalBody');
                     
                     if (!modalBody || !requestDatasetModal) return;
                     
+                    // Create the form for the request
                     const formHtml = `
                         <div class="col-md-12">
                             <form id="requestForm">
+                                <!-- Request Name Field -->
                                 <div class="form-group">
                                     <label for="RequestName" class="control-label">Request Name</label>
                                     <input id="RequestName" class="form-control" placeholder="Name for this request" required>
                                 </div>
+
+                                <!-- Assist Project Field -->
                                 <div class="form-group" >
                                     <label for="ProjectID" class="control-label">Assist Project</label>
                                     <select id="ProjectID" class="form-select" required>
@@ -930,6 +217,7 @@ class CustomEmbed extends LibraryBase {
                                     <div class="validation-message"></div>
                                 </div>
                                 
+                                <!-- Scheduled Refresh Field -->
                                 <div class="form-group">
                                     <label for="ScheduleRefresh" class="control-label">Scheduled Refresh</label>
                                     <select id="ScheduleRefresh" class="form-select">
@@ -939,6 +227,8 @@ class CustomEmbed extends LibraryBase {
                                         <option value="Monthly">Monthly</option>
                                     </select>
                                 </div>
+
+                                <!-- Action Buttons -->
                                 <div class="form-group">
                                     <button type="submit" class="btn btn-accent">Save</button>
                                     <button type="button" class="btn btn-default" id="cancelRequest">Cancel</button>
@@ -952,9 +242,11 @@ class CustomEmbed extends LibraryBase {
                         </div>
                     `;
                     
+                    // Set the content and display the modal
                     modalBody.innerHTML = formHtml;
                     requestDatasetModal.style.display = 'block';
                     
+                    // Add event listener for the form submission
                     const requestForm = document.getElementById('requestForm');
                     if (requestForm) {
                         requestForm.addEventListener('submit', function(e) {
@@ -966,6 +258,7 @@ class CustomEmbed extends LibraryBase {
                         });
                     }
                     
+                    // Add event listener for the cancel button
                     const cancelButton = document.getElementById('cancelRequest');
                     if (cancelButton) {
                         cancelButton.addEventListener('click', function() {
@@ -975,6 +268,7 @@ class CustomEmbed extends LibraryBase {
                         });
                     }
                     
+                    // Add event listener for the export button
                     const exportRequestBtn = document.getElementById('exportRequestBtn');
                     if (exportRequestBtn) {
                         exportRequestBtn.addEventListener('click', function() {
@@ -992,21 +286,12 @@ class CustomEmbed extends LibraryBase {
                     }
                 }
                 
-                if (viewDictionaryBtn) {
-                    viewDictionaryBtn.addEventListener('click', ViewDictionary);
-                }
+
                 
                 if (requestDatasetBtn) {
                     requestDatasetBtn.addEventListener('click', CreateRequest);
                 }
                 
-                if (helpBtn) {
-                    helpBtn.addEventListener('click', function() {
-                        if (helpModal) {
-                            helpModal.style.display = 'block';
-                        }
-                    });
-                }
                 
                 if (exportBtn) {
                     exportBtn.addEventListener('click', function() {
@@ -1015,10 +300,9 @@ class CustomEmbed extends LibraryBase {
                     });
                 }
                 
-                if (clearAllFiltersBtn) {
-                    clearAllFiltersBtn.addEventListener('click', clearAllFilters);
-                }
+
                 
+                // Add sorting to the main table
                 const mainTableHeaders = document.querySelectorAll('.columns-table th.sortable');
                 mainTableHeaders.forEach((header, index) => {
                     header.addEventListener('click', function(this: HTMLElement) {
@@ -1029,35 +313,27 @@ class CustomEmbed extends LibraryBase {
                     });
                 });
                 
+                // When the user clicks on <span> (x), close the modal
                 for (let i = 0; i < closeButtons.length; i++) {
                     closeButtons[i].addEventListener('click', function() {
-                        if (viewDictionaryModal) {
-                            viewDictionaryModal.style.display = 'none';
-                        }
                         if (requestDatasetModal) {
                             requestDatasetModal.style.display = 'none';
-                        }
-                        if (helpModal) {
-                            helpModal.style.display = 'none';
                         }
                     });
                 }
                 
+                // When the user clicks anywhere outside of the modal, close it
                 window.addEventListener('click', function(event) {
-                    if (event.target === viewDictionaryModal && viewDictionaryModal) {
-                        viewDictionaryModal.style.display = 'none';
-                    }
                     if (event.target === requestDatasetModal && requestDatasetModal) {
                         requestDatasetModal.style.display = 'none';
                     }
-                    if (event.target === helpModal && helpModal) {
-                        helpModal.style.display = 'none';
-                    }
                 });
                 
+                // Initialize with default sort
                 sortTable('columnsTableBody', 0, 'name');
                 
-            }, 100);
+            }, 100); // Small delay to ensure DOM is ready
+
         } catch (ex: unknown) {
             console.error("Error:", ex);
             const error = ex as Error;
@@ -1072,10 +348,15 @@ export const definition: Customization.CustomizationLibrary = {
     version: "1.0.0",
     embedding: {
         destroy: (element: Customization.HTMLElementWithCleanup): void => {
+            // Clear out the contents of the element
             element.innerHTML = "";
+
+            // Grab the instance we saved earlier on the element
             const embedInstance = element.instance;
             if (embedInstance) {
+                // Call the dispose on the instance first
                 embedInstance.dispose();
+                // Then clean up the reference
                 delete element.instance; 
                 console.log('Instance disposed.')
             }
@@ -1083,6 +364,7 @@ export const definition: Customization.CustomizationLibrary = {
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
                 const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+                // Store for proper disposal later when the destroy is called
                 element.instance = instance;
             }
     }

@@ -30,5 +30,9 @@ export default {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: {
+      '@templates': path.resolve(__dirname, 'src/templates/'),
+      '@styles': path.resolve(__dirname, 'src/styles/')
+    }
   },
 };
