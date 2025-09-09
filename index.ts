@@ -51,7 +51,7 @@ class CustomEmbed extends LibraryBase {
         this.loadResources();
     }
     private loadResources = async (): Promise<void> => {
-        await this.getAccessToken();
+        // await this.getAccessToken();
         await this.buildPage();
     }
     protected getAccessToken = async (): Promise<void> => {
