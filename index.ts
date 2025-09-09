@@ -106,147 +106,87 @@ class CustomEmbed extends LibraryBase {
             
             // --- 1. Generate the HTML structure ---
             const datasetHtml = `
-                <div class="container-fluid mt-4">
-                    <!-- Bootstrap breadcrumb navigation -->
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#">Datasets</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Dataset Details</li>
-                        </ol>
-                    </nav>
-                    
-                    <div class="card shadow-sm mb-4">
+                <div class="container-fluid mt-3">
+                    <div class="card mb-3">
                         <div class="card-header bg-primary text-white">
-                            <h2 class="my-2">${DataSet.Name}</h2>
+                            <h2 class="my-1">${DataSet.Name}</h2>
                         </div>
                         <div class="card-body">
-                            <div class="row mb-3">
+                            <div class="row mb-2">
                                 <div class="col-md-4">
                                     <span class="badge bg-info text-dark">ID: ${DataSet.DataSetID}</span>
-                                </div>
-                                <div class="col-md-4">
                                     <span class="badge bg-info text-dark">Owner: ${DataSet.Owner}</span>
-                                </div>
-                                <div class="col-md-4">
                                     <span class="badge bg-info text-dark">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
                                 </div>
+                                <div class="col-md-8">
+                                    <p class="mb-0">${DataSet.Description}</p>
+                                </div>
                             </div>
-                            <div class="alert alert-secondary">
-                                <p class="mb-0">${DataSet.Description}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Clear all filters button -->
-                        <div class="card-footer bg-light">
-                            <button id="clearAllFilters" class="btn btn-outline-secondary w-100">
-                                <i class="bi bi-arrow-repeat"></i> Clear All Filters & Sorting
-                            </button>
                         </div>
                     </div>
                     
                     <!-- Columns table -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-light">
+                    <div class="card mb-3">
+                        <div class="card-header">
                             <h4 class="mb-0">Dataset Columns</h4>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover mb-0">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th class="sortable" data-sort="name">Column Name <i class="bi bi-sort-down"></i></th>
-                                            <th class="sortable" data-sort="type">Data Type <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="logical">Logical Name <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="description">Description <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="example">Example <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="redacted">Redacted <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="tokenized">Tokenized <i class="bi bi-sort"></i></th>
-                                            <th class="sortable" data-sort="filter">Filter <i class="bi bi-sort"></i></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="columnsTableBody">
-                                        ${columnsHtml}
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="sortable" data-sort="name">Column Name <i class="bi bi-sort-down"></i></th>
+                                        <th class="sortable" data-sort="type">Data Type <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="logical">Logical Name <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="description">Description <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="example">Example <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="redacted">Redacted <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="tokenized">Tokenized <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="filter">Filter <i class="bi bi-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="columnsTableBody">
+                                    ${columnsHtml}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                     
-                    <!-- Add the action buttons -->
-                    <div class="row mb-4">
-                        <div class="col-md-3 col-sm-6 mb-2">
-                            <button id="viewDictionaryBtn" class="btn btn-primary w-100">
-                                <i class="bi bi-book"></i> View Data Dictionary
+                    <!-- Action buttons -->
+                    <div class="row mb-3">
+                        <div class="col d-flex gap-2 flex-wrap">
+                            <button id="viewDictionaryBtn" class="btn btn-primary">
+                                <i class="bi bi-book"></i> View Dictionary
                             </button>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-2">
-                            <button id="requestDatasetBtn" class="btn btn-success w-100">
+                            <button id="requestDatasetBtn" class="btn btn-success">
                                 <i class="bi bi-file-earmark-text"></i> Request Dataset
                             </button>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-2">
-                            <button id="exportBtn" class="btn btn-info w-100">
-                                <i class="bi bi-download"></i> Export to CSV
-                            </button>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-2">
-                            <button id="helpBtn" class="btn btn-warning w-100">
-                                <i class="bi bi-question-circle"></i> Help & Tips
+                            <button id="exportBtn" class="btn btn-info">
+                                <i class="bi bi-download"></i> Export CSV
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Data Dictionary Modal -->
-                    <div class="modal fade" id="viewDictionaryModal" tabindex="-1" aria-labelledby="viewDictionaryModalLabel" aria-hidden="true">
+                    <!-- Modals -->
+                    <div class="modal fade" id="viewDictionaryModal" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-xl">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="viewDictionaryModalLabel">Data Dictionary</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <h5 class="modal-title">Data Dictionary</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <div class="modal-body" id="viewDictionaryModalBody">
-                                    <!-- Will be populated by JavaScript -->
-                                </div>
+                                <div class="modal-body" id="viewDictionaryModalBody"></div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Request Dataset Modal -->
-                    <div class="modal fade" id="requestDatasetModal" tabindex="-1" aria-labelledby="requestDatasetModalLabel" aria-hidden="true">
+                    <div class="modal fade" id="requestDatasetModal" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="requestDatasetModalLabel">Request Dataset</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <h5 class="modal-title">Request Dataset</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <div class="modal-body" id="requestDatasetModalBody">
-                                    <!-- Will be populated by JavaScript -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Help Modal -->
-                    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="helpModalLabel">Help & Tips</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <h4>Sorting</h4>
-                                    <p>Click on any column header to sort the data by that column. Click again to toggle between ascending and descending order.</p>
-                                    
-                                    <h4>Filtering</h4>
-                                    <p>Use the filter box in the Data Dictionary view to quickly find specific columns by typing part of the name, data type, or description.</p>
-                                    
-                                    <h4>Exporting</h4>
-                                    <p>Click the "Export to CSV" button to download the current view as a CSV file that can be opened in Excel or other spreadsheet applications.</p>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                </div>
+                                <div class="modal-body" id="requestDatasetModalBody"></div>
                             </div>
                         </div>
                     </div>
@@ -254,70 +194,23 @@ class CustomEmbed extends LibraryBase {
             `;
             
             const styles = `
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
                 <style>
-                    .sortable {
-                        cursor: pointer;
-                    }
-                    
-                    .sortable i {
-                        font-size: 0.8rem;
-                        margin-left: 5px;
-                        opacity: 0.5;
-                    }
-                    
-                    .sortable[data-sort-direction="asc"] i.bi-sort-down:before {
-                        content: "\\F57A"; /* bootstrap icon for sort-up */
-                        opacity: 1;
-                    }
-                    
-                    .sortable[data-sort-direction="desc"] i.bi-sort-down:before {
-                        content: "\\F575"; /* bootstrap icon for sort-down */
-                        opacity: 1;
-                    }
-                    
-                    .sortable[data-sort-direction="asc"] i.bi-sort:before,
-                    .sortable[data-sort-direction="desc"] i.bi-sort:before {
-                        content: "\\F575"; /* bootstrap icon for sort-down */
-                        opacity: 1;
-                    }
-                    
-                    td code {
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        max-width: 200px;
-                        display: inline-block;
-                    }
-                    
-                    @media (max-width: 768px) {
-                        .table-responsive {
-                            font-size: 0.85rem;
-                        }
-                        
-                        td code {
-                            max-width: 120px;
-                        }
-                    }
+                    .sortable { cursor: pointer; }
+                    .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
+                    td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
                 </style>
-                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
             `;
             
-            this.element.innerHTML = styles + datasetHtml;
+            this.element.innerHTML = datasetHtml;
+            
             
             setTimeout(() => {
                 const viewDictionaryModal = document.getElementById('viewDictionaryModal');
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
-                const helpModal = document.getElementById('helpModal');
                 
                 const viewDictionaryBtn = document.getElementById('viewDictionaryBtn');
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-                const helpBtn = document.getElementById('helpBtn');
                 const exportBtn = document.getElementById('exportBtn');
-                const clearAllFiltersBtn = document.getElementById('clearAllFilters');
-                
-                const closeButtons = document.getElementsByClassName('close');
                 
                 let currentSortColumn = "name";
                 let currentSortDirection = "desc";
@@ -422,37 +315,6 @@ class CustomEmbed extends LibraryBase {
                     }
                 }
                 
-                function clearAllFilters() {
-                    const headers = document.querySelectorAll('th.sortable');
-                    headers.forEach(header => {
-                        const indicator = header.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = '';
-                        }
-                        header.removeAttribute('data-sort-direction');
-                    });
-                    
-                    const nameHeader = document.querySelector('th[data-sort="name"]');
-                    if (nameHeader) {
-                        const indicator = nameHeader.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = '▼';
-                        }
-                        nameHeader.setAttribute('data-sort-direction', 'desc');
-                    }
-                    
-                    currentSortColumn = "name";
-                    currentSortDirection = "desc";
-                    sortTable('columnsTableBody', 0, 'name');
-                    
-                    const filterInput = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                    if (filterInput) {
-                        filterInput.value = '';
-                        const filterEvent = new Event('input', { bubbles: true });
-                        filterInput.dispatchEvent(filterEvent);
-                    }
-                }
-                
                 function filterDictionary(): void {
                     const input = document.getElementById('dictionaryFilter') as HTMLInputElement;
                     if (!input) return;
@@ -492,29 +354,19 @@ class CustomEmbed extends LibraryBase {
                     
                     if (!modalBody || !viewDictionaryModal) return;
                     
-                    const filterHtml = `
-                        <div class="filter-container">
-                            <input type="text" id="dictionaryFilter" placeholder="Filter Dictionary">
-                            <button id="clearFilter">Clear</button>
-                        </div>
-                    `;
-                    
                     let tableHtml = `
-                        <div id="noFilterResults" style="display: none; text-align: center; padding: 20px; color: #666;">
-                            No matching columns found
-                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped" id="dictionaryTable">
                                 <thead>
                                     <tr>
-                                        <th class="sortable" data-sort="name">Column Name <span class="sort-indicator">▼</span></th>
-                                        <th class="sortable" data-sort="type">Data Type <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="logical">Logical Column Name <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="description">Description <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="example">Example <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="redacted">Redacted <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="tokenized">Tokenized <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-sort="filter">Filter <span class="sort-indicator"></span></th>
+                                        <th>Column Name</th>
+                                        <th>Data Type</th>
+                                        <th>Logical Name</th>
+                                        <th>Description</th>
+                                        <th>Example</th>
+                                        <th>Redacted</th>
+                                        <th>Tokenized</th>
+                                        <th>Filter</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -524,11 +376,11 @@ class CustomEmbed extends LibraryBase {
                         dataSetColumns.forEach((column: DataSetColumn) => {
                             tableHtml += `
                                 <tr>
-                                    <td>${column.ColumnName || ''}></td>
-                                    <td class="datatype-column">${column.ColumnType || ''}</td>
+                                    <td>${column.ColumnName || ''}</td>
+                                    <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
                                     <td>${column.LogicalColumnName || ''}</td>
                                     <td>${column.BusinessDescription || 'N/A'}</td>
-                                    <td>${column.ExampleValue || 'N/A'}</td>
+                                    <td><code>${column.ExampleValue || 'N/A'}</code></td>
                                     <td>${column.Redact ? 'Yes' : 'No'}</td>
                                     <td>${column.Tokenise ? 'Yes' : 'No'}</td>
                                     <td>${column.IsFilter ? 'Yes' : 'No'}</td>
@@ -541,52 +393,26 @@ class CustomEmbed extends LibraryBase {
                                 </tbody>
                             </table>
                         </div>
-                        <div style="text-align: right; margin-top: 20px;">
-                            <button id="exportDictionaryBtn" class="btn btn-export">
-                                <i class="icon-download"></i> Export to CSV
+                        <div class="mt-3 text-end">
+                            <button id="exportDictionaryBtn" class="btn btn-info">
+                                <i class="bi bi-download"></i> Export CSV
                             </button>
                         </div>
                     `;
                     
-                    modalBody.innerHTML = filterHtml + tableHtml;
-                    viewDictionaryModal.style.display = 'block';
+                    modalBody.innerHTML = tableHtml;
                     
-                    const dictionaryFilter = document.getElementById('dictionaryFilter');
-                    const clearFilterBtn = document.getElementById('clearFilter');
+                    // Initialize Bootstrap modal
+                    const modal = new (window as any).bootstrap.Modal(viewDictionaryModal);
+                    modal.show();
+                    
                     const exportDictionaryBtn = document.getElementById('exportDictionaryBtn');
-                    const sortableHeaders = document.querySelectorAll('#dictionaryTable th.sortable');
-                    
-                    if (dictionaryFilter) {
-                        dictionaryFilter.addEventListener('input', filterDictionary);
-                        dictionaryFilter.focus();
-                    }
-                    
-                    if (clearFilterBtn) {
-                        clearFilterBtn.addEventListener('click', function() {
-                            const dictionaryFilter = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                            if (dictionaryFilter) {
-                                dictionaryFilter.value = '';
-                                dictionaryFilter.focus();
-                                filterDictionary();
-                            }
-                        });
-                    }
-                    
                     if (exportDictionaryBtn) {
                         exportDictionaryBtn.addEventListener('click', function() {
                             const date = new Date().toISOString().slice(0, 10);
                             exportTableToCSV('dictionaryTable', `DataDictionary_${DataSet.DataSetID}_${date}.csv`);
                         });
                     }
-                    
-                    sortableHeaders.forEach((header, index) => {
-                        header.addEventListener('click', function(this: HTMLElement) {
-                            const sortType = this.getAttribute('data-sort');
-                            if (sortType) {
-                                sortTable('dictionaryTable', index, sortType);
-                            }
-                        });
-                    });
                 }
                 
                 function CreateRequest() {
@@ -595,82 +421,48 @@ class CustomEmbed extends LibraryBase {
                     if (!modalBody || !requestDatasetModal) return;
                     
                     const formHtml = `
-                        <div class="col-md-12">
-                            <form id="requestForm">
-                                <div class="form-group">
-                                    <label for="RequestName" class="control-label">Request Name</label>
-                                    <input id="RequestName" class="form-control" placeholder="Name for this request" required>
-                                </div>
-                                <div class="form-group" >
-                                    <label for="ProjectID" class="control-label">Assist Project</label>
-                                    <select id="ProjectID" class="form-select" required>
-                                        <option value="">Select a Project</option>
-                                        <option value="82">Project 1</option>
-                                        <option value="84">Project 2</option>
-                                        <option value="85">Project 3</option>
-                                        <option value="86">Project 4</option>
-                                    </select>
-                                    <div class="validation-message"></div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="ScheduleRefresh" class="control-label">Scheduled Refresh</label>
-                                    <select id="ScheduleRefresh" class="form-select">
-                                        <option value="No Refresh">No Refresh</option>
-                                        <option value="Daily">Daily</option>
-                                        <option value="Weekly">Weekly</option>
-                                        <option value="Monthly">Monthly</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <button type="submit" class="btn btn-accent">Save</button>
-                                    <button type="button" class="btn btn-default" id="cancelRequest">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                        <div style="text-align: right; margin-top: 20px;">
-                            <button id="exportRequestBtn" class="btn btn-export">
-                                <i class="icon-download"></i> Export to CSV
-                            </button>
-                        </div>
+                        <form id="requestForm">
+                            <div class="mb-3">
+                                <label for="RequestName" class="form-label">Request Name</label>
+                                <input id="RequestName" class="form-control" placeholder="Name for this request" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="ProjectID" class="form-label">Assist Project</label>
+                                <select id="ProjectID" class="form-select" required>
+                                    <option value="">Select a Project</option>
+                                    <option value="82">Project 1</option>
+                                    <option value="84">Project 2</option>
+                                    <option value="85">Project 3</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="ScheduleRefresh" class="form-label">Scheduled Refresh</label>
+                                <select id="ScheduleRefresh" class="form-select">
+                                    <option value="No Refresh">No Refresh</option>
+                                    <option value="Daily">Daily</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </form>
                     `;
                     
                     modalBody.innerHTML = formHtml;
-                    requestDatasetModal.style.display = 'block';
+                    
+                    // Initialize Bootstrap modal
+                    const modal = new (window as any).bootstrap.Modal(requestDatasetModal);
+                    modal.show();
                     
                     const requestForm = document.getElementById('requestForm');
                     if (requestForm) {
                         requestForm.addEventListener('submit', function(e) {
                             e.preventDefault();
                             alert('Request submitted successfully!');
-                            if (requestDatasetModal) {
-                                requestDatasetModal.style.display = 'none';
-                            }
-                        });
-                    }
-                    
-                    const cancelButton = document.getElementById('cancelRequest');
-                    if (cancelButton) {
-                        cancelButton.addEventListener('click', function() {
-                            if (requestDatasetModal) {
-                                requestDatasetModal.style.display = 'none';
-                            }
-                        });
-                    }
-                    
-                    const exportRequestBtn = document.getElementById('exportRequestBtn');
-                    if (exportRequestBtn) {
-                        exportRequestBtn.addEventListener('click', function() {
-                            const date = new Date().toISOString().slice(0, 10);
-                            const csvContent = `"Request Name","Project","Scheduled Refresh"\n"Request for ${DataSet.Name}","Project 1","Weekly"`;
-                            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(blob);
-                            link.setAttribute('download', `DatasetRequest_${DataSet.DataSetID}_${date}.csv`);
-                            link.style.visibility = 'hidden';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
+                            modal.hide();
                         });
                     }
                 }
@@ -683,14 +475,6 @@ class CustomEmbed extends LibraryBase {
                     requestDatasetBtn.addEventListener('click', CreateRequest);
                 }
                 
-                if (helpBtn) {
-                    helpBtn.addEventListener('click', function() {
-                        if (helpModal) {
-                            helpModal.style.display = 'block';
-                        }
-                    });
-                }
-                
                 if (exportBtn) {
                     exportBtn.addEventListener('click', function() {
                         const date = new Date().toISOString().slice(0, 10);
@@ -698,11 +482,7 @@ class CustomEmbed extends LibraryBase {
                     });
                 }
                 
-                if (clearAllFiltersBtn) {
-                    clearAllFiltersBtn.addEventListener('click', clearAllFilters);
-                }
-                
-                const mainTableHeaders = document.querySelectorAll('.columns-table th.sortable');
+                const mainTableHeaders = document.querySelectorAll('.table th.sortable');
                 mainTableHeaders.forEach((header, index) => {
                     header.addEventListener('click', function(this: HTMLElement) {
                         const sortType = this.getAttribute('data-sort');
@@ -712,32 +492,7 @@ class CustomEmbed extends LibraryBase {
                     });
                 });
                 
-                for (let i = 0; i < closeButtons.length; i++) {
-                    closeButtons[i].addEventListener('click', function() {
-                        if (viewDictionaryModal) {
-                            viewDictionaryModal.style.display = 'none';
-                        }
-                        if (requestDatasetModal) {
-                            requestDatasetModal.style.display = 'none';
-                        }
-                        if (helpModal) {
-                            helpModal.style.display = 'none';
-                        }
-                    });
-                }
-                
-                window.addEventListener('click', function(event) {
-                    if (event.target === viewDictionaryModal && viewDictionaryModal) {
-                        viewDictionaryModal.style.display = 'none';
-                    }
-                    if (event.target === requestDatasetModal && requestDatasetModal) {
-                        requestDatasetModal.style.display = 'none';
-                    }
-                    if (event.target === helpModal && helpModal) {
-                        helpModal.style.display = 'none';
-                    }
-                });
-                
+                // Initialize with default sort
                 sortTable('columnsTableBody', 0, 'name');
                 
             }, 100);
