@@ -109,7 +109,12 @@ class CustomEmbed extends LibraryBase {
                 <div class="container-fluid mt-3">
                     <div class="card mb-3">
                         <div class="card-header bg-primary text-white">
-                            <h2 class="my-1">${DataSet.Name}</h2>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h2 class="h4 my-1">${DataSet.Name}</h2>
+                                <button id="requestDatasetBtn" class="btn btn-light">
+                                    <i class="bi bi-file-earmark-text"></i> Request Dataset
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="row mb-2">
@@ -151,33 +156,7 @@ class CustomEmbed extends LibraryBase {
                         </div>
                     </div>
                     
-                    <!-- Action buttons -->
-                    <div class="row mb-3">
-                        <div class="col d-flex gap-2 flex-wrap">
-                            <button id="viewDictionaryBtn" class="btn btn-primary">
-                                <i class="bi bi-book"></i> View Dictionary
-                            </button>
-                            <button id="requestDatasetBtn" class="btn btn-success">
-                                <i class="bi bi-file-earmark-text"></i> Request Dataset
-                            </button>
-                            <button id="exportBtn" class="btn btn-info">
-                                <i class="bi bi-download"></i> Export CSV
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Modals -->
-                    <div class="modal fade" id="viewDictionaryModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-xl">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Data Dictionary</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body" id="viewDictionaryModalBody"></div>
-                            </div>
-                        </div>
-                    </div>
+
                     
                     <div class="modal fade" id="requestDatasetModal" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog">
@@ -198,19 +177,34 @@ class CustomEmbed extends LibraryBase {
                     .sortable { cursor: pointer; }
                     .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
                     td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
+                    .card-header .btn {
+                        margin-left: 15px;
+                        font-weight: 500;
+                    }
+                    
+                    .card-header .d-flex {
+                        width: 100%;
+                    }
+                    
+                    .card-header h2 {
+                        margin: 0;
+                        flex: 1;
+                    }
+                    
+                    .card-header .btn {
+                        white-space: nowrap;
+                    }
                 </style>
             `;
             
-            this.element.innerHTML = datasetHtml;
+            this.element.innerHTML = styles + datasetHtml;
             
             
             setTimeout(() => {
-                const viewDictionaryModal = document.getElementById('viewDictionaryModal');
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
                 
-                const viewDictionaryBtn = document.getElementById('viewDictionaryBtn');
+
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-                const exportBtn = document.getElementById('exportBtn');
                 
                 let currentSortColumn = "name";
                 let currentSortDirection = "desc";
@@ -273,147 +267,9 @@ class CustomEmbed extends LibraryBase {
                     });
                 }
                 
-                function exportTableToCSV(tableId: string, filename: string = ''): void {
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
-                    
-                    if (!filename) {
-                        const date = new Date().toISOString().slice(0, 10);
-                        filename = `Dataset_${DataSet.DataSetID}_${date}.csv`;
-                    }
-                    
-                    const rows = table.querySelectorAll('tr');
-                    
-                    const csvContent: string[] = [];
-                    
-                    rows.forEach(row => {
-                        const rowData: string[] = [];
-                        const cells = row.querySelectorAll('th, td');
-                        
-                        cells.forEach(cell => {
-                            let text = (cell.textContent || '').trim().replace(/"/g, '""');
-                            rowData.push(`"${text}"`);
-                        });
-                        
-                        csvContent.push(rowData.join(','));
-                    });
-                    
-                    const csvData = csvContent.join('\n');
-                    
-                    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    
-                    if ('msSaveBlob' in navigator) {
-                        (navigator as any).msSaveBlob(blob, filename);
-                    } else {
-                        link.href = URL.createObjectURL(blob);
-                        link.setAttribute('download', filename);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }
-                }
+
                 
-                function filterDictionary(): void {
-                    const input = document.getElementById('dictionaryFilter') as HTMLInputElement;
-                    if (!input) return;
-                    
-                    const filter = input.value.toUpperCase();
-                    const table = document.getElementById('dictionaryTable');
-                    if (!table) return;
-                    
-                    const rows = table.getElementsByTagName('tr');
-                    
-                    let hasResults = false;
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        let rowText = '';
-                        const cells = rows[i].getElementsByTagName('td');
-                        
-                        for (let j = 0; j < cells.length; j++) {
-                            rowText += cells[j].textContent || cells[j].innerText || '';
-                        }
-                        
-                        if (rowText.toUpperCase().indexOf(filter) > -1) {
-                            rows[i].style.display = '';
-                            hasResults = true;
-                        } else {
-                            rows[i].style.display = 'none';
-                        }
-                    }
-                    
-                    const noResults = document.getElementById('noFilterResults');
-                    if (noResults) {
-                        noResults.style.display = hasResults ? 'none' : 'block';
-                    }
-                }
-                
-                function ViewDictionary() {
-                    const modalBody = document.getElementById('viewDictionaryModalBody');
-                    
-                    if (!modalBody || !viewDictionaryModal) return;
-                    
-                    let tableHtml = `
-                        <div class="table-responsive">
-                            <table class="table table-striped" id="dictionaryTable">
-                                <thead>
-                                    <tr>
-                                        <th>Column Name</th>
-                                        <th>Data Type</th>
-                                        <th>Logical Name</th>
-                                        <th>Description</th>
-                                        <th>Example</th>
-                                        <th>Redacted</th>
-                                        <th>Tokenized</th>
-                                        <th>Filter</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    if (dataSetColumns && Array.isArray(dataSetColumns)) {
-                        dataSetColumns.forEach((column: DataSetColumn) => {
-                            tableHtml += `
-                                <tr>
-                                    <td>${column.ColumnName || ''}</td>
-                                    <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
-                                    <td>${column.LogicalColumnName || ''}</td>
-                                    <td>${column.BusinessDescription || 'N/A'}</td>
-                                    <td><code>${column.ExampleValue || 'N/A'}</code></td>
-                                    <td>${column.Redact ? 'Yes' : 'No'}</td>
-                                    <td>${column.Tokenise ? 'Yes' : 'No'}</td>
-                                    <td>${column.IsFilter ? 'Yes' : 'No'}</td>
-                                </tr>
-                            `;
-                        });
-                    }
-                    
-                    tableHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mt-3 text-end">
-                            <button id="exportDictionaryBtn" class="btn btn-info">
-                                <i class="bi bi-download"></i> Export CSV
-                            </button>
-                        </div>
-                    `;
-                    
-                    modalBody.innerHTML = tableHtml;
-                    
-                    // Initialize Bootstrap modal
-                    const modal = new (window as any).bootstrap.Modal(viewDictionaryModal);
-                    modal.show();
-                    
-                    const exportDictionaryBtn = document.getElementById('exportDictionaryBtn');
-                    if (exportDictionaryBtn) {
-                        exportDictionaryBtn.addEventListener('click', function() {
-                            const date = new Date().toISOString().slice(0, 10);
-                            exportTableToCSV('dictionaryTable', `DataDictionary_${DataSet.DataSetID}_${date}.csv`);
-                        });
-                    }
-                }
+
                 
                 function CreateRequest() {
                     const modalBody = document.getElementById('requestDatasetModalBody');
@@ -467,20 +323,13 @@ class CustomEmbed extends LibraryBase {
                     }
                 }
                 
-                if (viewDictionaryBtn) {
-                    viewDictionaryBtn.addEventListener('click', ViewDictionary);
-                }
+
                 
                 if (requestDatasetBtn) {
                     requestDatasetBtn.addEventListener('click', CreateRequest);
                 }
                 
-                if (exportBtn) {
-                    exportBtn.addEventListener('click', function() {
-                        const date = new Date().toISOString().slice(0, 10);
-                        exportTableToCSV('columnsTableBody', `Dataset_${DataSet.DataSetID}_${date}.csv`);
-                    });
-                }
+
                 
                 const mainTableHeaders = document.querySelectorAll('.table th.sortable');
                 mainTableHeaders.forEach((header, index) => {
