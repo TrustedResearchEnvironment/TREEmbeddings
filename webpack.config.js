@@ -1,8 +1,12 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import webpack from "webpack";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Generate build date and time
+const buildDate = new Date().toISOString();
 
 export default {
   mode: "development",
@@ -35,4 +39,11 @@ export default {
       '@styles': path.resolve(__dirname, 'src/styles/')
     }
   },
+  plugins: [
+    // Add build date and time as a banner to the output file
+    new webpack.BannerPlugin({
+      banner: `Build Date: ${buildDate}`,
+      entryOnly: true
+    }),
+  ],
 };

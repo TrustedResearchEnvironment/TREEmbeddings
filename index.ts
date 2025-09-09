@@ -3,6 +3,7 @@ import { Customization } from './customization';
 import { getDatasetTemplate } from './src/templates/dataset.template';
 import { datasetStyles } from './src/styles/dataset.styles';
 
+
 class CustomEmbed extends LibraryBase {
     protected token: string = "";
 
@@ -14,7 +15,7 @@ class CustomEmbed extends LibraryBase {
     }
 
     private loadResources = async (): Promise<void> => {
-        await this.getAccessToken();
+        // await this.getAccessToken();
         await this.buildPage();
     }
 
@@ -50,20 +51,20 @@ class CustomEmbed extends LibraryBase {
             
             // Set the innerHTML with imported styles
             this.element.innerHTML = datasetStyles + datasetHtml;
+
             
             // --- 4. Add event handlers after rendering ---
             setTimeout(() => {
                 // Get the modal elements
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
-                const helpModal = document.getElementById('helpModal');
                 
                 // Get the buttons that open the modals
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-                const helpBtn = document.getElementById('helpBtn');
                 const exportBtn = document.getElementById('exportBtn');
                 
                 // Get the <span> elements that close the modals
                 const closeButtons = document.getElementsByClassName('close');
+
                 
                 // Table sorting variables
                 let currentSortColumn = "name";
@@ -183,10 +184,6 @@ class CustomEmbed extends LibraryBase {
                 
 
                 
-
-                
-
-                
                 // Function to create a dataset request
                 function CreateRequest() {
                     // Get the modal's body element
@@ -240,11 +237,15 @@ class CustomEmbed extends LibraryBase {
                                 <i class="icon-download"></i> Export to CSV
                             </button>
                         </div>
+
                     `;
                     
                     // Set the content and display the modal
                     modalBody.innerHTML = formHtml;
-                    requestDatasetModal.style.display = 'block';
+                    
+                    // Initialize Bootstrap modal
+                    const modal = new (window as any).bootstrap.Modal(requestDatasetModal);
+                    modal.show();
                     
                     // Add event listener for the form submission
                     const requestForm = document.getElementById('requestForm');
@@ -282,6 +283,7 @@ class CustomEmbed extends LibraryBase {
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
+
                         });
                     }
                 }
@@ -292,7 +294,7 @@ class CustomEmbed extends LibraryBase {
                     requestDatasetBtn.addEventListener('click', CreateRequest);
                 }
                 
-                
+
                 if (exportBtn) {
                     exportBtn.addEventListener('click', function() {
                         const date = new Date().toISOString().slice(0, 10);
@@ -301,9 +303,11 @@ class CustomEmbed extends LibraryBase {
                 }
                 
 
+
                 
                 // Add sorting to the main table
                 const mainTableHeaders = document.querySelectorAll('.columns-table th.sortable');
+
                 mainTableHeaders.forEach((header, index) => {
                     header.addEventListener('click', function(this: HTMLElement) {
                         const sortType = this.getAttribute('data-sort');
@@ -313,6 +317,7 @@ class CustomEmbed extends LibraryBase {
                     });
                 });
                 
+
                 // When the user clicks on <span> (x), close the modal
                 for (let i = 0; i < closeButtons.length; i++) {
                     closeButtons[i].addEventListener('click', function() {
@@ -329,6 +334,7 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
                 
+
                 // Initialize with default sort
                 sortTable('columnsTableBody', 0, 'name');
                 
