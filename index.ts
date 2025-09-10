@@ -158,24 +158,25 @@ class CustomEmbed extends LibraryBase {
                     
                     <!-- Pagination controls -->
                     <div class="card-footer">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
                             <div class="entries-info">
                                 Showing <span id="startEntry">1</span> to <span id="endEntry">3</span> of <span id="totalEntries">0</span> entries
                             </div>
-                            <div class="pagination-controls">
-                                <select id="pageSize" class="form-select form-select-sm d-inline-block w-auto me-2">
+                            <div class="d-flex align-items-center gap-3">
+                                <select id="pageSize" class="form-select form-select-sm w-auto">
                                     <option value="3" selected>3 rows</option>
                                     <option value="10">10 rows</option>
                                     <option value="25">25 rows</option>
                                     <option value="50">50 rows</option>
                                 </select>
-                                <nav aria-label="Table navigation">
-                                    <ul class="pagination pagination-sm mb-0">
+                                <nav aria-label="Table navigation" class="d-flex justify-content-center flex-grow-1">
+                                    <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
                                         <li class="page-item" id="prevPage">
                                             <a class="page-link" href="#" aria-label="Previous">
                                                 <span aria-hidden="true">&laquo;</span>
                                             </a>
                                         </li>
+                                        <!-- Page numbers will be inserted here -->
                                         <li class="page-item" id="nextPage">
                                             <a class="page-link" href="#" aria-label="Next">
                                                 <span aria-hidden="true">&raquo;</span>
@@ -290,6 +291,7 @@ class CustomEmbed extends LibraryBase {
                     
                     // Update pagination info
                     updatePaginationInfo();
+                    updatePaginationNumbers(); // Add this line
                 }
                 
                 function updatePaginationInfo(): void {
@@ -310,6 +312,48 @@ class CustomEmbed extends LibraryBase {
                     }
                     if (nextPageBtn) {
                         nextPageBtn.classList.toggle('disabled', endEntry >= totalRows);
+                    }
+                }
+
+                // Add this function with the other pagination functions
+                function updatePaginationNumbers(): void {
+                    const paginationList = document.getElementById('paginationNumbers');
+                    if (!paginationList) return;
+
+                    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+                    const prevButton = paginationList.querySelector('#prevPage');
+                    const nextButton = paginationList.querySelector('#nextPage');
+
+                    // Remove all existing number buttons
+                    const existingNumbers = paginationList.querySelectorAll('.page-number');
+                    existingNumbers.forEach(num => num.remove());
+
+                    // Add page numbers
+                    for (let i = 1; i <= totalPages; i++) {
+                        const pageItem = document.createElement('li');
+                        pageItem.className = `page-item page-number ${currentPage === i ? 'active' : ''}`;
+                        
+                        const pageLink = document.createElement('a');
+                        pageLink.className = 'page-link';
+                        pageLink.href = '#';
+                        pageLink.textContent = i.toString();
+                        
+                        pageLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            currentPage = i;
+                            updateTable();
+                        });
+
+                        pageItem.appendChild(pageLink);
+                        nextButton?.parentNode?.insertBefore(pageItem, nextButton);
+                    }
+
+                    // Update prev/next button states
+                    if (prevButton) {
+                        prevButton.classList.toggle('disabled', currentPage === 1);
+                    }
+                    if (nextButton) {
+                        nextButton.classList.toggle('disabled', currentPage === totalPages);
                     }
                 }
                 
