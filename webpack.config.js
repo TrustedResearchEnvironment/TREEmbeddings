@@ -34,6 +34,10 @@ export default {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: {
+      '@templates': path.resolve(__dirname, 'src/templates/'),
+      '@styles': path.resolve(__dirname, 'src/styles/')
+    }
   },
   plugins: [
     // Add build date and time as a banner to the output file

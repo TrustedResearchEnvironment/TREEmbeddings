@@ -1,5 +1,7 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
+import { getDatasetTemplate } from './src/templates/dataset.template';
+import { datasetStyles } from './src/styles/dataset.styles';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -42,22 +44,27 @@ interface ColumnsResponse {
     Results: DataSetColumn[];
 }
 
+
 class CustomEmbed extends LibraryBase {
     protected token: string = "";
+
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
         super(element, entityUrl, params, settings, errorCallback);    
         console.log(params)
         this.loadResources();
     }
+
     private loadResources = async (): Promise<void> => {
         // await this.getAccessToken();
         await this.buildPage();
     }
+
     protected getAccessToken = async (): Promise<void> => {
         try {
             // A way to get the runtime param passed down from the portal
             const authId = this.getParamValue('ApiAuthRequestId')?.value
+
             const authResponse = await window.loomeApi.runApiRequest(authId);
             this.token = authResponse.access_token;
         }
@@ -68,40 +75,16 @@ class CustomEmbed extends LibraryBase {
             this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
         }
     }
+
     protected buildPage = async (): Promise<void> => {
         try {
-            // Fetch the dataset metadata
-            const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
+            const DataSet = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
             
-            // Fetch the dataset columns using API request 7
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
-            });
-            
-            // Extract columns from the Results array and sort by DisplayOrder
-            const dataSetColumns = columnsResponse.Results ? 
-                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) : 
-                [];
-            
-            // Now let's generate the HTML for the columns
             let columnsHtml = '';
-            if (dataSetColumns && Array.isArray(dataSetColumns)) {
-                dataSetColumns.forEach((column: DataSetColumn) => {
-                    columnsHtml += `
-                        <tr>
-                            <td>${column.ColumnName || ''}</td>
-                            <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
-                            <td>${column.LogicalColumnName || ''}</td>
-                            <td>${column.BusinessDescription || 'N/A'}</td>
-                            <td><code>${column.ExampleValue || 'N/A'}</code></td>
-                            <td>${column.Redact ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                            <td>${column.Tokenise ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                            <td>${column.IsFilter ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                        </tr>
-                    `;
-                });
+            if (DataSet.DataSetColumns && Array.isArray(DataSet.DataSetColumns)) {
+                // ...existing columnsHtml generation...
             }
             
             // --- 1. Generate the HTML structure ---
@@ -230,14 +213,25 @@ class CustomEmbed extends LibraryBase {
             `;
             
             this.element.innerHTML = styles + datasetHtml;
+
             
+            // Set the innerHTML with imported styles
+            this.element.innerHTML = datasetStyles + datasetHtml;
+
             
+            // --- 4. Add event handlers after rendering ---
             setTimeout(() => {
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
                 
 
+
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
                 
+                // Get the <span> elements that close the modals
+                const closeButtons = document.getElementsByClassName('close');
+
+                
+                // Table sorting variables
                 let currentSortColumn = "name";
                 let currentSortDirection = "desc";
                 
@@ -246,6 +240,7 @@ class CustomEmbed extends LibraryBase {
                 let filteredRows: HTMLTableRowElement[] = [];
                 
                 // Replace the existing sortTable function with this updated version:
+
                 function sortTable(tableId: string, columnIndex: number, columnName: string): void {
                     const table = document.getElementById(tableId);
                     if (!table) return;
@@ -255,7 +250,9 @@ class CustomEmbed extends LibraryBase {
                     
                     const rows = Array.from(tbody.querySelectorAll('tr'));
                     
+
                     // Update sort direction and headers
+
                     if (currentSortColumn === columnName) {
                         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
                     } else {
@@ -267,6 +264,7 @@ class CustomEmbed extends LibraryBase {
                     filteredRows = rows.sort((a, b) => {
                         const aValue = (a.cells[columnIndex].textContent || '').trim();
                         const bValue = (b.cells[columnIndex].textContent || '').trim();
+
                         return currentSortDirection === 'asc' 
                             ? aValue.localeCompare(bValue) 
                             : bValue.localeCompare(aValue);
@@ -356,55 +354,108 @@ class CustomEmbed extends LibraryBase {
                         nextButton.classList.toggle('disabled', currentPage === totalPages);
                     }
                 }
+
                 
+                // Function to create a dataset request
                 function CreateRequest() {
+                    // Get the modal's body element
                     const modalBody = document.getElementById('requestDatasetModalBody');
                     
                     if (!modalBody || !requestDatasetModal) return;
                     
+                    // Create the form for the request
                     const formHtml = `
-                        <form id="requestForm">
-                            <div class="mb-3">
-                                <label for="RequestName" class="form-label">Request Name</label>
-                                <input id="RequestName" class="form-control" placeholder="Name for this request" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="ProjectID" class="form-label">Assist Project</label>
-                                <select id="ProjectID" class="form-select" required>
-                                    <option value="">Select a Project</option>
-                                    <option value="82">Project 1</option>
-                                    <option value="84">Project 2</option>
-                                    <option value="85">Project 3</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="ScheduleRefresh" class="form-label">Scheduled Refresh</label>
-                                <select id="ScheduleRefresh" class="form-select">
-                                    <option value="No Refresh">No Refresh</option>
-                                    <option value="Daily">Daily</option>
-                                    <option value="Weekly">Weekly</option>
-                                    <option value="Monthly">Monthly</option>
-                                </select>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            </div>
-                        </form>
+                        <div class="col-md-12">
+                            <form id="requestForm">
+                                <!-- Request Name Field -->
+                                <div class="form-group">
+                                    <label for="RequestName" class="control-label">Request Name</label>
+                                    <input id="RequestName" class="form-control" placeholder="Name for this request" required>
+                                </div>
+
+                                <!-- Assist Project Field -->
+                                <div class="form-group" >
+                                    <label for="ProjectID" class="control-label">Assist Project</label>
+                                    <select id="ProjectID" class="form-select" required>
+                                        <option value="">Select a Project</option>
+                                        <option value="82">Project 1</option>
+                                        <option value="84">Project 2</option>
+                                        <option value="85">Project 3</option>
+                                        <option value="86">Project 4</option>
+                                    </select>
+                                    <div class="validation-message"></div>
+                                </div>
+                                
+                                <!-- Scheduled Refresh Field -->
+                                <div class="form-group">
+                                    <label for="ScheduleRefresh" class="control-label">Scheduled Refresh</label>
+                                    <select id="ScheduleRefresh" class="form-select">
+                                        <option value="No Refresh">No Refresh</option>
+                                        <option value="Daily">Daily</option>
+                                        <option value="Weekly">Weekly</option>
+                                        <option value="Monthly">Monthly</option>
+                                    </select>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-accent">Save</button>
+                                    <button type="button" class="btn btn-default" id="cancelRequest">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div style="text-align: right; margin-top: 20px;">
+                            <button id="exportRequestBtn" class="btn btn-export">
+                                <i class="icon-download"></i> Export to CSV
+                            </button>
+                        </div>
+
                     `;
                     
+                    // Set the content and display the modal
                     modalBody.innerHTML = formHtml;
                     
                     // Initialize Bootstrap modal
                     const modal = new (window as any).bootstrap.Modal(requestDatasetModal);
                     modal.show();
                     
+                    // Add event listener for the form submission
                     const requestForm = document.getElementById('requestForm');
                     if (requestForm) {
                         requestForm.addEventListener('submit', function(e) {
                             e.preventDefault();
                             alert('Request submitted successfully!');
-                            modal.hide();
+                            if (requestDatasetModal) {
+                                requestDatasetModal.style.display = 'none';
+                            }
+                        });
+                    }
+                    
+                    // Add event listener for the cancel button
+                    const cancelButton = document.getElementById('cancelRequest');
+                    if (cancelButton) {
+                        cancelButton.addEventListener('click', function() {
+                            if (requestDatasetModal) {
+                                requestDatasetModal.style.display = 'none';
+                            }
+                        });
+                    }
+                    
+                    // Add event listener for the export button
+                    const exportRequestBtn = document.getElementById('exportRequestBtn');
+                    if (exportRequestBtn) {
+                        exportRequestBtn.addEventListener('click', function() {
+                            const date = new Date().toISOString().slice(0, 10);
+                            const csvContent = `"Request Name","Project","Scheduled Refresh"\n"Request for ${DataSet.Name}","Project 1","Weekly"`;
+                            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.setAttribute('download', `DatasetRequest_${DataSet.DataSetID}_${date}.csv`);
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+
                         });
                     }
                 }
@@ -416,8 +467,14 @@ class CustomEmbed extends LibraryBase {
                 }
                 
 
+
                 
-                const mainTableHeaders = document.querySelectorAll('.table th.sortable');
+
+
+                
+                // Add sorting to the main table
+                const mainTableHeaders = document.querySelectorAll('.columns-table th.sortable');
+
                 mainTableHeaders.forEach((header, index) => {
                     header.addEventListener('click', function(this: HTMLElement) {
                         const sortType = this.getAttribute('data-sort');
@@ -427,6 +484,24 @@ class CustomEmbed extends LibraryBase {
                     });
                 });
                 
+
+                // When the user clicks on <span> (x), close the modal
+                for (let i = 0; i < closeButtons.length; i++) {
+                    closeButtons[i].addEventListener('click', function() {
+                        if (requestDatasetModal) {
+                            requestDatasetModal.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // When the user clicks anywhere outside of the modal, close it
+                window.addEventListener('click', function(event) {
+                    if (event.target === requestDatasetModal && requestDatasetModal) {
+                        requestDatasetModal.style.display = 'none';
+                    }
+                });
+                
+
                 // Initialize with default sort
                 sortTable('columnsTableBody', 0, 'name');
                 
@@ -468,6 +543,7 @@ class CustomEmbed extends LibraryBase {
                 filteredRows = Array.from(document.querySelectorAll('#columnsTableBody tr'));
                 updateTable();
             }, 100);
+
         } catch (ex: unknown) {
             console.error("Error:", ex);
             const error = ex as Error;
@@ -482,10 +558,15 @@ export const definition: Customization.CustomizationLibrary = {
     version: "1.0.0",
     embedding: {
         destroy: (element: Customization.HTMLElementWithCleanup): void => {
+            // Clear out the contents of the element
             element.innerHTML = "";
+
+            // Grab the instance we saved earlier on the element
             const embedInstance = element.instance;
             if (embedInstance) {
+                // Call the dispose on the instance first
                 embedInstance.dispose();
+                // Then clean up the reference
                 delete element.instance; 
                 console.log('Instance disposed.')
             }
@@ -493,6 +574,7 @@ export const definition: Customization.CustomizationLibrary = {
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
                 const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+                // Store for proper disposal later when the destroy is called
                 element.instance = instance;
             }
     }
