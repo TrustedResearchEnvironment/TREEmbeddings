@@ -164,7 +164,7 @@ class CustomEmbed extends LibraryBase {
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <select id="pageSize" class="form-select form-select-sm w-auto">
-                                    <option value="3" selected>3 rows</option>
+                                    <option value="2" selected>2 rows</option>
                                     <option value="10">10 rows</option>
                                     <option value="25">25 rows</option>
                                     <option value="50">50 rows</option>
@@ -242,7 +242,7 @@ class CustomEmbed extends LibraryBase {
                 let currentSortDirection = "desc";
                 
                 let currentPage = 1;
-                let rowsPerPage = 3;
+                let rowsPerPage = 2;
                 let filteredRows: HTMLTableRowElement[] = [];
                 
                 // Replace the existing sortTable function with this updated version:
