@@ -3,6 +3,47 @@ import { Customization } from './customization';
 import { getDatasetTemplate } from './src/templates/dataset.template';
 import { datasetStyles } from './src/styles/dataset.styles';
 
+// Expected structure and types for dataset and columns
+interface DataSetColumn {
+    ColumnName: string;
+    ColumnType: string;
+    LogicalColumnName: string;
+    BusinessDescription: string;
+    ExampleValue: string;
+    Tokenise: boolean;
+    TokenIdentifierType: number;
+    Redact: boolean;
+    DisplayOrder: number;
+    IsFilter: boolean;
+    DataSetColumnID: number;
+    DataSetID: number;
+}
+
+interface DataSetMetadata {
+    Name: string;
+    Description: string;
+    DataSourceID: number;
+    IsActive: boolean;
+    Approvers: string;
+    OptOutMessage: string | null;
+    OptOutList: string;
+    Owner: string;
+    OptOutColumn: string;
+    DataSetID: number;
+    ModifiedDate: string;
+    DataSetColumns?: DataSetColumn[];
+}
+
+interface ColumnsResponse {
+    CurrentPage: number;
+    PageCount: number;
+    PageSize: number;
+    RowCount: number;
+    FirstRowOnPage: number;
+    LastRowOnPage: number;
+    Results: DataSetColumn[];
+}
+
 
 class CustomEmbed extends LibraryBase {
     protected token: string = "";
@@ -46,8 +87,133 @@ class CustomEmbed extends LibraryBase {
                 // ...existing columnsHtml generation...
             }
             
-            // Use the imported template and styles
-            const datasetHtml = getDatasetTemplate(DataSet, columnsHtml);
+            // --- 1. Generate the HTML structure ---
+            const datasetHtml = `
+                <div class="container-fluid mt-3">
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h2 class="h4 my-1">${DataSet.Name}</h2>
+                                <button id="requestDatasetBtn" class="btn btn-light">
+                                    <i class="bi bi-file-earmark-text"></i> Request Dataset
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-md-4">
+                                    <span class="badge bg-info text-dark">ID: ${DataSet.DataSetID}</span>
+                                    <span class="badge bg-info text-dark">Owner: ${DataSet.Owner}</span>
+                                    <span class="badge bg-info text-dark">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
+                                </div>
+                                <div class="col-md-8">
+                                    <p class="mb-0">${DataSet.Description}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Columns table -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h4 class="mb-0">Dataset Columns</h4>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="sortable" data-sort="name">Column Name <i class="bi bi-sort-down"></i></th>
+                                        <th class="sortable" data-sort="type">Data Type <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="logical">Logical Name <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="description">Description <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="example">Example <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="redacted">Redacted <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="tokenized">Tokenized <i class="bi bi-sort"></i></th>
+                                        <th class="sortable" data-sort="filter">Filter <i class="bi bi-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="columnsTableBody">
+                                    ${columnsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination controls -->
+                    <div class="card-footer">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+                            <div class="entries-info">
+                                Showing <span id="startEntry">1</span> to <span id="endEntry">3</span> of <span id="totalEntries">0</span> entries
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <select id="pageSize" class="form-select form-select-sm w-auto">
+                                    <option value="2" selected>2 rows</option>
+                                    <option value="10">10 rows</option>
+                                    <option value="25">25 rows</option>
+                                    <option value="50">50 rows</option>
+                                </select>
+                                <nav aria-label="Table navigation" class="d-flex justify-content-center flex-grow-1">
+                                    <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
+                                        <li class="page-item" id="prevPage">
+                                            <a class="page-link" href="#" aria-label="Previous">
+                                                <span aria-hidden="true">&laquo;</span>
+                                            </a>
+                                        </li>
+                                        <!-- Page numbers will be inserted here -->
+                                        <li class="page-item" id="nextPage">
+                                            <a class="page-link" href="#" aria-label="Next">
+                                                <span aria-hidden="true">&raquo;</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    
+
+                    
+                    <div class="modal fade" id="requestDatasetModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Request Dataset</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body" id="requestDatasetModalBody"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const styles = `
+                <style>
+                    .sortable { cursor: pointer; }
+                    .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
+                    td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
+                    .card-header .btn {
+                        margin-left: 15px;
+                        font-weight: 500;
+                    }
+                    
+                    .card-header .d-flex {
+                        width: 100%;
+                    }
+                    
+                    .card-header h2 {
+                        margin: 0;
+                        flex: 1;
+                    }
+                    
+                    .card-header .btn {
+                        white-space: nowrap;
+                    }
+                </style>
+            `;
+            
+            this.element.innerHTML = styles + datasetHtml;
+
             
             // Set the innerHTML with imported styles
             this.element.innerHTML = datasetStyles + datasetHtml;
@@ -55,12 +221,11 @@ class CustomEmbed extends LibraryBase {
             
             // --- 4. Add event handlers after rendering ---
             setTimeout(() => {
-                // Get the modal elements
                 const requestDatasetModal = document.getElementById('requestDatasetModal');
                 
-                // Get the buttons that open the modals
+
+
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-                const exportBtn = document.getElementById('exportBtn');
                 
                 // Get the <span> elements that close the modals
                 const closeButtons = document.getElementsByClassName('close');
@@ -70,7 +235,12 @@ class CustomEmbed extends LibraryBase {
                 let currentSortColumn = "name";
                 let currentSortDirection = "desc";
                 
-                // Function to sort table
+                let currentPage = 1;
+                let rowsPerPage = 2;
+                let filteredRows: HTMLTableRowElement[] = [];
+                
+                // Replace the existing sortTable function with this updated version:
+
                 function sortTable(tableId: string, columnIndex: number, columnName: string): void {
                     const table = document.getElementById(tableId);
                     if (!table) return;
@@ -80,17 +250,9 @@ class CustomEmbed extends LibraryBase {
                     
                     const rows = Array.from(tbody.querySelectorAll('tr'));
                     
-                    // Update sort indicators
-                    const headers = table.querySelectorAll('th.sortable');
-                    headers.forEach(header => {
-                        const indicator = header.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = '';
-                        }
-                        header.removeAttribute('data-sort-direction');
-                    });
-                    
-                    // Determine sort direction
+
+                    // Update sort direction and headers
+
                     if (currentSortColumn === columnName) {
                         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
                     } else {
@@ -98,90 +260,100 @@ class CustomEmbed extends LibraryBase {
                         currentSortDirection = 'asc';
                     }
                     
-                    // Update current header
-                    const currentHeader = table.querySelector(`th[data-sort="${columnName}"]`);
-                    if (currentHeader) {
-                        const indicator = currentHeader.querySelector('.sort-indicator');
-                        if (indicator) {
-                            indicator.textContent = currentSortDirection === 'asc' ? '▲' : '▼';
-                        }
-                        currentHeader.setAttribute('data-sort-direction', currentSortDirection);
-                    }
-                    
                     // Sort the rows
-                    rows.sort((a, b) => {
+                    filteredRows = rows.sort((a, b) => {
                         const aValue = (a.cells[columnIndex].textContent || '').trim();
                         const bValue = (b.cells[columnIndex].textContent || '').trim();
-                        
-                        // Determine if we're sorting a data type column
-                        if (columnName === 'type') {
-                            // Special comparison for data types
-                            return currentSortDirection === 'asc' 
-                                ? aValue.localeCompare(bValue) 
-                                : bValue.localeCompare(aValue);
-                        }
-                        
-                        // Default comparison
+
                         return currentSortDirection === 'asc' 
                             ? aValue.localeCompare(bValue) 
                             : bValue.localeCompare(aValue);
                     });
+                    
+                    updateTable();
+                }
+                
+                // Add these new functions:
+                function updateTable(): void {
+                    const tbody = document.getElementById('columnsTableBody');
+                    if (!tbody) return;
+                    
+                    // Calculate pagination
+                    const startIndex = (currentPage - 1) * rowsPerPage;
+                    const endIndex = startIndex + rowsPerPage;
+                    const paginatedRows = filteredRows.slice(startIndex, endIndex);
+                    
+                    // Update table content
+                    tbody.innerHTML = '';
+                    paginatedRows.forEach(row => tbody.appendChild(row.cloneNode(true)));
+                    
+                    // Update pagination info
+                    updatePaginationInfo();
+                    updatePaginationNumbers(); // Add this line
+                }
+                
+                function updatePaginationInfo(): void {
+                    const totalRows = filteredRows.length;
+                    const startEntry = Math.min((currentPage - 1) * rowsPerPage + 1, totalRows);
+                    const endEntry = Math.min(currentPage * rowsPerPage, totalRows);
+                    
+                    document.getElementById('startEntry')!.textContent = startEntry.toString();
+                    document.getElementById('endEntry')!.textContent = endEntry.toString();
+                    document.getElementById('totalEntries')!.textContent = totalRows.toString();
+                    
+                    // Update pagination buttons state
+                    const prevPageBtn = document.getElementById('prevPage');
+                    const nextPageBtn = document.getElementById('nextPage');
+                    
+                    if (prevPageBtn) {
+                        prevPageBtn.classList.toggle('disabled', currentPage === 1);
+                    }
+                    if (nextPageBtn) {
+                        nextPageBtn.classList.toggle('disabled', endEntry >= totalRows);
+                    }
+                }
 
-                }
-                
-                // Function to export table data to CSV
-                function exportTableToCSV(tableId: string, filename: string = ''): void {
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
-                    
-                    // Generate filename if not provided
-                    if (!filename) {
-                        const date = new Date().toISOString().slice(0, 10);
-                        filename = `Dataset_${DataSet.DataSetID}_${date}.csv`;
-                    }
-                    
-                    // Get all rows
-                    const rows = table.querySelectorAll('tr');
-                    
-                    // Prepare CSV content
-                    const csvContent: string[] = [];
-                    
-                    // Process each row
-                    rows.forEach(row => {
-                        const rowData: string[] = [];
-                        const cells = row.querySelectorAll('th, td');
+                // Add this function with the other pagination functions
+                function updatePaginationNumbers(): void {
+                    const paginationList = document.getElementById('paginationNumbers');
+                    if (!paginationList) return;
+
+                    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+                    const prevButton = paginationList.querySelector('#prevPage');
+                    const nextButton = paginationList.querySelector('#nextPage');
+
+                    // Remove all existing number buttons
+                    const existingNumbers = paginationList.querySelectorAll('.page-number');
+                    existingNumbers.forEach(num => num.remove());
+
+                    // Add page numbers
+                    for (let i = 1; i <= totalPages; i++) {
+                        const pageItem = document.createElement('li');
+                        pageItem.className = `page-item page-number ${currentPage === i ? 'active' : ''}`;
                         
-                        cells.forEach(cell => {
-                            // Get text content and escape quotes
-                            let text = (cell.textContent || '').trim().replace(/"/g, '""');
-                            // Wrap in quotes to handle commas
-                            rowData.push(`"${text}"`);
+                        const pageLink = document.createElement('a');
+                        pageLink.className = 'page-link';
+                        pageLink.href = '#';
+                        pageLink.textContent = i.toString();
+                        
+                        pageLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            currentPage = i;
+                            updateTable();
                         });
-                        
-                        csvContent.push(rowData.join(','));
-                    });
-                    
-                    // Create CSV content
-                    const csvData = csvContent.join('\\n');
-                    
-                    // Create download link
-                    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    
-                    // Set up download
-                    if ('msSaveBlob' in navigator) { // For IE
-                        (navigator as any).msSaveBlob(blob, filename);
-                    } else {
-                        // For other browsers
-                        link.href = URL.createObjectURL(blob);
-                        link.setAttribute('download', filename);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+
+                        pageItem.appendChild(pageLink);
+                        nextButton?.parentNode?.insertBefore(pageItem, nextButton);
+                    }
+
+                    // Update prev/next button states
+                    if (prevButton) {
+                        prevButton.classList.toggle('disabled', currentPage === 1);
+                    }
+                    if (nextButton) {
+                        nextButton.classList.toggle('disabled', currentPage === totalPages);
                     }
                 }
-                
 
                 
                 // Function to create a dataset request
@@ -295,12 +467,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 
 
-                if (exportBtn) {
-                    exportBtn.addEventListener('click', function() {
-                        const date = new Date().toISOString().slice(0, 10);
-                        exportTableToCSV('columnsTableBody', `Dataset_${DataSet.DataSetID}_${date}.csv`);
-                    });
-                }
+
                 
 
 
@@ -338,7 +505,44 @@ class CustomEmbed extends LibraryBase {
                 // Initialize with default sort
                 sortTable('columnsTableBody', 0, 'name');
                 
-            }, 100); // Small delay to ensure DOM is ready
+                // Initialize pagination controls
+                const pageSize = document.getElementById('pageSize') as HTMLSelectElement;
+                const prevPageBtn = document.getElementById('prevPage');
+                const nextPageBtn = document.getElementById('nextPage');
+                
+                if (pageSize) {
+                    pageSize.addEventListener('change', (e) => {
+                        rowsPerPage = parseInt((e.target as HTMLSelectElement).value);
+                        currentPage = 1;
+                        updateTable();
+                    });
+                }
+                
+                if (prevPageBtn) {
+                    prevPageBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) {
+                            currentPage--;
+                            updateTable();
+                        }
+                    });
+                }
+                
+                if (nextPageBtn) {
+                    nextPageBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const maxPages = Math.ceil(filteredRows.length / rowsPerPage);
+                        if (currentPage < maxPages) {
+                            currentPage++;
+                            updateTable();
+                        }
+                    });
+                }
+
+                // Initialize the table with pagination
+                filteredRows = Array.from(document.querySelectorAll('#columnsTableBody tr'));
+                updateTable();
+            }, 100);
 
         } catch (ex: unknown) {
             console.error("Error:", ex);
