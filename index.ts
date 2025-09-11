@@ -70,6 +70,8 @@ class CustomEmbed extends LibraryBase {
     }
     protected buildPage = async (): Promise<void> => {
         try {
+            await this.loadBootstrap();
+            
             // Fetch the dataset metadata
             const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
@@ -359,8 +361,14 @@ class CustomEmbed extends LibraryBase {
                 
                 function CreateRequest() {
                     const modalBody = document.getElementById('requestDatasetModalBody');
+                    const modalElement = document.getElementById('requestDatasetModal');
                     
-                    if (!modalBody || !requestDatasetModal) return;
+                    if (!modalBody || !modalElement || !(window as any).bootstrap?.Modal) {
+                        console.error('Bootstrap Modal is not available');
+                        return;
+                    }
+                    
+                    const modal = new ((window as any).bootstrap.Modal)(modalElement);
                     
                     const formHtml = `
                         <form id="requestForm">
@@ -396,7 +404,6 @@ class CustomEmbed extends LibraryBase {
                     modalBody.innerHTML = formHtml;
                     
                     // Initialize Bootstrap modal
-                    const modal = new (window as any).bootstrap.Modal(requestDatasetModal);
                     modal.show();
                     
                     const requestForm = document.getElementById('requestForm');
@@ -475,6 +482,23 @@ class CustomEmbed extends LibraryBase {
                 this.errorCallback("Error", "Failed to build the dataset page", error.message, this.element);
             }
         }
+    }
+
+    private loadBootstrap(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if ((window as any).bootstrap?.Modal) {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
+            script.integrity = 'sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p';
+            script.crossOrigin = 'anonymous';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Bootstrap'));
+            document.head.appendChild(script);
+        });
     }
 }
 
