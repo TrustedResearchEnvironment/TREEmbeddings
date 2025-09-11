@@ -70,7 +70,7 @@ class CustomEmbed extends LibraryBase {
     }
     protected buildPage = async (): Promise<void> => {
         try {
-            await this.loadBootstrap(); // Add this line at the beginning
+            await this.loadBootstrap();
             
             // Fetch the dataset metadata
             const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
@@ -484,7 +484,6 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    // Add this function at the beginning of your CustomEmbed class
     private loadBootstrap(): Promise<void> {
         return new Promise((resolve, reject) => {
             if ((window as any).bootstrap?.Modal) {
