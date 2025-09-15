@@ -200,7 +200,7 @@ class CustomEmbed extends LibraryBase {
             <style>
                 #datasetRoot {
                     padding: 24px;
-                    font-family: ui-sans-serif, "Roboto", "Helvetica", "Arial";
+                    font-family: "Roboto", "Helvetica", "Arial";
                 }
                 .mui-card {
                     background: #fff;
