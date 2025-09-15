@@ -12,7 +12,6 @@ interface DataSetColumn {
     TokenIdentifierType: number;
     Redact: boolean;
     DisplayOrder: number;
-    IsFilter: boolean;
     DataSetColumnID: number;
     DataSetID: number;
 }
@@ -43,7 +42,15 @@ interface ColumnsResponse {
 }
 
 class CustomEmbed extends LibraryBase {
-    protected token: string = "";
+    public token: string = "";
+    private allColumns: DataSetColumn[] = [];
+    private currentSortColumn: string = "name";
+    private currentSortDirection: "asc" | "desc" = "asc";
+    private currentPage: number = 1;
+    private rowsPerPage: number = 2;
+
+
+
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
         super(element, entityUrl, params, settings, errorCallback);    
@@ -200,17 +207,21 @@ class CustomEmbed extends LibraryBase {
                     `;
                 });
             }
-            
-            // --- 1. Generate the HTML structure ---
-            const datasetHtml = `
-                <div class="container-fluid mt-3">
-                    <div class="card mb-3">
-                        <div class="card-header bg-primary text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h2 class="h4 my-1">${DataSet.Name}</h2>
-                                <button id="requestDatasetBtn" class="btn btn-light">
-                                    <i class="bi bi-file-earmark-text"></i> Request Dataset
-                                </button>
+        }
+    }
+
+    private generateMainLayout(DataSet: DataSetMetadata): string {
+        const requestDatasetBtn = `<button id="requestDatasetBtn" class="btn btn-light"><i class="bi bi-file-earmark-text"></i> Request Dataset</button>`;
+
+        return `
+            <div class="container-fluid mt-3">
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h2 class="h4 my-1">${DataSet.Name}</h2>
+                            <div>
+                                ${requestDatasetBtn}
+
                             </div>
                         </div>
                         <div class="card-body">
@@ -226,31 +237,30 @@ class CustomEmbed extends LibraryBase {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Columns table -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h4 class="mb-0">Dataset Columns</h4>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover mb-0">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th class="sortable" data-sort="name">Column Name <i class="bi bi-sort-down"></i></th>
-                                        <th class="sortable" data-sort="type">Data Type <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="logical">Logical Name <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="description">Description <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="example">Example <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="redacted">Redacted <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="tokenized">Tokenized <i class="bi bi-sort"></i></th>
-                                        <th class="sortable" data-sort="filter">Filter <i class="bi bi-sort"></i></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="columnsTableBody">
-                                    ${columnsHtml}
-                                </tbody>
-                            </table>
-                        </div>
+                </div>
+
+                
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h4 class="mb-0">Dataset Columns</h4>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="sortable" data-sort="ColumnName">Column Name <i class="bi bi-sort-down"></i></th>
+                                    <th class="sortable" data-sort="ColumnType">Data Type <i class="bi bi-sort"></i></th>
+                                    <th class="sortable" data-sort="LogicalColumnName">Logical Name <i class="bi bi-sort"></i></th>
+                                    <th class="sortable" data-sort="BusinessDescription">Description <i class="bi bi-sort"></i></th>
+                                    <th class="sortable" data-sort="ExampleValue">Example <i class="bi bi-sort"></i></th>
+                                    <th class="sortable" data-sort="Redact">Redacted <i class="bi bi-sort"></i></th>
+                                    <th class="sortable" data-sort="Tokenise">Tokenized <i class="bi bi-sort"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="columnsTableBody">
+                            </tbody>
+                        </table>
+
                     </div>
                     
                     <!-- Pagination controls -->
@@ -284,53 +294,23 @@ class CustomEmbed extends LibraryBase {
                             </div>
                         </div>
                     </div>
-                    
-
-                    
-                    <div class="modal fade" id="requestDatasetModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Request Dataset</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body" id="requestDatasetModalBody"></div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            `;
-            
-            const styles = `
-                <style>
-                    .sortable { cursor: pointer; }
-                    .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
-                    td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
-                    .card-header .btn {
-                        margin-left: 15px;
-                        font-weight: 500;
-                    }
-                    
-                    .card-header .d-flex {
-                        width: 100%;
-                    }
-                    
-                    .card-header h2 {
-                        margin: 0;
-                        flex: 1;
-                    }
-                    
-                    .card-header .btn {
-                        white-space: nowrap;
-                    }
-                </style>
-            `;
-            
-            this.element.innerHTML = styles + datasetHtml;
-            
-            
-            setTimeout(() => {
-                const requestDatasetModal = document.getElementById('requestDatasetModal');
+            </div>
+        `;
+    }
+
+    
+    private generateStyles(): string {
+        return `
+            <style>
+                .sortable { cursor: pointer; }
+                .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
+                td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
+                .card-header .btn {
+                    margin-left: 15px;
+                    font-weight: 500;
+                }
+
                 
 
                 const requestDatasetBtn = document.getElementById('requestDatasetBtn');
@@ -412,159 +392,169 @@ class CustomEmbed extends LibraryBase {
                     }
                 }
 
-                // Add this function with the other pagination functions
-                function updatePaginationNumbers(): void {
-                    const paginationList = document.getElementById('paginationNumbers');
-                    if (!paginationList) return;
+    public setupEventListeners = (): void => {
+        const requestDatasetBtn = document.getElementById('requestDatasetBtn');
+        const pageSize = document.getElementById('pageSize') as HTMLSelectElement;
+        const mainTableHeaders = document.querySelectorAll('.table th.sortable');
+        const paginationList = document.getElementById('paginationNumbers');
 
-                    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
-                    const prevButton = paginationList.querySelector('#prevPage');
-                    const nextButton = paginationList.querySelector('#nextPage');
 
-                    // Remove all existing number buttons
-                    const existingNumbers = paginationList.querySelectorAll('.page-number');
-                    existingNumbers.forEach(num => num.remove());
+        
 
-                    // Add page numbers
-                    for (let i = 1; i <= totalPages; i++) {
-                        const pageItem = document.createElement('li');
-                        pageItem.className = `page-item page-number ${currentPage === i ? 'active' : ''}`;
-                        
-                        const pageLink = document.createElement('a');
-                        pageLink.className = 'page-link';
-                        pageLink.href = '#';
-                        pageLink.textContent = i.toString();
-                        
-                        pageLink.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            currentPage = i;
-                            updateTable();
-                        });
 
-                        pageItem.appendChild(pageLink);
-                        nextButton?.parentNode?.insertBefore(pageItem, nextButton);
-                    }
 
-                    // Update prev/next button states
-                    if (prevButton) {
-                        prevButton.classList.toggle('disabled', currentPage === 1);
-                    }
-                    if (nextButton) {
-                        nextButton.classList.toggle('disabled', currentPage === totalPages);
-                    }
-                }
-                
-                function CreateRequest() {
-                    const modalBody = document.getElementById('requestDatasetModalBody');
-                    const modalElement = document.getElementById('requestDatasetModal');
-                    
-                    if (!modalBody || !modalElement || !(window as any).bootstrap?.Modal) {
-                        console.error('Bootstrap Modal is not available');
-                        return;
-                    }
-                    
-                    const modal = new ((window as any).bootstrap.Modal)(modalElement);
-                    
-                    const formHtml = `
-                        <form id="requestForm">
-                            <div class="mb-3">
-                                <label for="RequestName" class="form-label">Request Name</label>
-                                <input id="RequestName" class="form-control" placeholder="Name for this request" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="ProjectID" class="form-label">Assist Project</label>
-                                <select id="ProjectID" class="form-select" required>
-                                    <option value="">Select a Project</option>
-                                    <option value="82">Project 1</option>
-                                    <option value="84">Project 2</option>
-                                    <option value="85">Project 3</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="ScheduleRefresh" class="form-label">Scheduled Refresh</label>
-                                <select id="ScheduleRefresh" class="form-select">
-                                    <option value="No Refresh">No Refresh</option>
-                                    <option value="Daily">Daily</option>
-                                    <option value="Weekly">Weekly</option>
-                                    <option value="Monthly">Monthly</option>
-                                </select>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            </div>
-                        </form>
-                    `;
-                    
-                    modalBody.innerHTML = formHtml;
-                    
-                    // Initialize Bootstrap modal
-                    modal.show();
-                    
-                    const requestForm = document.getElementById('requestForm');
-                    if (requestForm) {
-                        requestForm.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            alert('Request submitted successfully!');
-                            modal.hide();
-                        });
+        // Sort Table
+        mainTableHeaders.forEach((header, index) => {
+            header.addEventListener('click', () => {
+                const sortType = header.getAttribute('data-sort');
+                if (sortType) {
+                    if (this.currentSortColumn === sortType) {
+                        this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.currentSortColumn = sortType;
+                        this.currentSortDirection = 'asc';
+
                     }
                 }
                 
 
-                
-                if (requestDatasetBtn) {
-                    requestDatasetBtn.addEventListener('click', CreateRequest);
+        // Pagination controls
+        if (pageSize) {
+            pageSize.addEventListener('change', (e) => {
+                this.rowsPerPage = parseInt((e.target as HTMLSelectElement).value);
+                this.currentPage = 1;
+                this.updateTable();
+            });
+        }
+        if (paginationList) {
+            paginationList.addEventListener('click', (e) => {
+                const target = e.target as HTMLElement;
+                if (target.id === 'prevPage' && this.currentPage > 1) {
+                    this.currentPage--;
+                    this.updateTable();
+                } else if (target.id === 'nextPage' && this.currentPage < Math.ceil(this.allColumns.length / this.rowsPerPage)) {
+                    this.currentPage++;
+                    this.updateTable();
                 }
-                
+            });
+        }
+        
+        // Request Dataset Modal
+        if (requestDatasetBtn) {
+            requestDatasetBtn.addEventListener('click', () => this.createRequestModal());
+        }
+    }
 
-                
-                const mainTableHeaders = document.querySelectorAll('.table th.sortable');
-                mainTableHeaders.forEach((header, index) => {
-                    header.addEventListener('click', function(this: HTMLElement) {
-                        const sortType = this.getAttribute('data-sort');
-                        if (sortType) {
-                            sortTable('columnsTableBody', index, sortType);
-                        }
-                    });
-                });
-                
-                // Initialize with default sort
-                sortTable('columnsTableBody', 0, 'name');
-                
-                // Initialize pagination controls
-                const pageSize = document.getElementById('pageSize') as HTMLSelectElement;
-                const prevPageBtn = document.getElementById('prevPage');
-                const nextPageBtn = document.getElementById('nextPage');
-                
-                if (pageSize) {
-                    pageSize.addEventListener('change', (e) => {
-                        rowsPerPage = parseInt((e.target as HTMLSelectElement).value);
-                        currentPage = 1;
-                        updateTable();
-                    });
-                }
-                
-                if (prevPageBtn) {
-                    prevPageBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) {
-                            currentPage--;
-                            updateTable();
-                        }
-                    });
-                }
-                
-                if (nextPageBtn) {
-                    nextPageBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const maxPages = Math.ceil(filteredRows.length / rowsPerPage);
-                        if (currentPage < maxPages) {
-                            currentPage++;
-                            updateTable();
-                        }
-                    });
-                }
+
+
+    private updateTable = (): void => {
+        const tbody = document.getElementById('columnsTableBody');
+        if (!tbody) return;
+
+        const startIndex = (this.currentPage - 1) * this.rowsPerPage;
+        const endIndex = startIndex + this.rowsPerPage;
+        const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
+
+        let columnsHtml = '';
+        paginatedColumns.forEach((column: DataSetColumn) => {
+            columnsHtml += `
+                <tr>
+                    <td>${column.ColumnName || ''}</td>
+                    <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
+                    <td>${column.LogicalColumnName || ''}</td>
+                    <td>${column.BusinessDescription || 'N/A'}</td>
+                    <td><code>${column.ExampleValue || 'N/A'}</code></td>
+                    <td>${column.Redact ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
+                    <td>${column.Tokenise ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = columnsHtml;
+
+        this.updatePaginationInfo(this.allColumns.length);
+        this.updatePaginationNumbers(this.allColumns.length);
+        this.updateSortIcons();
+    }
+
+    private updateSortIcons = (): void => {
+        document.querySelectorAll('.table th.sortable i').forEach(icon => {
+            icon.classList.remove('bi-sort-up', 'bi-sort-down');
+            icon.classList.add('bi-sort');
+        });
+
+        const sortedHeader = document.querySelector(`.table th[data-sort="${this.currentSortColumn}"] i`);
+        if (sortedHeader) {
+            sortedHeader.classList.remove('bi-sort');
+            sortedHeader.classList.add(this.currentSortDirection === 'asc' ? 'bi-sort-up' : 'bi-sort-down');
+        }
+    }
+
+    private updatePaginationInfo = (totalRows: number): void => {
+        const startEntry = Math.min((this.currentPage - 1) * this.rowsPerPage + 1, totalRows);
+        const endEntry = Math.min(this.currentPage * this.rowsPerPage, totalRows);
+
+        document.getElementById('startEntry')!.textContent = startEntry.toString();
+        document.getElementById('endEntry')!.textContent = endEntry.toString();
+        document.getElementById('totalEntries')!.textContent = totalRows.toString();
+        
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        
+        if (prevPageBtn) {
+            prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
+        }
+        if (nextPageBtn) {
+            nextPageBtn.classList.toggle('disabled', this.currentPage * this.rowsPerPage >= totalRows);
+        }
+    }
+
+    private updatePaginationNumbers = (totalRows: number): void => {
+        const paginationList = document.getElementById('paginationNumbers');
+        if (!paginationList) return;
+
+        const totalPages = Math.ceil(totalRows / this.rowsPerPage);
+        const prevButton = paginationList.querySelector('#prevPage');
+        const nextButton = paginationList.querySelector('#nextPage');
+
+        const existingNumbers = paginationList.querySelectorAll('.page-number');
+        existingNumbers.forEach(num => num.remove());
+
+        for (let i = 1; i <= totalPages; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item page-number ${this.currentPage === i ? 'active' : ''}`;
+            
+            const pageLink = document.createElement('a');
+            pageLink.className = 'page-link';
+            pageLink.href = '#';
+            pageLink.textContent = i.toString();
+            
+            pageLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = i;
+                this.updateTable();
+            });
+
+            pageItem.appendChild(pageLink);
+            nextButton?.parentNode?.insertBefore(pageItem, nextButton);
+        }
+
+        if (prevButton) {
+            prevButton.classList.toggle('disabled', this.currentPage === 1);
+        }
+        if (nextButton) {
+            nextButton.classList.toggle('disabled', this.currentPage >= totalPages);
+        }
+    }
+
+
+
+    private createRequestModal = (): void => {
+        const modalElement = document.getElementById('requestDatasetModal');
+        if (!modalElement || !(window as any).bootstrap?.Modal) {
+            console.error('Bootstrap Modal is not available');
+            return;
+        }
+
 
                 // Initialize the table with pagination
                 filteredRows = Array.from(document.querySelectorAll('#columnsTableBody tr'));
