@@ -50,162 +50,60 @@ class CustomEmbed extends LibraryBase {
     private rowsPerPage: number = 2;
 
 
-
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
-        super(element, entityUrl, params, settings, errorCallback);    
-        console.log(params)
+        super(element, entityUrl, params, settings, errorCallback);
         this.loadResources();
     }
-    private loadResources = async (): Promise<void> => {
+
+    public loadResources = async (): Promise<void> => {
         // await this.getAccessToken();
         await this.buildPage();
     }
-    // Modal content population functions
-    private ViewDictionary(): void {
-        const modalBody = document.getElementById('viewDictionaryModalBody');
-        if (!modalBody) return;
-        modalBody.innerHTML = `
-             <div>
-            <!-- Filter Input -->
-            <div class="row">
-                <div class="input-group mb-3">
-                    <input class="form-control" type="text" placeholder="Filter Dictionary">
-                    <div class="input-group-append">
-                        <button class="btn btn-outline-secondary" type="button">Clear</button>
-                    </div>
-                </div>
-            </div>
-            <hr>
-            <!-- Table Section -->
-            <div style="overflow-y: auto;">
-                <h6>Columns</h6>
-                <div class="table-responsive">
-                    <table class="table table-condensed table-striped data-set-table">
-                        <thead>
-                            <tr>
-                                <th>Column Name</th>
-                                <th>Column Type</th>
-                                <th>Logical Column Name</th>
-                                <th>Business Description</th>
-                                <th>Example Value</th>
-                                <th>Redacted</th>
-                                <th>De-identified</th>
-                                <th>Can be Filtered</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Dynamic rows go here -->
-                            <tr>
-                                <td>Sample Column</td>
-                                <td>text</td>
-                                <td>Logical Name</td>
-                                <td>Short description of the column</td>
-                                <td>Example Value</td>
-                                <td>False</td>
-                                <td>True</td>
-                                <td>False</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        `;
-    }
 
-    private CreateRequest(): void {
-        const modalBody = document.getElementById('requestDatasetModalBody');
-        if (!modalBody) return;
-        modalBody.innerHTML = `
-                    <div class="col-md-12">
-                        <form>
-                            <!-- Request Name Field -->
-                            <div class="form-group">
-                                <label for="RequestName" class="control-label">Request Name</label>
-                                <input id="RequestName" class="form-control" placeholder="Name for this request">
-                            </div>
-                            <!-- Assist Project Field -->
-                            <div class="form-group" >
-                                    <label for="ProjectID" class="control-label">Assist Project</label>
-                                    <select id="ProjectID" class="form-select">
-                                        <option value="-1">Select a Project</option>
-                                        <option value="82">Project 1</option>
-                                        <option value="84">Project 2</option>
-                                        <option value="85">Project 3</option>
-                                        <option value="86">Project 4</option>
-                                    </select>
-                                    <div class="validation-message"></div>
-                            </div>
-                            <!-- Scheduled Refresh Field -->
-                            <div class="form-group">
-                                <label for="ScheduleRefresh" class="control-label">Scheduled Refresh</label>
-                                <select id="ScheduleRefresh" class="form-select">
-                                    <option value="No Refresh">No Refresh</option>
-                                    <option value="Daily">Daily</option>
-                                    <option value="Weekly">Weekly</option>
-                                    <option value="Monthly">Monthly</option>
-                                </select>
-                            </div>
-                            <!-- Action Buttons -->
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-accent">Save</button>
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-        `;
-    }
-    protected getAccessToken = async (): Promise<void> => {
+    public getAccessToken = async (): Promise<void> => {
         try {
-            // A way to get the runtime param passed down from the portal
             const authId = this.getParamValue('ApiAuthRequestId')?.value
             const authResponse = await window.loomeApi.runApiRequest(authId);
             this.token = authResponse.access_token;
         }
         catch (ex: unknown) {
-            // Additional debug logs, won't hurt to get additional raw info
             console.log(ex);
             const error = ex as Error;
             this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
         }
     }
-    protected buildPage = async (): Promise<void> => {
+
+    public buildPage = async (): Promise<void> => {
         try {
             await this.loadBootstrap();
-            
-            // Fetch the dataset metadata
+
             const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
-            
-            // Fetch the dataset columns using API request 7
+
             const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
-            
-            // Extract columns from the Results array and sort by DisplayOrder
-            const dataSetColumns = columnsResponse.Results ? 
-                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) : 
+
+            this.allColumns = columnsResponse.Results ?
+                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
-            
-            // Now let's generate the HTML for the columns
-            let columnsHtml = '';
-            if (dataSetColumns && Array.isArray(dataSetColumns)) {
-                dataSetColumns.forEach((column: DataSetColumn) => {
-                    columnsHtml += `
-                        <tr>
-                            <td>${column.ColumnName || ''}</td>
-                            <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
-                            <td>${column.LogicalColumnName || ''}</td>
-                            <td>${column.BusinessDescription || 'N/A'}</td>
-                            <td><code>${column.ExampleValue || 'N/A'}</code></td>
-                            <td>${column.Redact ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                            <td>${column.Tokenise ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                            <td>${column.IsFilter ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                        </tr>
-                    `;
-                });
+
+            // --- 1. Generate the main HTML structure ---
+            const datasetHtml = this.generateMainLayout(DataSet);
+            const styles = this.generateStyles();
+
+            this.element.innerHTML = styles + datasetHtml;
+
+            // --- 2. Set up event listeners and initial state ---
+            this.setupEventListeners();
+            this.updateTable();
+        } catch (ex: unknown) {
+            console.error("Error:", ex);
+            const error = ex as Error;
+            if (error && error.message) {
+                this.errorCallback("Error", "Failed to build the dataset page", error.message, this.element);
             }
         }
     }
@@ -221,19 +119,18 @@ class CustomEmbed extends LibraryBase {
                             <h2 class="h4 my-1">${DataSet.Name}</h2>
                             <div>
                                 ${requestDatasetBtn}
-
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div class="row mb-2">
-                                <div class="col-md-4">
-                                    <span class="badge bg-info text-dark">ID: ${DataSet.DataSetID}</span>
-                                    <span class="badge bg-info text-dark">Owner: ${DataSet.Owner}</span>
-                                    <span class="badge bg-info text-dark">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
-                                </div>
-                                <div class="col-md-8">
-                                    <p class="mb-0">${DataSet.Description}</p>
-                                </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <span class="badge bg-info text-dark">ID: ${DataSet.DataSetID}</span>
+                                <span class="badge bg-info text-dark">Owner: ${DataSet.Owner}</span>
+                                <span class="badge bg-info text-dark">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
+                            </div>
+                            <div class="col-md-8">
+                                <p class="mb-0">${DataSet.Description}</p>
                             </div>
                         </div>
                     </div>
@@ -260,14 +157,12 @@ class CustomEmbed extends LibraryBase {
                             <tbody id="columnsTableBody">
                             </tbody>
                         </table>
-
                     </div>
                     
-                    <!-- Pagination controls -->
                     <div class="card-footer">
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
                             <div class="entries-info">
-                                Showing <span id="startEntry">1</span> to <span id="endEntry">3</span> of <span id="totalEntries">0</span> entries
+                                Showing <span id="startEntry">0</span> to <span id="endEntry">0</span> of <span id="totalEntries">0</span> entries
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <select id="pageSize" class="form-select form-select-sm w-auto">
@@ -283,7 +178,6 @@ class CustomEmbed extends LibraryBase {
                                                 <span aria-hidden="true">&laquo;</span>
                                             </a>
                                         </li>
-                                        <!-- Page numbers will be inserted here -->
                                         <li class="page-item" id="nextPage">
                                             <a class="page-link" href="#" aria-label="Next">
                                                 <span aria-hidden="true">&raquo;</span>
@@ -310,87 +204,56 @@ class CustomEmbed extends LibraryBase {
                     margin-left: 15px;
                     font-weight: 500;
                 }
-
                 
-
-                const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-                
-                let currentSortColumn = "name";
-                let currentSortDirection = "desc";
-                
-                let currentPage = 1;
-                let rowsPerPage = 2;
-                let filteredRows: HTMLTableRowElement[] = [];
-                
-                // Replace the existing sortTable function with this updated version:
-                function sortTable(tableId: string, columnIndex: number, columnName: string): void {
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
-                    
-                    const tbody = table.querySelector('tbody');
-                    if (!tbody) return;
-                    
-                    const rows = Array.from(tbody.querySelectorAll('tr'));
-                    
-                    // Update sort direction and headers
-                    if (currentSortColumn === columnName) {
-                        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        currentSortColumn = columnName;
-                        currentSortDirection = 'asc';
-                    }
-                    
-                    // Sort the rows
-                    filteredRows = rows.sort((a, b) => {
-                        const aValue = (a.cells[columnIndex].textContent || '').trim();
-                        const bValue = (b.cells[columnIndex].textContent || '').trim();
-                        return currentSortDirection === 'asc' 
-                            ? aValue.localeCompare(bValue) 
-                            : bValue.localeCompare(aValue);
-                    });
-                    
-                    updateTable();
+                .card-header .d-flex {
+                    width: 100%;
                 }
                 
-                // Add these new functions:
-                function updateTable(): void {
-                    const tbody = document.getElementById('columnsTableBody');
-                    if (!tbody) return;
-                    
-                    // Calculate pagination
-                    const startIndex = (currentPage - 1) * rowsPerPage;
-                    const endIndex = startIndex + rowsPerPage;
-                    const paginatedRows = filteredRows.slice(startIndex, endIndex);
-                    
-                    // Update table content
-                    tbody.innerHTML = '';
-                    paginatedRows.forEach(row => tbody.appendChild(row.cloneNode(true)));
-                    
-                    // Update pagination info
-                    updatePaginationInfo();
-                    updatePaginationNumbers(); // Add this line
+                .card-header h2 {
+                    margin: 0;
+                    flex: 1;
                 }
                 
-                function updatePaginationInfo(): void {
-                    const totalRows = filteredRows.length;
-                    const startEntry = Math.min((currentPage - 1) * rowsPerPage + 1, totalRows);
-                    const endEntry = Math.min(currentPage * rowsPerPage, totalRows);
-                    
-                    document.getElementById('startEntry')!.textContent = startEntry.toString();
-                    document.getElementById('endEntry')!.textContent = endEntry.toString();
-                    document.getElementById('totalEntries')!.textContent = totalRows.toString();
-                    
-                    // Update pagination buttons state
-                    const prevPageBtn = document.getElementById('prevPage');
-                    const nextPageBtn = document.getElementById('nextPage');
-                    
-                    if (prevPageBtn) {
-                        prevPageBtn.classList.toggle('disabled', currentPage === 1);
-                    }
-                    if (nextPageBtn) {
-                        nextPageBtn.classList.toggle('disabled', endEntry >= totalRows);
-                    }
+                .card-header .btn {
+                    white-space: nowrap;
                 }
+                .filter-panel {
+                    transition: all 0.3s ease-in-out;
+                    max-height: 0;
+                    overflow: hidden;
+                    opacity: 0;
+                }
+                .filter-panel.visible {
+                    max-height: 1000px; /* A large value to allow smooth transition */
+                    opacity: 1;
+                }
+                .active-filter-pill {
+                    background-color: #e2f4f1;
+                    color: #0b684b;
+                    border: 1px solid #c2e2dd;
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 20px;
+                    font-size: 0.875rem;
+                    display: inline-flex;
+                    align-items: center;
+                    cursor: default;
+                }
+                .active-filter-pill .close-btn {
+                    background: none;
+                    border: none;
+                    color: #0b684b;
+                    margin-left: 0.5rem;
+                    font-size: 1rem;
+                    line-height: 1;
+                    cursor: pointer;
+                    opacity: 0.7;
+                }
+                .active-filter-pill .close-btn:hover {
+                    opacity: 1;
+                }
+            </style>
+        `;
+    }
 
     public setupEventListeners = (): void => {
         const requestDatasetBtn = document.getElementById('requestDatasetBtn');
@@ -413,10 +276,12 @@ class CustomEmbed extends LibraryBase {
                     } else {
                         this.currentSortColumn = sortType;
                         this.currentSortDirection = 'asc';
-
                     }
+                    this.currentPage = 1;
+                    this.updateTable();
                 }
-                
+            });
+        });
 
         // Pagination controls
         if (pageSize) {
@@ -555,22 +420,57 @@ class CustomEmbed extends LibraryBase {
             return;
         }
 
-
-                // Initialize the table with pagination
-                filteredRows = Array.from(document.querySelectorAll('#columnsTableBody tr'));
-                updateTable();
-            }, 100);
-        } catch (ex: unknown) {
-            console.error("Error:", ex);
-            const error = ex as Error;
-            if (error && error.message) {
-                this.errorCallback("Error", "Failed to build the dataset page", error.message, this.element);
-            }
+        const modalBody = modalElement.querySelector('.modal-body');
+        if (!modalBody) return;
+        
+        const modal = new ((window as any).bootstrap.Modal)(modalElement);
+        
+        const formHtml = `
+            <form id="requestForm">
+                <div class="mb-3">
+                    <label for="RequestName" class="form-label">Request Name</label>
+                    <input id="RequestName" class="form-control" placeholder="Name for this request" required>
+                </div>
+                <div class="mb-3">
+                    <label for="ProjectID" class="form-label">Assist Project</label>
+                    <select id="ProjectID" class="form-select" required>
+                        <option value="">Select a Project</option>
+                        <option value="82">Project 1</option>
+                        <option value="84">Project 2</option>
+                        <option value="85">Project 3</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="ScheduleRefresh" class="form-label">Scheduled Refresh</label>
+                    <select id="ScheduleRefresh" class="form-select">
+                        <option value="No Refresh">No Refresh</option>
+                        <option value="Daily">Daily</option>
+                        <option value="Weekly">Weekly</option>
+                        <option value="Monthly">Monthly</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        `;
+        
+        modalBody.innerHTML = formHtml;
+        modal.show();
+        
+        const requestForm = document.getElementById('requestForm');
+        if (requestForm) {
+            requestForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Request submitted successfully!');
+                modal.hide();
+            });
         }
     }
 
     private loadBootstrap(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             if ((window as any).bootstrap?.Modal) {
                 resolve();
                 return;
