@@ -54,6 +54,101 @@ class CustomEmbed extends LibraryBase {
         // await this.getAccessToken();
         await this.buildPage();
     }
+    // Modal content population functions
+    private ViewDictionary(): void {
+        const modalBody = document.getElementById('viewDictionaryModalBody');
+        if (!modalBody) return;
+        modalBody.innerHTML = `
+             <div>
+            <!-- Filter Input -->
+            <div class="row">
+                <div class="input-group mb-3">
+                    <input class="form-control" type="text" placeholder="Filter Dictionary">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button">Clear</button>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <!-- Table Section -->
+            <div style="overflow-y: auto;">
+                <h6>Columns</h6>
+                <div class="table-responsive">
+                    <table class="table table-condensed table-striped data-set-table">
+                        <thead>
+                            <tr>
+                                <th>Column Name</th>
+                                <th>Column Type</th>
+                                <th>Logical Column Name</th>
+                                <th>Business Description</th>
+                                <th>Example Value</th>
+                                <th>Redacted</th>
+                                <th>De-identified</th>
+                                <th>Can be Filtered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamic rows go here -->
+                            <tr>
+                                <td>Sample Column</td>
+                                <td>text</td>
+                                <td>Logical Name</td>
+                                <td>Short description of the column</td>
+                                <td>Example Value</td>
+                                <td>False</td>
+                                <td>True</td>
+                                <td>False</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    private CreateRequest(): void {
+        const modalBody = document.getElementById('requestDatasetModalBody');
+        if (!modalBody) return;
+        modalBody.innerHTML = `
+                    <div class="col-md-12">
+                        <form>
+                            <!-- Request Name Field -->
+                            <div class="form-group">
+                                <label for="RequestName" class="control-label">Request Name</label>
+                                <input id="RequestName" class="form-control" placeholder="Name for this request">
+                            </div>
+                            <!-- Assist Project Field -->
+                            <div class="form-group" >
+                                    <label for="ProjectID" class="control-label">Assist Project</label>
+                                    <select id="ProjectID" class="form-select">
+                                        <option value="-1">Select a Project</option>
+                                        <option value="82">Project 1</option>
+                                        <option value="84">Project 2</option>
+                                        <option value="85">Project 3</option>
+                                        <option value="86">Project 4</option>
+                                    </select>
+                                    <div class="validation-message"></div>
+                            </div>
+                            <!-- Scheduled Refresh Field -->
+                            <div class="form-group">
+                                <label for="ScheduleRefresh" class="control-label">Scheduled Refresh</label>
+                                <select id="ScheduleRefresh" class="form-select">
+                                    <option value="No Refresh">No Refresh</option>
+                                    <option value="Daily">Daily</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <!-- Action Buttons -->
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-accent">Save</button>
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+        `;
+    }
     protected getAccessToken = async (): Promise<void> => {
         try {
             // A way to get the runtime param passed down from the portal
@@ -485,7 +580,7 @@ class CustomEmbed extends LibraryBase {
     }
 
     private loadBootstrap(): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             if ((window as any).bootstrap?.Modal) {
                 resolve();
                 return;
