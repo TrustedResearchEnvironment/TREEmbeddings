@@ -272,7 +272,7 @@ class CustomEmbed extends LibraryBase {
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    box-shadow: 0 4px 4px rgba(0,0,0,0.1);
                 }
                 #requestDatasetBtn .material-icons {
                     font-size: 20px;
