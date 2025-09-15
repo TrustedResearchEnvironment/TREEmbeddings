@@ -12,7 +12,6 @@ interface DataSetColumn {
     TokenIdentifierType: number;
     Redact: boolean;
     DisplayOrder: number;
-    IsFilter: boolean;
     DataSetColumnID: number;
     DataSetID: number;
 }
@@ -42,22 +41,14 @@ interface ColumnsResponse {
     Results: DataSetColumn[];
 }
 
-interface FilterCriteria {
-    type: string;
-    value: string;
-    valueTo?: string; // For date ranges
-}
-
-
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
     private currentSortColumn: string = "name";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
-    private rowsPerPage: number = 10;
-    private activeFilters: Record<string, FilterCriteria> = {};
-    private isFilterPanelVisible: boolean = false;
+    private rowsPerPage: number = 2;
+
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
@@ -118,7 +109,6 @@ class CustomEmbed extends LibraryBase {
     }
 
     private generateMainLayout(DataSet: DataSetMetadata): string {
-        const filterButton = `<button id="filterBtn" class="btn btn-light ms-2">Filters</button>`;
         const requestDatasetBtn = `<button id="requestDatasetBtn" class="btn btn-light"><i class="bi bi-file-earmark-text"></i> Request Dataset</button>`;
 
         return `
@@ -128,7 +118,6 @@ class CustomEmbed extends LibraryBase {
                         <div class="d-flex justify-content-between align-items-center">
                             <h2 class="h4 my-1">${DataSet.Name}</h2>
                             <div>
-                                ${filterButton}
                                 ${requestDatasetBtn}
                             </div>
                         </div>
@@ -147,23 +136,6 @@ class CustomEmbed extends LibraryBase {
                     </div>
                 </div>
 
-                <div id="activeFiltersContainer" class="d-flex flex-wrap gap-2 mb-3"></div>
-
-                <div id="filterPanel" class="card mb-3 filter-panel" style="display: none;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Apply Filters</h5>
-                        <div>
-                            <button id="applyFiltersBtn" class="btn btn-sm btn-primary me-2">Apply</button>
-                            <button id="clearFiltersBtn" class="btn btn-sm btn-secondary">Clear All</button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <input id="filterSearchInput" class="form-control mb-3" type="search" placeholder="Search filters...">
-                        <form id="filterForm">
-                            ${this.generateFilterPanelHtml()}
-                        </form>
-                    </div>
-                </div>
                 
                 <div class="card mb-3">
                     <div class="card-header">
@@ -180,7 +152,6 @@ class CustomEmbed extends LibraryBase {
                                     <th class="sortable" data-sort="ExampleValue">Example <i class="bi bi-sort"></i></th>
                                     <th class="sortable" data-sort="Redact">Redacted <i class="bi bi-sort"></i></th>
                                     <th class="sortable" data-sort="Tokenise">Tokenized <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="IsFilter">Filter <i class="bi bi-sort"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody">
@@ -195,7 +166,8 @@ class CustomEmbed extends LibraryBase {
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <select id="pageSize" class="form-select form-select-sm w-auto">
-                                    <option value="10" selected>10 rows</option>
+                                    <option value="2" selected>2 rows</option>
+                                    <option value="10">10 rows</option>
                                     <option value="25">25 rows</option>
                                     <option value="50">50 rows</option>
                                 </select>
@@ -221,40 +193,6 @@ class CustomEmbed extends LibraryBase {
         `;
     }
 
-    private generateFilterPanelHtml(): string {
-        const filterableColumns = this.allColumns.filter(col => col.IsFilter);
-        let filterHtml = '';
-        if (filterableColumns.length === 0) {
-            return `<p class="text-muted">No filterable columns found.</p>`;
-        }
-
-        filterableColumns.forEach((col: DataSetColumn) => {
-            let inputField = '';
-            let labelText = col.LogicalColumnName || col.ColumnName;
-
-            if (col.ColumnType.toLowerCase() === 'datetime') {
-                inputField = `
-                    <div class="d-flex gap-2">
-                        <label for="filter-${col.ColumnName}-from" class="visually-hidden">${labelText} From</label>
-                        <input type="datetime-local" class="form-control form-control-sm" id="filter-${col.ColumnName}-from" name="from">
-                        <label for="filter-${col.ColumnName}-to" class="visually-hidden">${labelText} To</label>
-                        <input type="datetime-local" class="form-control form-control-sm" id="filter-${col.ColumnName}-to" name="to">
-                    </div>`;
-            } else if (col.ColumnType.toLowerCase() === 'int') {
-                inputField = `<input type="number" class="form-control form-control-sm" id="filter-${col.ColumnName}" name="value">`;
-            } else {
-                inputField = `<input type="text" class="form-control form-control-sm" id="filter-${col.ColumnName}" name="value">`;
-            }
-
-            filterHtml += `
-                <div class="mb-3" data-column="${col.ColumnName}">
-                    <label class="form-label">${labelText}</label>
-                    ${inputField}
-                </div>
-            `;
-        });
-        return filterHtml;
-    }
     
     private generateStyles(): string {
         return `
@@ -318,62 +256,15 @@ class CustomEmbed extends LibraryBase {
     }
 
     public setupEventListeners = (): void => {
-        const filterBtn = document.getElementById('filterBtn');
-        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
-        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        const filterPanel = document.getElementById('filterPanel');
         const requestDatasetBtn = document.getElementById('requestDatasetBtn');
         const pageSize = document.getElementById('pageSize') as HTMLSelectElement;
         const mainTableHeaders = document.querySelectorAll('.table th.sortable');
         const paginationList = document.getElementById('paginationNumbers');
 
-        // Toggle Filter Panel
-        if (filterBtn && filterPanel) {
-            filterBtn.addEventListener('click', () => {
-                this.isFilterPanelVisible = !this.isFilterPanelVisible;
-                filterPanel.classList.toggle('visible', this.isFilterPanelVisible);
-                filterPanel.style.display = this.isFilterPanelVisible ? 'block' : 'none';
-            });
-        }
+
         
-        // Apply Filters
-        if (applyFiltersBtn) {
-            applyFiltersBtn.addEventListener('click', () => {
-                const form = document.getElementById('filterForm') as HTMLFormElement;
-                if (!form) return;
-                
-                this.activeFilters = {};
-                this.allColumns.filter(c => c.IsFilter).forEach(col => {
-                    const fromInput = document.getElementById(`filter-${col.ColumnName}-from`) as HTMLInputElement;
-                    const toInput = document.getElementById(`filter-${col.ColumnName}-to`) as HTMLInputElement;
-                    const valueInput = document.getElementById(`filter-${col.ColumnName}`) as HTMLInputElement;
 
-                    if (fromInput && toInput && (fromInput.value || toInput.value)) {
-                        this.activeFilters[col.ColumnName] = { type: 'datetime', value: fromInput.value, valueTo: toInput.value };
-                    } else if (valueInput && valueInput.value) {
-                        this.activeFilters[col.ColumnName] = { type: 'text', value: valueInput.value };
-                    }
-                });
 
-                this.currentPage = 1;
-                this.updateTable();
-                this.renderActiveFilters();
-                this.isFilterPanelVisible = false;
-                if (filterPanel) filterPanel.style.display = 'none';
-            });
-        }
-
-        // Clear All Filters
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => {
-                const form = document.getElementById('filterForm') as HTMLFormElement;
-                if (form) form.reset();
-                this.activeFilters = {};
-                this.currentPage = 1;
-                this.updateTable();
-                this.renderActiveFilters();
-            });
-        }
 
         // Sort Table
         mainTableHeaders.forEach((header, index) => {
@@ -406,7 +297,7 @@ class CustomEmbed extends LibraryBase {
                 if (target.id === 'prevPage' && this.currentPage > 1) {
                     this.currentPage--;
                     this.updateTable();
-                } else if (target.id === 'nextPage' && this.currentPage < Math.ceil(this.getFilteredAndSortedColumns().length / this.rowsPerPage)) {
+                } else if (target.id === 'nextPage' && this.currentPage < Math.ceil(this.allColumns.length / this.rowsPerPage)) {
                     this.currentPage++;
                     this.updateTable();
                 }
@@ -419,48 +310,15 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private getFilteredAndSortedColumns = (): DataSetColumn[] => {
-        let filteredColumns = this.allColumns;
-        const filterKeys = Object.keys(this.activeFilters);
 
-        // Apply filters
-        if (filterKeys.length > 0) {
-            filteredColumns = filteredColumns.filter(column => {
-                const filter = this.activeFilters[column.ColumnName];
-                if (!filter) return true;
-
-                if (filter.type === 'datetime') {
-                    const rowDate = new Date(column.ExampleValue || '');
-                    const fromDate = filter.value ? new Date(filter.value) : null;
-                    const toDate = filter.valueTo ? new Date(filter.valueTo) : null;
-                    const isAfterFrom = fromDate ? rowDate >= fromDate : true;
-                    const isBeforeTo = toDate ? rowDate <= toDate : true;
-                    return isAfterFrom && isBeforeTo;
-                } else {
-                    return (column.ExampleValue || '').toLowerCase().includes(filter.value.toLowerCase());
-                }
-            });
-        }
-        
-        // Apply sort
-        return filteredColumns.sort((a, b) => {
-            const aValue = (a[this.currentSortColumn as keyof DataSetColumn] || '').toString().toLowerCase();
-            const bValue = (b[this.currentSortColumn as keyof DataSetColumn] || '').toString().toLowerCase();
-            
-            if (aValue < bValue) return this.currentSortDirection === 'asc' ? -1 : 1;
-            if (aValue > bValue) return this.currentSortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
-    }
 
     private updateTable = (): void => {
         const tbody = document.getElementById('columnsTableBody');
         if (!tbody) return;
 
-        const filteredAndSorted = this.getFilteredAndSortedColumns();
         const startIndex = (this.currentPage - 1) * this.rowsPerPage;
         const endIndex = startIndex + this.rowsPerPage;
-        const paginatedColumns = filteredAndSorted.slice(startIndex, endIndex);
+        const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
         paginatedColumns.forEach((column: DataSetColumn) => {
@@ -473,14 +331,13 @@ class CustomEmbed extends LibraryBase {
                     <td><code>${column.ExampleValue || 'N/A'}</code></td>
                     <td>${column.Redact ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
                     <td>${column.Tokenise ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                    <td>${column.IsFilter ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
                 </tr>
             `;
         });
         tbody.innerHTML = columnsHtml;
 
-        this.updatePaginationInfo(filteredAndSorted.length);
-        this.updatePaginationNumbers(filteredAndSorted.length);
+        this.updatePaginationInfo(this.allColumns.length);
+        this.updatePaginationNumbers(this.allColumns.length);
         this.updateSortIcons();
     }
 
@@ -554,31 +411,7 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private renderActiveFilters = (): void => {
-        const container = document.getElementById('activeFiltersContainer');
-        if (!container) return;
 
-        container.innerHTML = '';
-        Object.entries(this.activeFilters).forEach(([key, filter]) => {
-            const logicalName = this.allColumns.find(c => c.ColumnName === key)?.LogicalColumnName || key;
-            const value = filter.type === 'datetime' ? `${filter.value} to ${filter.valueTo}` : filter.value;
-            
-            const pill = document.createElement('span');
-            pill.className = 'active-filter-pill';
-            pill.innerHTML = `${logicalName}: <b>${value}</b> <button type="button" class="close-btn" data-key="${key}">x</button>`;
-            
-            pill.querySelector('.close-btn')?.addEventListener('click', (e) => {
-                const targetKey = (e.target as HTMLElement).getAttribute('data-key');
-                if (targetKey) {
-                    delete this.activeFilters[targetKey];
-                    this.currentPage = 1;
-                    this.updateTable();
-                    this.renderActiveFilters();
-                }
-            });
-            container.appendChild(pill);
-        });
-    }
 
     private createRequestModal = (): void => {
         const modalElement = document.getElementById('requestDatasetModal');
