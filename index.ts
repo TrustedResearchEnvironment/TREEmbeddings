@@ -150,9 +150,6 @@ class CustomEmbed extends LibraryBase {
                 </div>
 
                 <div class="mui-card table-card">
-                    <div class="table-header">
-                        <h3>Dataset Columns</h3>
-                    </div>
                     <div class="table-container">
                         <table id="dataTable">
                             <thead>
