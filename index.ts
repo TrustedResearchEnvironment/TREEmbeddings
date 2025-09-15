@@ -59,6 +59,23 @@ interface ColumnsResponse {
     Results: DataSetColumn[];
 }
 
+interface ProjectResponse {
+    CurrentPage: number;
+    PageCount: number;
+    PageSize: number;
+    RowCount: number;
+    FirstRowOnPage: number;
+    LastRowOnPage: number;
+    Results: {
+        AssistProjectID: number;
+        Name: string;
+        Description: string;
+        IsActive: boolean;
+        ModifiedDate: string;
+        LoomeAssistTenantsID: string;
+    }[];
+}
+
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
@@ -129,6 +146,45 @@ class CustomEmbed extends LibraryBase {
     private generateMainLayout(DataSet: DataSetMetadata): string {
         return `
             <div id="datasetRoot">
+                <!-- Modal -->
+                <div id="requestDatasetModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Request Dataset</h3>
+                            <span class="modal-close">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="requestForm" class="request-form">
+                                <div class="form-group">
+                                    <label for="RequestName">Request Name</label>
+                                    <input id="RequestName" class="form-input" placeholder="Name for this request" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ProjectID">Assist Project</label>
+                                    <select id="ProjectID" class="form-select" required>
+                                        <option value="">Select a Project</option>
+                                        <option value="82">Project 1</option>
+                                        <option value="84">Project 2</option>
+                                        <option value="85">Project 3</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ScheduleRefresh">Scheduled Refresh</label>
+                                    <select id="ScheduleRefresh" class="form-select">
+                                        <option value="No Refresh">No Refresh</option>
+                                        <option value="Daily">Daily</option>
+                                        <option value="Weekly">Weekly</option>
+                                        <option value="Monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="button button-secondary modal-close">Cancel</button>
+                                    <button type="submit" class="button button-primary">Submit Request</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <div class="mui-card">
                     <div class="card-header">
                         <div class="header-content">
@@ -320,6 +376,135 @@ class CustomEmbed extends LibraryBase {
                     padding: 2px 6px;
                     border-radius: 4px;
                 }
+
+                /* Modal styles */
+                .modal {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                }
+                
+                .modal.show {
+                    display: flex;
+                    opacity: 1;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .modal-content {
+                    background: white;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 500px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    transform: translateY(-20px);
+                    transition: transform 0.3s ease;
+                }
+
+                .modal.show .modal-content {
+                    transform: translateY(0);
+                }
+
+                .modal-header {
+                    padding: 20px 24px;
+                    border-bottom: 1px solid #e0e0e0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .modal-header h3 {
+                    margin: 0;
+                    font-size: 1.25rem;
+                    color: #2c3e50;
+                    font-weight: 600;
+                }
+
+                .modal-close {
+                    font-size: 1.5rem;
+                    color: #666;
+                    cursor: pointer;
+                    padding: 4px;
+                    line-height: 1;
+                }
+
+                .modal-close:hover {
+                    color: #333;
+                }
+
+                .modal-body {
+                    padding: 24px;
+                }
+
+                .request-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .form-group label {
+                    font-weight: 500;
+                    color: #2c3e50;
+                }
+
+                .form-input, .form-select {
+                    padding: 8px 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                }
+
+                .form-input:focus, .form-select:focus {
+                    border-color: #4EC4BC;
+                    outline: none;
+                    box-shadow: 0 0 0 2px rgba(78,196,188,0.2);
+                }
+
+                .form-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                    margin-top: 12px;
+                }
+
+                .button {
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: none;
+                }
+
+                .button-primary {
+                    background: #4EC4BC;
+                    color: white;
+                }
+
+                .button-primary:hover {
+                    filter: brightness(0.9);
+                }
+
+                .button-secondary {
+                    background: #e0e0e0;
+                    color: #333;
+                }
+
+                .button-secondary:hover {
+                    background: #d0d0d0;
+                }
             </style>
         `;
     }
@@ -381,9 +566,21 @@ class CustomEmbed extends LibraryBase {
             }
 
             // Request Dataset button
-            const requestBtn = document.getElementById('requestDatasetBtn');
+            const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
             if (requestBtn) {
-                requestBtn.addEventListener('click', () => this.createRequestModal());
+                requestBtn.addEventListener('click', async () => {
+                    console.log('Button clicked, attempting to fetch projects...');
+                    requestBtn.disabled = true;
+                    try {
+                        console.log('Before API call');
+                        await this.createRequestModal();
+                        console.log('After API call');
+                    } catch (error) {
+                        console.error('Error in button click handler:', error);
+                    } finally {
+                        requestBtn.disabled = false;
+                    }
+                });
             }
         } catch (error) {
             console.error('Error setting up event listeners:', error);
@@ -469,59 +666,117 @@ class CustomEmbed extends LibraryBase {
 
 
 
-    private createRequestModal = (): void => {
-        const modalElement = document.getElementById('requestDatasetModal');
-        if (!modalElement || !(window as any).bootstrap?.Modal) {
-            console.error('Bootstrap Modal is not available');
-            return;
-        }
+    private createRequestModal = async (): Promise<void> => {
+        const modal = document.getElementById('requestDatasetModal');
+        if (!modal) return;
 
-        const modalBody = modalElement.querySelector('.modal-body');
-        if (!modalBody) return;
-        
-        const modal = new ((window as any).bootstrap.Modal)(modalElement);
-        
-        const formHtml = `
-            <form id="requestForm">
-                <div class="mb-3">
-                    <label for="RequestName" class="form-label">Request Name</label>
-                    <input id="RequestName" class="form-control" placeholder="Name for this request" required>
-                </div>
-                <div class="mb-3">
-                    <label for="ProjectID" class="form-label">Assist Project</label>
-                    <select id="ProjectID" class="form-select" required>
-                        <option value="">Select a Project</option>
-                        <option value="82">Project 1</option>
-                        <option value="84">Project 2</option>
-                        <option value="85">Project 3</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="ScheduleRefresh" class="form-label">Scheduled Refresh</label>
-                    <select id="ScheduleRefresh" class="form-select">
-                        <option value="No Refresh">No Refresh</option>
-                        <option value="Daily">Daily</option>
-                        <option value="Weekly">Weekly</option>
-                        <option value="Monthly">Monthly</option>
-                    </select>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </form>
-        `;
-        
-        modalBody.innerHTML = formHtml;
-        modal.show();
-        
-        const requestForm = document.getElementById('requestForm');
-        if (requestForm) {
-            requestForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                alert('Request submitted successfully!');
-                modal.hide();
+        try {
+            console.log('Fetching projects...');
+
+            // Fetch projects before showing modal
+            const projectsResponse = await window.loomeApi.runApiRequest(9, {});
+            
+            // Debug logging
+            console.log('Raw API Response:', projectsResponse);
+            console.log('Response type:', typeof projectsResponse);
+            console.log('Has Results property:', projectsResponse?.Results !== undefined);
+
+            // Check if response is a string (might need parsing)
+            // if (typeof projectsResponse === 'string') {
+            //     try {
+            //         const parsedResponse = JSON.parse(projectsResponse);
+            //         if (parsedResponse.Results) {
+            //             projectsResponse = parsedResponse;
+            //         }
+            //     } catch (parseError) {
+            //         console.error('Failed to parse response:', parseError);
+            //     }
+            // }
+
+            // Validate response structure
+            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
+                console.error('Invalid response structure:', projectsResponse);
+                throw new Error(`Invalid API response structure. Expected Results array, got: ${typeof projectsResponse?.Results}`);
+            }
+
+            // Get the project select element
+            const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
+            if (!projectSelect) {
+                throw new Error('Project select element not found');
+            }
+
+            // Clear existing options except the first one
+            const defaultOption = projectSelect.options[0];
+            projectSelect.innerHTML = '';
+            projectSelect.appendChild(defaultOption);
+
+            // Add new options from API response
+            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
+                if (project.IsActive) {
+                    const option = document.createElement('option');
+                    option.value = project.AssistProjectID.toString();
+                    option.textContent = project.Name;
+                    option.title = project.Description || '';
+                    projectSelect.appendChild(option);
+                }
             });
+
+            // Show modal
+            modal.classList.add('show');
+            
+            // Setup close handlers
+            const closeModal = () => {
+                modal.classList.remove('show');
+            };
+
+            // Close on X button or cancel
+            const closeButtons = modal.querySelectorAll('.modal-close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', closeModal);
+            });
+
+            // Close on outside click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            // Handle form submission
+            const form = document.getElementById('requestForm');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    
+                    const formData = {
+                        requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                        projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
+                        scheduleRefresh: (document.getElementById('ScheduleRefresh') as HTMLSelectElement)?.value
+                    };
+
+                    console.log('Form submitted with data:', formData);
+                    
+                    // Show success message
+                    alert('Request submitted successfully!');
+                    closeModal();
+                });
+            }
+        } catch (error) {
+            console.error('Error in createRequestModal:', error);
+            console.error('Full error details:', {
+                name: error instanceof Error ? error.name : 'Unknown',
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+            });
+            
+            if (error instanceof Error) {
+                this.errorCallback(
+                    "Error", 
+                    "Failed to load projects", 
+                    `Error details: ${error.message}`, 
+                    this.element
+                );
+            }
         }
     }
 
