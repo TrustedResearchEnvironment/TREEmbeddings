@@ -1,5 +1,23 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableContainer, 
+    TableHead, 
+    TableRow,
+    Paper,
+    TablePagination,
+    TableSortLabel,
+    Chip,
+    Card,
+    CardHeader,
+    CardContent,
+    Button,
+    Box,
+    Typography
+} from '@mui/material';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -53,10 +71,10 @@ class CustomEmbed extends LibraryBase {
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
         errorCallback: (title: string, subTitle: string, message: string, element: HTMLElement) => void) {
         super(element, entityUrl, params, settings, errorCallback);
-        this.loadResources();
+        this.initialize();
     }
 
-    public loadResources = async (): Promise<void> => {
+    public initialize = async (): Promise<void> => {
         // await this.getAccessToken();
         await this.buildPage();
     }
@@ -76,7 +94,7 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            await this.loadBootstrap();
+            // Initialize any resources if needed
 
             const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
@@ -109,82 +127,60 @@ class CustomEmbed extends LibraryBase {
     }
 
     private generateMainLayout(DataSet: DataSetMetadata): string {
-        const requestDatasetBtn = `<button id="requestDatasetBtn" class="btn btn-light"><i class="bi bi-file-earmark-text"></i> Request Dataset</button>`;
-
         return `
-            <div class="container-fluid mt-3">
-                <div class="card mb-3">
-                    <div class="card-header bg-primary text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h2 class="h4 my-1">${DataSet.Name}</h2>
-                            <div>
-                                ${requestDatasetBtn}
-                            </div>
+            <div id="datasetRoot">
+                <div class="mui-card">
+                    <div class="card-header">
+                        <div class="header-content">
+                            <h2>${DataSet.Name}</h2>
+                            <button id="requestDatasetBtn">
+                                <span class="material-icons">data_exploration</span>
+                                Request Dataset
+                            </button>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-2">
-                            <div class="col-md-4">
-                                <span class="badge bg-info text-dark">ID: ${DataSet.DataSetID}</span>
-                                <span class="badge bg-info text-dark">Owner: ${DataSet.Owner}</span>
-                                <span class="badge bg-info text-dark">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
+                        <div class="metadata">
+                            <div class="chips">
+                                <span class="mui-chip">ID: ${DataSet.DataSetID}</span>
+                                <span class="mui-chip">Owner: ${DataSet.Owner}</span>
+                                <span class="mui-chip">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
                             </div>
-                            <div class="col-md-8">
-                                <p class="mb-0">${DataSet.Description}</p>
-                            </div>
+                            <p>${DataSet.Description}</p>
                         </div>
                     </div>
                 </div>
 
-                
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h4 class="mb-0">Dataset Columns</h4>
+                <div class="mui-card table-card">
+                    <div class="table-header">
+                        <h3>Dataset Columns</h3>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead class="table-dark">
+                    <div class="table-container">
+                        <table id="dataTable">
+                            <thead>
                                 <tr>
-                                    <th class="sortable" data-sort="ColumnName">Column Name <i class="bi bi-sort-down"></i></th>
-                                    <th class="sortable" data-sort="ColumnType">Data Type <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="LogicalColumnName">Logical Name <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="BusinessDescription">Description <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="ExampleValue">Example <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="Redact">Redacted <i class="bi bi-sort"></i></th>
-                                    <th class="sortable" data-sort="Tokenise">Tokenized <i class="bi bi-sort"></i></th>
+                                    <th data-sort="ColumnName">Column Name</th>
+                                    <th data-sort="ColumnType">Data Type</th>
+                                    <th data-sort="LogicalColumnName">Logical Name</th>
+                                    <th data-sort="BusinessDescription">Description</th>
+                                    <th data-sort="ExampleValue">Example</th>
+                                    <th data-sort="Redact">Redacted</th>
+                                    <th data-sort="Tokenise">Tokenized</th>
                                 </tr>
                             </thead>
-                            <tbody id="columnsTableBody">
-                            </tbody>
+                            <tbody id="columnsTableBody"></tbody>
                         </table>
                     </div>
-                    
-                    <div class="card-footer">
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-                            <div class="entries-info">
-                                Showing <span id="startEntry">0</span> to <span id="endEntry">0</span> of <span id="totalEntries">0</span> entries
-                            </div>
-                            <div class="d-flex align-items-center gap-3">
-                                <select id="pageSize" class="form-select form-select-sm w-auto">
-                                    <option value="2" selected>2 rows</option>
-                                    <option value="10">10 rows</option>
-                                    <option value="25">25 rows</option>
-                                    <option value="50">50 rows</option>
+                    <div class="table-pagination">
+                        <div class="pagination-controls">
+                            <div class="pagination-info"></div>
+                            <div class="pagination-actions">
+                                <select id="pageSize" class="rows-select">
+                                    <option value="2">2</option>
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
                                 </select>
-                                <nav aria-label="Table navigation" class="d-flex justify-content-center flex-grow-1">
-                                    <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
-                                        <li class="page-item" id="prevPage">
-                                            <a class="page-link" href="#" aria-label="Previous">
-                                                <span aria-hidden="true">&laquo;</span>
-                                            </a>
-                                        </li>
-                                        <li class="page-item" id="nextPage">
-                                            <a class="page-link" href="#" aria-label="Next">
-                                                <span aria-hidden="true">&raquo;</span>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </nav>
+                                <button class="prev-page">Previous</button>
+                                <button class="next-page">Next</button>
                             </div>
                         </div>
                     </div>
@@ -195,118 +191,196 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
+        // Add Material Icons font
+        if (!document.querySelector('#material-icons-font')) {
+            const link = document.createElement('link');
+            link.id = 'material-icons-font';
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
+            document.head.appendChild(link);
+        }
         return `
             <style>
-                .sortable { cursor: pointer; }
-                .sortable i { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
-                td code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
-                .card-header .btn {
-                    margin-left: 15px;
-                    font-weight: 500;
+                #datasetRoot {
+                    padding: 24px;
+                    font-family: ui-sans-serif, "Roboto", "Helvetica", "Arial";
                 }
-                
-                .card-header .d-flex {
-                    width: 100%;
+                .mui-card {
+                    background: #fff;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 24px;
                 }
-                
-                .card-header h2 {
-                    margin: 0;
-                    flex: 1;
+                .card-header {
+                    padding: 16px 24px;
                 }
-                
-                .card-header .btn {
-                    white-space: nowrap;
-                }
-                .filter-panel {
-                    transition: all 0.3s ease-in-out;
-                    max-height: 0;
-                    overflow: hidden;
-                    opacity: 0;
-                }
-                .filter-panel.visible {
-                    max-height: 1000px; /* A large value to allow smooth transition */
-                    opacity: 1;
-                }
-                .active-filter-pill {
-                    background-color: #e2f4f1;
-                    color: #0b684b;
-                    border: 1px solid #c2e2dd;
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 20px;
-                    font-size: 0.875rem;
-                    display: inline-flex;
+                .header-content {
+                    display: flex;
+                    justify-content: space-between;
                     align-items: center;
-                    cursor: default;
                 }
-                .active-filter-pill .close-btn {
-                    background: none;
-                    border: none;
-                    color: #0b684b;
-                    margin-left: 0.5rem;
-                    font-size: 1rem;
-                    line-height: 1;
+                .metadata {
+                    margin-top: 16px;
+                }
+                .chips {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                }
+                .mui-chip {
+                    background: #e0e0e0;
+                    padding: 4px 12px;
+                    border-radius: 16px;
+                    font-size: 0.875rem;
+                }
+                .table-container {
+                    overflow-x: auto;
+                }
+                #dataTable {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                #dataTable th {
+                    background: #f5f5f5;
+                    padding: 16px;
+                    text-align: left;
+                    font-weight: 500;
                     cursor: pointer;
-                    opacity: 0.7;
                 }
-                .active-filter-pill .close-btn:hover {
-                    opacity: 1;
+                #dataTable td {
+                    padding: 16px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .table-pagination {
+                    padding: 16px;
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: center;
+                }
+                #requestDatasetBtn {
+                    padding: 8px 16px;
+                    background: #4EC4BC;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                #requestDatasetBtn .material-icons {
+                    font-size: 20px;
+                }
+                #requestDatasetBtn:hover {
+                    filter: brightness(0.9);
+                    transform: scale(1.05);
+                    transition: transform 0.2s;
+                }
+                .pagination-controls {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px;
+                }
+                .pagination-actions {
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                }
+                .rows-select {
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #e0e0e0;
+                    margin-right: 16px;
+                }
+                .prev-page, .next-page {
+                    padding: 4px 12px;
+                    border: 1px solid #e0e0e0;
+                    background: white;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                .prev-page:hover, .next-page:hover {
+                    background: #f5f5f5;
+                }
+                .prev-page.disabled, .next-page.disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                .code-cell {
+                    font-family: monospace;
+                    background: #f5f5f5;
+                    padding: 2px 6px;
+                    border-radius: 4px;
                 }
             </style>
         `;
     }
 
     public setupEventListeners = (): void => {
-        const requestDatasetBtn = document.getElementById('requestDatasetBtn');
-        const pageSize = document.getElementById('pageSize') as HTMLSelectElement;
-        const mainTableHeaders = document.querySelectorAll('.table th.sortable');
-        const paginationList = document.getElementById('paginationNumbers');
-
-
-        
-
-
-
-        // Sort Table
-        mainTableHeaders.forEach((header, index) => {
-            header.addEventListener('click', () => {
-                const sortType = header.getAttribute('data-sort');
-                if (sortType) {
-                    if (this.currentSortColumn === sortType) {
-                        this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        this.currentSortColumn = sortType;
-                        this.currentSortDirection = 'asc';
+        try {
+            // Sort headers
+            const headers = document.querySelectorAll('#dataTable th[data-sort]');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const sortType = header.getAttribute('data-sort');
+                    if (sortType) {
+                        if (this.currentSortColumn === sortType) {
+                            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this.currentSortColumn = sortType;
+                            this.currentSortDirection = 'asc';
+                        }
+                        this.currentPage = 1;
+                        this.updateTable();
                     }
-                    this.currentPage = 1;
-                    this.updateTable();
-                }
+                });
             });
-        });
 
-        // Pagination controls
-        if (pageSize) {
-            pageSize.addEventListener('change', (e) => {
-                this.rowsPerPage = parseInt((e.target as HTMLSelectElement).value);
-                this.currentPage = 1;
-                this.updateTable();
-            });
-        }
-        if (paginationList) {
-            paginationList.addEventListener('click', (e) => {
-                const target = e.target as HTMLElement;
-                if (target.id === 'prevPage' && this.currentPage > 1) {
-                    this.currentPage--;
-                    this.updateTable();
-                } else if (target.id === 'nextPage' && this.currentPage < Math.ceil(this.allColumns.length / this.rowsPerPage)) {
-                    this.currentPage++;
-                    this.updateTable();
-                }
-            });
-        }
-        
-        // Request Dataset Modal
-        if (requestDatasetBtn) {
-            requestDatasetBtn.addEventListener('click', () => this.createRequestModal());
+            // Page size selector
+            const pageSize = document.getElementById('pageSize');
+            if (pageSize) {
+                pageSize.addEventListener('change', (e) => {
+                    const newSize = parseInt((e.target as HTMLSelectElement).value);
+                    if (!isNaN(newSize)) {
+                        this.rowsPerPage = newSize;
+                        this.currentPage = 1;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            // Navigation buttons
+            const prevBtn = document.querySelector('.prev-page');
+            const nextBtn = document.querySelector('.next-page');
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (this.currentPage > 1) {
+                        this.currentPage--;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    if (this.currentPage < totalPages) {
+                        this.currentPage++;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            // Request Dataset button
+            const requestBtn = document.getElementById('requestDatasetBtn');
+            if (requestBtn) {
+                requestBtn.addEventListener('click', () => this.createRequestModal());
+            }
+        } catch (error) {
+            console.error('Error setting up event listeners:', error);
         }
     }
 
@@ -325,20 +399,38 @@ class CustomEmbed extends LibraryBase {
             columnsHtml += `
                 <tr>
                     <td>${column.ColumnName || ''}</td>
-                    <td><span class="badge bg-secondary">${column.ColumnType || ''}</span></td>
+                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
                     <td>${column.LogicalColumnName || ''}</td>
                     <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><code>${column.ExampleValue || 'N/A'}</code></td>
-                    <td>${column.Redact ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-light text-dark">No</span>'}</td>
+                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                    <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
             `;
         });
         tbody.innerHTML = columnsHtml;
 
-        this.updatePaginationInfo(this.allColumns.length);
-        this.updatePaginationNumbers(this.allColumns.length);
-        this.updateSortIcons();
+        try {
+            this.updateSortIcons();
+            
+            // Update page size display
+            const pageSizeSelect = document.getElementById('pageSize');
+            if (pageSizeSelect) {
+                (pageSizeSelect as HTMLSelectElement).value = this.rowsPerPage.toString();
+            }
+
+            // Update pagination info in table footer
+            const paginationInfo = document.querySelector('.pagination-info');
+            if (paginationInfo) {
+                const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;
+                const endIndex = Math.min(startIndex + this.rowsPerPage - 1, this.allColumns.length);
+                paginationInfo.innerHTML = `
+                    Showing ${startIndex} to ${endIndex} of ${this.allColumns.length} entries
+                `;
+            }
+        } catch (error) {
+            console.error('Error updating table UI:', error);
+        }
     }
 
     private updateSortIcons = (): void => {
@@ -354,60 +446,18 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private updatePaginationInfo = (totalRows: number): void => {
-        const startEntry = Math.min((this.currentPage - 1) * this.rowsPerPage + 1, totalRows);
-        const endEntry = Math.min(this.currentPage * this.rowsPerPage, totalRows);
-
-        document.getElementById('startEntry')!.textContent = startEntry.toString();
-        document.getElementById('endEntry')!.textContent = endEntry.toString();
-        document.getElementById('totalEntries')!.textContent = totalRows.toString();
+    private updatePaginationButtons = (): void => {
+        const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
         
-        const prevPageBtn = document.getElementById('prevPage');
-        const nextPageBtn = document.getElementById('nextPage');
+        // Update navigation buttons
+        const prevPageBtn = document.querySelector('.prev-page');
+        const nextPageBtn = document.querySelector('.next-page');
         
         if (prevPageBtn) {
             prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
         }
         if (nextPageBtn) {
-            nextPageBtn.classList.toggle('disabled', this.currentPage * this.rowsPerPage >= totalRows);
-        }
-    }
-
-    private updatePaginationNumbers = (totalRows: number): void => {
-        const paginationList = document.getElementById('paginationNumbers');
-        if (!paginationList) return;
-
-        const totalPages = Math.ceil(totalRows / this.rowsPerPage);
-        const prevButton = paginationList.querySelector('#prevPage');
-        const nextButton = paginationList.querySelector('#nextPage');
-
-        const existingNumbers = paginationList.querySelectorAll('.page-number');
-        existingNumbers.forEach(num => num.remove());
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageItem = document.createElement('li');
-            pageItem.className = `page-item page-number ${this.currentPage === i ? 'active' : ''}`;
-            
-            const pageLink = document.createElement('a');
-            pageLink.className = 'page-link';
-            pageLink.href = '#';
-            pageLink.textContent = i.toString();
-            
-            pageLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.currentPage = i;
-                this.updateTable();
-            });
-
-            pageItem.appendChild(pageLink);
-            nextButton?.parentNode?.insertBefore(pageItem, nextButton);
-        }
-
-        if (prevButton) {
-            prevButton.classList.toggle('disabled', this.currentPage === 1);
-        }
-        if (nextButton) {
-            nextButton.classList.toggle('disabled', this.currentPage >= totalPages);
+            nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
         }
     }
 
@@ -469,21 +519,9 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private loadBootstrap(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            if ((window as any).bootstrap?.Modal) {
-                resolve();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
-            script.integrity = 'sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p';
-            script.crossOrigin = 'anonymous';
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Bootstrap'));
-            document.head.appendChild(script);
-        });
+    private async loadResources(): Promise<void> {
+        // Any additional resource loading can be added here
+        return Promise.resolve();
     }
 }
 
