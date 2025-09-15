@@ -152,35 +152,87 @@
             ModifiedDate: "2025-05-08T04:20:55.757000",
           }
         }
-        
 
-
-        if (id === 4) {
-          // Sample project data
-          return [
-            {
-              name: "Project Alpha",
-              projectDescription: "This is a sample project for testing",
-              projectBudgetDto: { totalBudget: 10000 },
-              spend: 4500,
-              currency: "USD"
-            },
-            {
-              name: "Project Beta",
-              projectDescription: "Another sample project with different values",
-              projectBudgetDto: { totalBudget: 5000 },
-              spend: 1200,
-              currency: "EUR"
-            },
-            {
-              name: "Project Gamma",
-              projectDescription: "A third sample project for testing the UI",
-              projectBudgetDto: { totalBudget: 7500 },
-              spend: 6000,
-              currency: "GBP"
-            }
-          ];
+      if (id === 9) {
+          return {
+            CurrentPage: 1,
+            PageCount: 2,
+            PageSize: 5,
+            RowCount: 6,
+            FirstRowOnPage: 1,
+            LastRowOnPage: 5,
+            Results: [
+              {
+                AssistProjectID: 90,
+                Name: "AllTesting-LLL",
+                Description: "test project to verify the whole project cycle",
+                IsActive: true,
+                ModifiedDate: "2025-08-18T14:28:25.640000",
+                LoomeAssistTenantsID: "1"
+              },
+              {
+                AssistProjectID: 79,
+                Name: "ProjTest-RiaY-1111-2222-3333-4444",
+                Description: "",
+                IsActive: true,
+                ModifiedDate: "2025-08-18T14:28:25.640000",
+                LoomeAssistTenantsID: "1"
+              },
+              {
+                AssistProjectID: 42,
+                Name: "SHeBa Administration",
+                Description: "The Assist project for SHeBa data manager(s) to perform administration tasks.",
+                IsActive: true,
+                ModifiedDate: "2025-08-18T14:28:25.640000",
+                LoomeAssistTenantsID: "1"
+              },
+              {
+                AssistProjectID: 44,
+                Name: "TestDataCustodian",
+                Description: "Test with O. Dean - *DATA INCLUDED* - do not add any other member",
+                IsActive: true,
+                ModifiedDate: "2025-08-18T14:28:25.640000",
+                LoomeAssistTenantsID: "1"
+              },
+              {
+                AssistProjectID: 47,
+                Name: "TestDataUser",
+                Description: "project to demo how SHeBa works",
+                IsActive: true,
+                ModifiedDate: "2025-08-18T14:28:25.640000",
+                LoomeAssistTenantsID: "1"
+              }
+            ]
+          }
         }
+
+
+      if (id === 4) {
+        // Sample project data
+        return [
+          {
+            name: "Project Alpha",
+            projectDescription: "This is a sample project for testing",
+            projectBudgetDto: { totalBudget: 10000 },
+            spend: 4500,
+            currency: "USD"
+          },
+          {
+            name: "Project Beta",
+            projectDescription: "Another sample project with different values",
+            projectBudgetDto: { totalBudget: 5000 },
+            spend: 1200,
+            currency: "EUR"
+          },
+          {
+            name: "Project Gamma",
+            projectDescription: "A third sample project for testing the UI",
+            projectBudgetDto: { totalBudget: 7500 },
+            spend: 6000,
+            currency: "GBP"
+          }
+        ];
+      }
         
         // For auth requests, return a mock token
         return { access_token: "mock-token-12345" };
