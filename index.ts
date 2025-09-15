@@ -150,9 +150,6 @@ class CustomEmbed extends LibraryBase {
                 </div>
 
                 <div class="mui-card table-card">
-                    <div class="table-header">
-                        <h3>Dataset Columns</h3>
-                    </div>
                     <div class="table-container">
                         <table id="dataTable">
                             <thead>
@@ -219,6 +216,12 @@ class CustomEmbed extends LibraryBase {
                     justify-content: space-between;
                     align-items: center;
                 }
+                .header-content h2 {
+                    font-weight: 700;
+                    font-size: 1.5rem;
+                    margin: 0;
+                    color: #2c3e50;
+                }
                 .metadata {
                     margin-top: 16px;
                 }
@@ -244,8 +247,10 @@ class CustomEmbed extends LibraryBase {
                     background: #f5f5f5;
                     padding: 16px;
                     text-align: left;
-                    font-weight: 500;
+                    font-weight: 700;
                     cursor: pointer;
+                    color: #2c3e50;
+                    font-size: 0.95rem;
                 }
                 #dataTable td {
                     padding: 16px;
