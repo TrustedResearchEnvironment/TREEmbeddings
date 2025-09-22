@@ -755,7 +755,7 @@ class CustomEmbed extends LibraryBase {
                             requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
                             projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
                             datasetId: this.dataSet.DataSetID,
-                            approvers: 'hardcoded miguel as approver',
+                            approvers: this.dataSet.Approvers,
                             description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value
                         };
 
