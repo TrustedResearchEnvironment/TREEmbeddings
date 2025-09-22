@@ -83,6 +83,7 @@ class CustomEmbed extends LibraryBase {
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
     private rowsPerPage: number = 2;
+    private dataSet: DataSetMetadata | null = null;
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -112,8 +113,7 @@ class CustomEmbed extends LibraryBase {
     public buildPage = async (): Promise<void> => {
         try {
             // Initialize any resources if needed
-
-            const DataSet: DataSetMetadata = await window.loomeApi.runApiRequest(6, {
+            this.dataSet = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -126,7 +126,11 @@ class CustomEmbed extends LibraryBase {
                 [];
 
             // --- 1. Generate the main HTML structure ---
-            const datasetHtml = this.generateMainLayout(DataSet);
+            if (!this.dataSet) {
+                throw new Error('Dataset information not available');
+            }
+            
+            const datasetHtml = this.generateMainLayout(this.dataSet);  // <- Fix here
             const styles = this.generateStyles();
 
             this.element.innerHTML = styles + datasetHtml;
@@ -143,7 +147,7 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private generateMainLayout(DataSet: DataSetMetadata): string {
+    private generateMainLayout(dataSet: DataSetMetadata): string {
         return `
             <div id="datasetRoot">
                 <!-- Modal -->
@@ -160,6 +164,10 @@ class CustomEmbed extends LibraryBase {
                                     <input id="RequestName" class="form-input" placeholder="Name for this request" required>
                                 </div>
                                 <div class="form-group">
+                                    <label for="RequestDescription">Description</label>
+                                    <input id="RequestName" class="form-input" placeholder="Description for this request" required>
+                                </div>
+                                <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
                                     <select id="ProjectID" class="form-select" required>
                                         <option value="">Select a Project</option>
@@ -168,17 +176,7 @@ class CustomEmbed extends LibraryBase {
                                         <option value="85">Project 3</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="ScheduleRefresh">Scheduled Refresh</label>
-                                    <select id="ScheduleRefresh" class="form-select">
-                                        <option value="No Refresh">No Refresh</option>
-                                        <option value="Daily">Daily</option>
-                                        <option value="Weekly">Weekly</option>
-                                        <option value="Monthly">Monthly</option>
-                                    </select>
-                                </div>
                                 <div class="form-actions">
-                                    <button type="button" class="button button-secondary modal-close">Cancel</button>
                                     <button type="submit" class="button button-primary">Submit Request</button>
                                 </div>
                             </form>
@@ -188,7 +186,7 @@ class CustomEmbed extends LibraryBase {
                 <div class="mui-card">
                     <div class="card-header">
                         <div class="header-content">
-                            <h2>${DataSet.Name}</h2>
+                            <h2>${dataSet.Name}</h2>
                             <button id="requestDatasetBtn">
                                 <span class="material-icons">data_exploration</span>
                                 Request Dataset
@@ -196,11 +194,11 @@ class CustomEmbed extends LibraryBase {
                         </div>
                         <div class="metadata">
                             <div class="chips">
-                                <span class="mui-chip">ID: ${DataSet.DataSetID}</span>
-                                <span class="mui-chip">Owner: ${DataSet.Owner}</span>
-                                <span class="mui-chip">Modified: ${new Date(DataSet.ModifiedDate).toLocaleDateString()}</span>
+                                <span class="mui-chip">ID: ${dataSet.DataSetID}</span>
+                                <span class="mui-chip">Owner: ${dataSet.Owner}</span>
+                                <span class="mui-chip">Modified: ${new Date(dataSet.ModifiedDate).toLocaleDateString()}</span>
                             </div>
-                            <p>${DataSet.Description}</p>
+                            <p>${dataSet.Description}</p>
                         </div>
                     </div>
                 </div>
@@ -745,20 +743,41 @@ class CustomEmbed extends LibraryBase {
             // Handle form submission
             const form = document.getElementById('requestForm');
             if (form) {
-                form.addEventListener('submit', (e) => {
+                form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     
-                    const formData = {
-                        requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
-                        projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                        scheduleRefresh: (document.getElementById('ScheduleRefresh') as HTMLSelectElement)?.value
-                    };
+                    try {
+                        if (!this.dataSet) {
+                            throw new Error('Dataset information not available');
+                        }
 
-                    console.log('Form submitted with data:', formData);
-                    
-                    // Show success message
-                    alert('Request submitted successfully!');
-                    closeModal();
+                        const formData = {
+                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
+                            datasetId: this.dataSet.DataSetID,
+                            approvers: 'hardcoded miguel as approver',
+                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value
+                        };
+
+                        // Call the API with the required parameters
+                        const response = await window.loomeApi.runApiRequest(17, {
+                            DataSetID: formData.datasetId,
+                            approvers: formData.approvers,
+                            assistProjectID: parseInt(formData.projectId),
+                            description: formData.description,
+                            requestName: formData.requestName,
+                            upn: 'miguel@testupn.com'
+                        });
+
+                        console.log('API Response:', response);
+                        
+                        // Show success message
+                        alert('Request submitted successfully!');
+                        closeModal();
+                    } catch (error) {
+                        console.error('Error submitting request:', error);
+                        alert('Failed to submit request. Please try again.');
+                    }
                 });
             }
         } catch (error) {
