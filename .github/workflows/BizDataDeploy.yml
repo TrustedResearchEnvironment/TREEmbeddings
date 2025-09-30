@@ -1,5 +1,5 @@
 # Github action to build and publish to GitHub Releases
-name: Build and Publish ES Module to GitHub Releases
+name: BizData Deploy
 on:
   push:
     branches:
@@ -51,7 +51,7 @@ jobs:
       - name: Unpublish existing version
         run: |
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          npm unpublish @trustedresearchenvironment/webpack-ts-example@${{ steps.unique-version.outputs.unique-version }} || true
+          npm unpublish @trustedresearchenvironment/TREEmbeddings@${{ steps.unique-version.outputs.unique-version }} || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -82,7 +82,7 @@ jobs:
             Import as an ES module:
             ```html
             <script type="module">
-              import { definition } from 'https://github.com/TrustedResearchEnvironment/webpack-ts-example/releases/download/v${{ steps.unique-version.outputs.unique-version }}/custom-embedding.js';
+              import { definition } from 'https://github.com/TrustedResearchEnvironment/TREEmbeddings/releases/download/v${{ steps.unique-version.outputs.unique-version }}/custom-embedding.js';
               // Use the library...
             </script>
             ```
@@ -96,11 +96,11 @@ jobs:
       # # Purge jsDelivr cache
       # - name: Purge jsDelivr cache
       #   run: |
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@v${{ steps.unique-version.outputs.unique-version }}/dist/custom-embedding.js"
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@v${{ steps.unique-version.outputs.unique-version }}/dist/custom-embedding.js"
       #     echo "Purged jsDelivr cache for version v${{ steps.unique-version.outputs.unique-version }}"
       #     # also purge main branch
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
       #     echo "Purged jsDelivr cache for version main"
-      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding2.js
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/webpack-ts-example@main/dist/custom-embedding.js"
+      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding2.js
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
       #     echo "Purged jsDelivr cache for version main"

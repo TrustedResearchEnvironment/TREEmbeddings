@@ -1,0 +1,106 @@
+# Github action to build and publish to GitHub Releases
+name: Imperial Deploy
+on:
+  push:
+    branches:
+      - ImperialDeploy
+  workflow_dispatch:
+
+# Add permissions needed for creating releases
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@trustedresearchenvironment'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build project
+        run: npm run build
+        
+      # # Get version from package.json first
+      # - name: Get version
+      #   id: package-version
+      #   uses: martinbeentjes/npm-get-version-action@v1.3.1
+        
+      # Generate unique version with timestamp
+      # - name: Generate unique version
+      #   id: unique-version
+      #   run: |
+      #     TIMESTAMP=$(date +%Y%m%d%H%M%S)
+      #     BASE_VERSION=${{ steps.package-version.outputs.current-version }}
+      #     UNIQUE_VERSION="${BASE_VERSION}-${TIMESTAMP}"
+      #     echo "unique-version=${UNIQUE_VERSION}" >> $GITHUB_OUTPUT
+      #     # Update version in package.json
+      #     npm version ${UNIQUE_VERSION} --no-git-tag-version
+        
+      # Unpublish existing version if it exists
+      - name: Unpublish existing version
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          npm unpublish @trustedresearchenvironment/TREEmbeddings@${{ github.ref_name }} || true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Publish to GitHub Packages
+      - name: Publish to GitHub Packages
+        run: |
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      # Delete existing tag if it exists (to allow overwriting)
+      - name: Delete existing tag if present
+        run: |
+          git tag -d v${{ github.ref_name }} || true
+          git push origin :refs/tags/v${{ github.ref_name }} || true
+      
+      # Create GitHub Release and upload asset
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.ref_name }}
+          name: Release v${{ github.ref_name }}
+          body: |
+            ## Webpack TypeScript Embeddings Library
+            
+            ### Installation
+            
+            Import as an ES module:
+            ```html
+            <script type="module">
+              import { definition } from 'https://github.com/TrustedResearchEnvironment/TREEmbeddings/releases/download/v${{ github.ref_name }}/custom-embedding.js';
+              // Use the library...
+            </script>
+            ```
+          files: |
+            ./dist/custom-embedding.js
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      # # Purge jsDelivr cache
+      # - name: Purge jsDelivr cache
+      #   run: |
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@v${{ github.ref_name }}/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version v${{ github.ref_name }}"
+      #     # also purge main branch
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version main"
+      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding2.js
+      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
+      #     echo "Purged jsDelivr cache for version main"
