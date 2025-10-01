@@ -4,6 +4,4 @@ node_modules/**
 .vscode/**
 .idea/**
 *.log
-dist/custom-embedding - Copy.js:Zone.Identifier
-dist/custom-embedding - Copy.js
-dist/custom-embedding.js
+dist/custom-embedding*
