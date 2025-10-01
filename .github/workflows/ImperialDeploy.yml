@@ -43,9 +43,7 @@ jobs:
       - name: Copy dist files to Azure Blob Storage
         run: |
           # Copy all files from dist directory to Azure Blob Storage $web container
-          echo azcopy copy "./dist/*" "${{ vars.IMPERIAL_AZURE_STORAGE_ACCOUNT_URL }}/\$web/" --recursive --overwrite=true
-          azcopy sync "out" "${{ vars.IMPERIAL_AZURE_STORAGE_ACCOUNT_URL }}" --delete-destination true  --put-md5
-        
-        env:
-          AZCOPY_STORAGE_ACCOUNT_KEY: ${{ secrets.IMPERIAL_AZCOPY_STORAGE_ACCOUNT_KEY }}
+          azcopy sync "out" "${{ secrets.IMPERIAL_AZURE_STORAGE_SAS_URL }}" --delete-destination true  --put-md5
+          #LIKE THIS https://sttrewebdataonlyimptre.blob.core.windows.net/$web?sp=racwdli&st=2025-10-01T00:25:25Z&se=2026-05-21T09:40:25Z&spr=https&sv=2024-11-04&sr=c&sig=8r9EcjnSOMEKEYY%3D
+
         
