@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - BizDataDeploy
   workflow_dispatch:
 
 # Add permissions needed for creating releases
@@ -16,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: '18'
           registry-url: 'https://npm.pkg.github.com'
@@ -30,77 +31,21 @@ jobs:
       
       - name: Build project
         run: npm run build
-        
-      # Get version from package.json first
-      - name: Get version
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        
-      # Generate unique version with timestamp
-      - name: Generate unique version
-        id: unique-version
+
+      - name: Install AzCopy
         run: |
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          BASE_VERSION=${{ steps.package-version.outputs.current-version }}
-          UNIQUE_VERSION="${BASE_VERSION}-${TIMESTAMP}"
-          echo "unique-version=${UNIQUE_VERSION}" >> $GITHUB_OUTPUT
-          # Update version in package.json
-          npm version ${UNIQUE_VERSION} --no-git-tag-version
-        
-      # Unpublish existing version if it exists
-      - name: Unpublish existing version
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          npm unpublish @trustedresearchenvironment/TREEmbeddings@${{ steps.unique-version.outputs.unique-version }} || true
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      # Publish to GitHub Packages
-      - name: Publish to GitHub Packages
-        run: |
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-      # Delete existing tag if it exists (to allow overwriting)
-      - name: Delete existing tag if present
-        run: |
-          git tag -d v${{ steps.unique-version.outputs.unique-version }} || true
-          git push origin :refs/tags/v${{ steps.unique-version.outputs.unique-version }} || true
-      
-      # Create GitHub Release and upload asset
-      - name: Create Release and Upload Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.unique-version.outputs.unique-version }}
-          name: Release v${{ steps.unique-version.outputs.unique-version }}
-          body: |
-            ## Webpack TypeScript Embeddings Library
-            
-            ### Installation
-            
-            Import as an ES module:
-            ```html
-            <script type="module">
-              import { definition } from 'https://github.com/TrustedResearchEnvironment/TREEmbeddings/releases/download/v${{ steps.unique-version.outputs.unique-version }}/custom-embedding.js';
-              // Use the library...
-            </script>
-            ```
-          files: |
-            ./dist/custom-embedding.js
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Download and install AzCopy
+          wget -O azcopy_v10.tar.gz https://aka.ms/downloadazcopy-v10-linux && tar -xf azcopy_v10.tar.gz --strip-components=1
+          sudo cp ./azcopy /usr/bin/
+          sudo chmod +x /usr/bin/azcopy
+          # Verify installation
+          azcopy --version        
           
-      # # Purge jsDelivr cache
-      # - name: Purge jsDelivr cache
-      #   run: |
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@v${{ steps.unique-version.outputs.unique-version }}/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version v${{ steps.unique-version.outputs.unique-version }}"
-      #     # also purge main branch
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version main"
-      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding2.js
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version main"
+      - name: Copy dist files to Azure Blob Storage
+        run: |
+          # Copy all files from dist directory to Azure Blob Storage $web container
+          ls -al dist
+          azcopy sync "dist" "${{ secrets.BIZDATA_AZURE_STORAGE_SAS_URL }}" --delete-destination true  --put-md5
+          #LIKE THIS https://sttrewebdataonlyimptre.blob.core.windows.net/\$web?sp=racwdli&st=2025-10-01T00:25:25Z&se=2026-05-21T09:40:25Z&spr=https&sv=2024-11-04&sr=c&sig=8r9EcjnSOMEKEYY%3D
+
+        
