@@ -43,7 +43,7 @@ jobs:
       - name: Copy dist files to Azure Blob Storage
         run: |
           # Copy all files from dist directory to Azure Blob Storage $web container
-          azcopy copy "./dist/*" "${{ secrets.IMPERIAL_AZURE_STORAGE_ACCOUNT_URL }}/\$web/" --recursive --overwrite=true --verbose
+          azcopy copy "./dist/*" "${{ secrets.IMPERIAL_AZURE_STORAGE_ACCOUNT_URL }}/\$web/" --recursive --overwrite=true
         env:
           AZCOPY_STORAGE_ACCOUNT_KEY: ${{ secrets.IMPERIAL_AZCOPY_STORAGE_ACCOUNT_KEY }}
         
