@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: '18'
           registry-url: 'https://npm.pkg.github.com'
@@ -30,6 +30,22 @@ jobs:
       
       - name: Build project
         run: npm run build
+
+      - name: Install AzCopy
+        run: |
+          # Download and install AzCopy
+          wget -O azcopy_v10.tar.gz https://aka.ms/downloadazcopy-v10-linux && tar -xf azcopy_v10.tar.gz --strip-components=1
+          sudo cp ./azcopy /usr/bin/
+          sudo chmod +x /usr/bin/azcopy
+          # Verify installation
+          azcopy --version        
+          
+      - name: Copy dist files to Azure Blob Storage
+        run: |
+          # Copy all files from dist directory to Azure Blob Storage $web container
+          azcopy copy "./dist/*" "${{ secrets.IMPERIAL_AZURE_STORAGE_ACCOUNT_URL }}/\$web/" --recursive --overwrite=true --verbose
+        env:
+          AZCOPY_STORAGE_ACCOUNT_KEY: ${{ secrets.IMPERIAL_AZCOPY_STORAGE_ACCOUNT_KEY }}
         
       # # Get version from package.json first
       # - name: Get version
@@ -55,52 +71,52 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # Publish to GitHub Packages
-      - name: Publish to GitHub Packages
-        run: |
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-      # Delete existing tag if it exists (to allow overwriting)
-      - name: Delete existing tag if present
-        run: |
-          git tag -d v${{ github.ref_name }} || true
-          git push origin :refs/tags/v${{ github.ref_name }} || true
-      
-      # Create GitHub Release and upload asset
-      - name: Create Release and Upload Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ github.ref_name }}
-          name: Release v${{ github.ref_name }}
-          body: |
-            ## Webpack TypeScript Embeddings Library
-            
-            ### Installation
-            
-            Import as an ES module:
-            ```html
-            <script type="module">
-              import { definition } from 'https://github.com/TrustedResearchEnvironment/TREEmbeddings/releases/download/v${{ github.ref_name }}/custom-embedding.js';
-              // Use the library...
-            </script>
-            ```
-          files: |
-            ./dist/custom-embedding.js
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      # # Purge jsDelivr cache
-      # - name: Purge jsDelivr cache
+      # # Publish to GitHub Packages
+      # - name: Publish to GitHub Packages
       #   run: |
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@v${{ github.ref_name }}/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version v${{ github.ref_name }}"
-      #     # also purge main branch
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version main"
-      #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding2.js
-      #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
-      #     echo "Purged jsDelivr cache for version main"
+      #     npm publish
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      # # Delete existing tag if it exists (to allow overwriting)
+      # - name: Delete existing tag if present
+      #   run: |
+      #     git tag -d v${{ github.ref_name }} || true
+      #     git push origin :refs/tags/v${{ github.ref_name }} || true
+      
+      # # Create GitHub Release and upload asset
+      # - name: Create Release and Upload Asset
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     tag_name: v${{ github.ref_name }}
+      #     name: Release v${{ github.ref_name }}
+      #     body: |
+      #       ## Webpack TypeScript Embeddings Library
+            
+      #       ### Installation
+            
+      #       Import as an ES module:
+      #       ```html
+      #       <script type="module">
+      #         import { definition } from 'https://github.com/TrustedResearchEnvironment/TREEmbeddings/releases/download/v${{ github.ref_name }}/custom-embedding.js';
+      #         // Use the library...
+      #       </script>
+      #       ```
+      #     files: |
+      #       ./dist/custom-embedding.js
+      #     draft: false
+      #     prerelease: false
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      # # # Purge jsDelivr cache
+      # # - name: Purge jsDelivr cache
+      # #   run: |
+      # #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@v${{ github.ref_name }}/dist/custom-embedding.js"
+      # #     echo "Purged jsDelivr cache for version v${{ github.ref_name }}"
+      # #     # also purge main branch
+      # #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
+      # #     echo "Purged jsDelivr cache for version main"
+      # #     # also purge https://cdn.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding2.js
+      # #     curl -X DELETE "https://purge.jsdelivr.net/gh/TrustedResearchEnvironment/TREEmbeddings@main/dist/custom-embedding.js"
+      # #     echo "Purged jsDelivr cache for version main"
