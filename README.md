@@ -2,6 +2,15 @@
 
 A TypeScript library for creating embeddable components that interact with the Loome API, built as an ES module.
 
+# Deploy needs a github secret token like this 
+
+
+
+With , url , folder, and full SAS
+It expires
+YOU NEED THE \ before $web in the URL !!!!!!!!!!!!!!!!
+https://sttrewebdataonlyimptre.blob.core.windows.net/\$web?sp=racwdli&st=2025-10-01T00:25:25Z&se=2026-05-21T09:40:25Z&spr=https&sv=2024-11-04&sr=c&sig=8r9Ecjnc8VBKEYKEYKEYHshtY%3D
+
 ## Features
 
 - Custom embedding library built with TypeScript and Webpack
