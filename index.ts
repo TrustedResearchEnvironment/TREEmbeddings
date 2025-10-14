@@ -117,18 +117,8 @@ class CustomEmbed extends LibraryBase {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            // Get pagination info to find the total row count
-            const totalRowsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
-                PageSize: 1 // Requesting just one row is enough to get the count
-            });
-
-            // Step 2: Convert RowCount to an integer and fetch all columns
-            const totalCount = parseInt(totalRowsResponse.RowCount, 10);
-
             const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
-                PageSize: totalCount
             });
 
             this.allColumns = columnsResponse.Results ?
