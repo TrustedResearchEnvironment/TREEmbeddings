@@ -117,8 +117,14 @@ class CustomEmbed extends LibraryBase {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
+            const totalRows: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
+                DataSetID: this.getParamValue('DataSetID')?.value || '',
+                PageSize: 5
+            });
+
             const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
+                PageSize: totalRows.RowCount
             });
 
             this.allColumns = columnsResponse.Results ?
