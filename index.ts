@@ -225,10 +225,8 @@ class CustomEmbed extends LibraryBase {
                             <div class="pagination-info"></div>
                             <div class="pagination-actions">
                                 <select id="pageSize" class="rows-select">
-                                    <option value="2">2</option>
+                                    <option value="5">5</option>
                                     <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
                                 </select>
                                 <button class="prev-page">Previous</button>
                                 <button class="next-page">Next</button>
