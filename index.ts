@@ -82,7 +82,7 @@ class CustomEmbed extends LibraryBase {
     private currentSortColumn: string = "name";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
-    private rowsPerPage: number = 2;
+    private rowsPerPage: number = 10;
     private dataSet: DataSetMetadata | null = null;
 
 
@@ -225,8 +225,9 @@ class CustomEmbed extends LibraryBase {
                             <div class="pagination-info"></div>
                             <div class="pagination-actions">
                                 <select id="pageSize" class="rows-select">
-                                    <option value="5">5</option>
                                     <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
                                 </select>
                                 <button class="prev-page">Previous</button>
                                 <button class="next-page">Next</button>
