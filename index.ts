@@ -154,7 +154,7 @@ class CustomEmbed extends LibraryBase {
                 <div id="requestDatasetModal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>Request Dataset</h3>
+                            <h3>Request Data Set</h3>
                             <span class="modal-close">&times;</span>
                         </div>
                         <div class="modal-body">
@@ -189,7 +189,7 @@ class CustomEmbed extends LibraryBase {
                             <h2>${dataSet.Name}</h2>
                             <button id="requestDatasetBtn">
                                 <span class="material-icons">data_exploration</span>
-                                Request Dataset
+                                Request Data Set
                             </button>
                         </div>
                         <div class="metadata">
