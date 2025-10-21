@@ -303,8 +303,8 @@ class CustomEmbed extends LibraryBase {
                     cursor: pointer;
                     color: #2c3e50;
                     font-size: 0.95rem;
-                    position: sticky;
-                    top: 0;
+                    // position: sticky;
+                    // top: 0;
                 }
                 #dataTable td {
                     padding: 16px;
@@ -605,7 +605,6 @@ class CustomEmbed extends LibraryBase {
                             assistProjectID: parseInt(formData.projectId),
                             description: formData.description,
                             requestName: formData.requestName,
-                            upn: 'miguel@testupn.com'
                         });
                         
                         alert('Request submitted successfully!');
