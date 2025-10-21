@@ -306,6 +306,8 @@ class CustomEmbed extends LibraryBase {
                     cursor: pointer;
                     color: #2c3e50;
                     font-size: 0.95rem;
+                    position: sticky;
+                    top: 0;
                 }
                 #dataTable td {
                     padding: 16px;
