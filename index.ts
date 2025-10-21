@@ -580,6 +580,46 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
             }
+
+            const requestForm = document.getElementById('requestForm');
+            if (requestForm) {
+                requestForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    try {
+                        if (!this.dataSet) {
+                            throw new Error('Dataset information not available');
+                        }
+
+                        const formData = {
+                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
+                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value,
+                            datasetId: this.dataSet.DataSetID,
+                            approvers: this.dataSet.Approvers,
+                        };
+
+                        await window.loomeApi.runApiRequest(17, {
+                            DataSetID: formData.datasetId,
+                            approvers: formData.approvers,
+                            assistProjectID: parseInt(formData.projectId),
+                            description: formData.description,
+                            requestName: formData.requestName,
+                            upn: 'miguel@testupn.com'
+                        });
+                        
+                        alert('Request submitted successfully!');
+                        
+                        // Close the modal on success
+                        const modal = document.getElementById('requestDatasetModal');
+                        if (modal) modal.classList.remove('show');
+
+                    } catch (error) {
+                        console.error('Error submitting request:', error);
+                        alert('Failed to submit request. Please try again.');
+                    }
+                });
+            }
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -670,32 +710,21 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-
-            // Fetch projects before showing modal
             const projectsResponse = await window.loomeApi.runApiRequest(9, {});
-            
 
-
-
-
-            // Validate response structure
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
-                console.error('Invalid response structure:', projectsResponse);
-                throw new Error(`Invalid API response structure. Expected Results array, got: ${typeof projectsResponse?.Results}`);
+                throw new Error(`Invalid API response structure.`);
             }
 
-            // Get the project select element
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
             if (!projectSelect) {
                 throw new Error('Project select element not found');
             }
 
-            // Clear existing options except the first one
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            // Add new options from API response
             projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
                 if (project.IsActive) {
                     const option = document.createElement('option');
@@ -706,67 +735,17 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
-            // Show modal
             modal.classList.add('show');
             
-            // Setup close handlers
-            const closeModal = () => {
-                modal.classList.remove('show');
-            };
+            const closeModal = () => modal.classList.remove('show');
 
-            // Close on X button or cancel
             const closeButtons = modal.querySelectorAll('.modal-close');
-            closeButtons.forEach(button => {
-                button.addEventListener('click', closeModal);
-            });
+            closeButtons.forEach(button => button.addEventListener('click', closeModal));
 
-            // Close on outside click
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                }
+                if (e.target === modal) closeModal();
             });
 
-            // Handle form submission
-            const form = document.getElementById('requestForm');
-            if (form) {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    try {
-                        if (!this.dataSet) {
-                            throw new Error('Dataset information not available');
-                        }
-
-                        const formData = {
-                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
-                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            datasetId: this.dataSet.DataSetID,
-                            approvers: this.dataSet.Approvers,
-                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value
-                        };
-
-                        // Call the API with the required parameters
-                        const response = await window.loomeApi.runApiRequest(17, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            description: formData.description,
-                            requestName: formData.requestName,
-                            upn: 'miguel@testupn.com'
-                        });
-
-                        console.log('API Response:', response);
-                        
-                        // Show success message
-                        alert('Request submitted successfully!');
-                        closeModal();
-                    } catch (error) {
-                        console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
-                    }
-                });
-            }
         } catch (error) {
             console.error('Error in createRequestModal:', error);
             console.error('Full error details:', {
