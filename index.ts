@@ -93,7 +93,8 @@ class CustomEmbed extends LibraryBase {
     }
 
     public initialize = async (): Promise<void> => {
-        // await this.getAccessToken();
+        this.disableBrowserCache();
+
         await this.buildPage();
     }
 
@@ -112,7 +113,6 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            // Initialize any resources if needed
             this.dataSet = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
@@ -125,17 +125,15 @@ class CustomEmbed extends LibraryBase {
                 columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
 
-            // --- 1. Generate the main HTML structure ---
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
             }
             
-            const datasetHtml = this.generateMainLayout(this.dataSet);  // <- Fix here
+            const datasetHtml = this.generateMainLayout(this.dataSet);
             const styles = this.generateStyles();
 
             this.element.innerHTML = styles + datasetHtml;
 
-            // --- 2. Set up event listeners and initial state ---
             this.setupEventListeners();
             this.updateTable();
         } catch (ex: unknown) {
@@ -241,7 +239,6 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        // Add Material Icons font
         if (!document.querySelector('#material-icons-font')) {
             const link = document.createElement('link');
             link.id = 'material-icons-font';
@@ -677,22 +674,9 @@ class CustomEmbed extends LibraryBase {
             // Fetch projects before showing modal
             const projectsResponse = await window.loomeApi.runApiRequest(9, {});
             
-            // Debug logging
-            console.log('Raw API Response:', projectsResponse);
-            console.log('Response type:', typeof projectsResponse);
-            console.log('Has Results property:', projectsResponse?.Results !== undefined);
 
-            // Check if response is a string (might need parsing)
-            // if (typeof projectsResponse === 'string') {
-            //     try {
-            //         const parsedResponse = JSON.parse(projectsResponse);
-            //         if (parsedResponse.Results) {
-            //             projectsResponse = parsedResponse;
-            //         }
-            //     } catch (parseError) {
-            //         console.error('Failed to parse response:', parseError);
-            //     }
-            // }
+
+
 
             // Validate response structure
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
@@ -802,8 +786,26 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
+    private disableBrowserCache(): void {
+        const head = document.head;
+        const metaTags = [
+            { 'http-equiv': 'Cache-Control', 'content': 'no-cache, no-store, must-revalidate' },
+            { 'http-equiv': 'Pragma', 'content': 'no-cache' },
+            { 'http-equiv': 'Expires', 'content': '0' }
+        ];
+
+        metaTags.forEach(tagInfo => {
+            // Check if a similar tag already exists to avoid duplicates
+            if (!document.querySelector(`meta[http-equiv="${tagInfo['http-equiv']}"]`)) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('http-equiv', tagInfo['http-equiv']);
+                meta.setAttribute('content', tagInfo['content']);
+                head.appendChild(meta);
+            }
+        });
+    }
+
     private async loadResources(): Promise<void> {
-        // Any additional resource loading can be added here
         return Promise.resolve();
     }
 }
