@@ -291,6 +291,8 @@ class CustomEmbed extends LibraryBase {
                 }
                 .table-container {
                     overflow-x: auto;
+                    max-height: 500px;
+                    overflow-y: auto;
                 }
                 #dataTable {
                     width: 100%;
