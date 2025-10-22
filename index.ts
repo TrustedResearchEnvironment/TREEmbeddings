@@ -252,6 +252,9 @@ class CustomEmbed extends LibraryBase {
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
                 }
+                #entity-page-embed {
+                    overflow:scroll;
+                }
                 .mui-card {
                     background: #fff;
                     border-radius: 4px;
