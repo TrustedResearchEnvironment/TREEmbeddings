@@ -212,7 +212,7 @@ class CustomEmbed extends LibraryBase {
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
                                     <th data-sort="Redact">Redacted</th>
-                                    <th data-sort="Tokenise">Tokenized</th>
+                                    <th data-sort="Tokenise">Deidentified</th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody"></tbody>
