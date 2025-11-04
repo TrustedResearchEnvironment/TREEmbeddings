@@ -93,7 +93,8 @@ class CustomEmbed extends LibraryBase {
     }
 
     public initialize = async (): Promise<void> => {
-        // await this.getAccessToken();
+        this.disableBrowserCache();
+
         await this.buildPage();
     }
 
@@ -112,7 +113,6 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            // Initialize any resources if needed
             this.dataSet = await window.loomeApi.runApiRequest(6, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
@@ -125,17 +125,15 @@ class CustomEmbed extends LibraryBase {
                 columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
 
-            // --- 1. Generate the main HTML structure ---
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
             }
             
-            const datasetHtml = this.generateMainLayout(this.dataSet);  // <- Fix here
+            const datasetHtml = this.generateMainLayout(this.dataSet);
             const styles = this.generateStyles();
 
             this.element.innerHTML = styles + datasetHtml;
 
-            // --- 2. Set up event listeners and initial state ---
             this.setupEventListeners();
             this.updateTable();
         } catch (ex: unknown) {
@@ -154,7 +152,7 @@ class CustomEmbed extends LibraryBase {
                 <div id="requestDatasetModal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>Request Dataset</h3>
+                            <h3>Request Data Set</h3>
                             <span class="modal-close">&times;</span>
                         </div>
                         <div class="modal-body">
@@ -189,7 +187,7 @@ class CustomEmbed extends LibraryBase {
                             <h2>${dataSet.Name}</h2>
                             <button id="requestDatasetBtn">
                                 <span class="material-icons">data_exploration</span>
-                                Request Dataset
+                                Request Data Set
                             </button>
                         </div>
                         <div class="metadata">
@@ -214,7 +212,7 @@ class CustomEmbed extends LibraryBase {
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
                                     <th data-sort="Redact">Redacted</th>
-                                    <th data-sort="Tokenise">Tokenized</th>
+                                    <th data-sort="Tokenise">Deidentified</th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody"></tbody>
@@ -241,7 +239,6 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        // Add Material Icons font
         if (!document.querySelector('#material-icons-font')) {
             const link = document.createElement('link');
             link.id = 'material-icons-font';
@@ -254,6 +251,9 @@ class CustomEmbed extends LibraryBase {
                 #datasetRoot {
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
+                }
+                #entity-page-embed {
+                    overflow:scroll;
                 }
                 .mui-card {
                     background: #fff;
@@ -291,6 +291,8 @@ class CustomEmbed extends LibraryBase {
                 }
                 .table-container {
                     overflow-x: auto;
+                    // max-height: 500px;
+                    // overflow-y: auto;
                 }
                 #dataTable {
                     width: 100%;
@@ -304,6 +306,8 @@ class CustomEmbed extends LibraryBase {
                     cursor: pointer;
                     color: #2c3e50;
                     font-size: 0.95rem;
+                    // position: sticky;
+                    // top: 0;
                 }
                 #dataTable td {
                     padding: 16px;
@@ -579,6 +583,45 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
             }
+
+            const requestForm = document.getElementById('requestForm');
+            if (requestForm) {
+                requestForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    try {
+                        if (!this.dataSet) {
+                            throw new Error('Dataset information not available');
+                        }
+
+                        const formData = {
+                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
+                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value,
+                            datasetId: this.dataSet.DataSetID,
+                            approvers: this.dataSet.Approvers,
+                        };
+
+                        await window.loomeApi.runApiRequest(17, {
+                            DataSetID: formData.datasetId,
+                            approvers: formData.approvers,
+                            assistProjectID: parseInt(formData.projectId),
+                            description: formData.description,
+                            requestName: formData.requestName,
+                        });
+                        
+                        alert('Request submitted successfully!');
+                        
+                        // Close the modal on success
+                        const modal = document.getElementById('requestDatasetModal');
+                        if (modal) modal.classList.remove('show');
+
+                    } catch (error) {
+                        console.error('Error submitting request:', error);
+                        alert('Failed to submit request. Please try again.');
+                    }
+                });
+            }
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -669,45 +712,21 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-
-            // Fetch projects before showing modal
             const projectsResponse = await window.loomeApi.runApiRequest(9, {});
-            
-            // Debug logging
-            console.log('Raw API Response:', projectsResponse);
-            console.log('Response type:', typeof projectsResponse);
-            console.log('Has Results property:', projectsResponse?.Results !== undefined);
 
-            // Check if response is a string (might need parsing)
-            // if (typeof projectsResponse === 'string') {
-            //     try {
-            //         const parsedResponse = JSON.parse(projectsResponse);
-            //         if (parsedResponse.Results) {
-            //             projectsResponse = parsedResponse;
-            //         }
-            //     } catch (parseError) {
-            //         console.error('Failed to parse response:', parseError);
-            //     }
-            // }
-
-            // Validate response structure
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
-                console.error('Invalid response structure:', projectsResponse);
-                throw new Error(`Invalid API response structure. Expected Results array, got: ${typeof projectsResponse?.Results}`);
+                throw new Error(`Invalid API response structure.`);
             }
 
-            // Get the project select element
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
             if (!projectSelect) {
                 throw new Error('Project select element not found');
             }
 
-            // Clear existing options except the first one
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            // Add new options from API response
             projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
                 if (project.IsActive) {
                     const option = document.createElement('option');
@@ -718,67 +737,17 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
-            // Show modal
             modal.classList.add('show');
             
-            // Setup close handlers
-            const closeModal = () => {
-                modal.classList.remove('show');
-            };
+            const closeModal = () => modal.classList.remove('show');
 
-            // Close on X button or cancel
             const closeButtons = modal.querySelectorAll('.modal-close');
-            closeButtons.forEach(button => {
-                button.addEventListener('click', closeModal);
-            });
+            closeButtons.forEach(button => button.addEventListener('click', closeModal));
 
-            // Close on outside click
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                }
+                if (e.target === modal) closeModal();
             });
 
-            // Handle form submission
-            const form = document.getElementById('requestForm');
-            if (form) {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    try {
-                        if (!this.dataSet) {
-                            throw new Error('Dataset information not available');
-                        }
-
-                        const formData = {
-                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
-                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            datasetId: this.dataSet.DataSetID,
-                            approvers: this.dataSet.Approvers,
-                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value
-                        };
-
-                        // Call the API with the required parameters
-                        const response = await window.loomeApi.runApiRequest(17, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            description: formData.description,
-                            requestName: formData.requestName,
-                            upn: 'miguel@testupn.com'
-                        });
-
-                        console.log('API Response:', response);
-                        
-                        // Show success message
-                        alert('Request submitted successfully!');
-                        closeModal();
-                    } catch (error) {
-                        console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
-                    }
-                });
-            }
         } catch (error) {
             console.error('Error in createRequestModal:', error);
             console.error('Full error details:', {
@@ -798,8 +767,26 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
+    private disableBrowserCache(): void {
+        const head = document.head;
+        const metaTags = [
+            { 'http-equiv': 'Cache-Control', 'content': 'no-cache, no-store, must-revalidate' },
+            { 'http-equiv': 'Pragma', 'content': 'no-cache' },
+            { 'http-equiv': 'Expires', 'content': '0' }
+        ];
+
+        metaTags.forEach(tagInfo => {
+            // Check if a similar tag already exists to avoid duplicates
+            if (!document.querySelector(`meta[http-equiv="${tagInfo['http-equiv']}"]`)) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('http-equiv', tagInfo['http-equiv']);
+                meta.setAttribute('content', tagInfo['content']);
+                head.appendChild(meta);
+            }
+        });
+    }
+
     private async loadResources(): Promise<void> {
-        // Any additional resource loading can be added here
         return Promise.resolve();
     }
 }
