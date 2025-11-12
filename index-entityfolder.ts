@@ -151,15 +151,22 @@ class CustomEmbed extends LibraryBase {
 
             console.log("Dataset Information:", this.dataSet);
 
-            const folderFilesResponse: FolderFilesResponse = await window.loomeApi.runApiRequest('GetDataSetFolderFileByDataSetID', {
+            const folderFilesResponse = await window.loomeApi.runApiRequest('GetDataSetFolderFileByDataSetID', {
                 data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 
-            this.allColumns = folderFilesResponse.Results ?
-                folderFilesResponse.Results.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
+            // Handle both array and wrapped response formats
+            this.allColumns = Array.isArray(folderFilesResponse) 
+                ? folderFilesResponse.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
                     a.FolderName.localeCompare(b.FolderName)
-                ) :
-                [];
+                )
+                : (folderFilesResponse.Results ?
+                    folderFilesResponse.Results.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
+                        a.FolderName.localeCompare(b.FolderName)
+                    ) :
+                    []);
+
+            console.log("Folder Files:", this.allColumns);
 
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
@@ -282,7 +289,28 @@ class CustomEmbed extends LibraryBase {
         }
         return `
             <style>
-                #datasetRoot
+                #datasetRoot {
+                    padding: 24px;
+                    font-family: "Roboto", "Helvetica", "Arial";
+                }
+                #entity-page-embed {
+                    overflow:scroll;
+                }
+                .mui-card {
+                    background: #fff;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 24px;
+                }
+                .card-header {
+                    padding: 16px 24px;
+                }
+                .header-content {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .header-content h2 {
                     font-weight: 700;
                     font-size: 1.5rem;
                     margin: 0;
