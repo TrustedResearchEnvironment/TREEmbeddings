@@ -87,10 +87,31 @@ interface ProjectResponse {
     }[];
 }
 
+// Add new interface for folder file data
+interface DataSetFolderFile {
+    FileType: string;
+    FileDescription: string;
+    Redact: boolean;
+    Tokenise: boolean;
+    DataSetFolderFileID: number;
+    DataSetFolderID: number;
+    FolderName: string;
+}
+
+interface FolderFilesResponse {
+    CurrentPage: number;
+    PageCount: number;
+    PageSize: number;
+    RowCount: number;
+    FirstRowOnPage: number;
+    LastRowOnPage: number;
+    Results: DataSetFolderFile[];
+}
+
 class CustomEmbed extends LibraryBase {
     public token: string = "";
-    private allColumns: DataSetColumn[] = [];
-    private currentSortColumn: string = "name";
+    private allColumns: DataSetFolderFile[] = [];
+    private currentSortColumn: string = "FolderName";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
@@ -128,15 +149,16 @@ class CustomEmbed extends LibraryBase {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            // print this dataset
             console.log("Dataset Information:", this.dataSet);
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest('GetDataSetIDColumns', {
+            const folderFilesResponse: FolderFilesResponse = await window.loomeApi.runApiRequest('GetDataSetFolderFileByDataSetID', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            this.allColumns = columnsResponse.Results ?
-                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
+            this.allColumns = folderFilesResponse.Results ?
+                folderFilesResponse.Results.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
+                    a.FolderName.localeCompare(b.FolderName)
+                ) :
                 [];
 
             if (!this.dataSet) {
@@ -220,11 +242,9 @@ class CustomEmbed extends LibraryBase {
                         <table id="dataTable">
                             <thead>
                                 <tr>
-                                    <th data-sort="ColumnName">Column Name</th>
-                                    <th data-sort="ColumnType">Data Type</th>
-                                    <th data-sort="LogicalColumnName">Logical Name</th>
-                                    <th data-sort="BusinessDescription">Description</th>
-                                    <th data-sort="ExampleValue">Example</th>
+                                    <th data-sort="FolderName">Folder Name</th>
+                                    <th data-sort="FileType">File Type</th>
+                                    <th data-sort="FileDescription">Description</th>
                                     <th data-sort="Redact">Redacted</th>
                                     <th data-sort="Tokenise">Deidentified</th>
                                 </tr>
@@ -262,28 +282,7 @@ class CustomEmbed extends LibraryBase {
         }
         return `
             <style>
-                #datasetRoot {
-                    padding: 24px;
-                    font-family: "Roboto", "Helvetica", "Arial";
-                }
-                #entity-page-embed {
-                    overflow:scroll;
-                }
-                .mui-card {
-                    background: #fff;
-                    border-radius: 4px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    margin-bottom: 24px;
-                }
-                .card-header {
-                    padding: 16px 24px;
-                }
-                .header-content {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .header-content h2 {
+                #datasetRoot
                     font-weight: 700;
                     font-size: 1.5rem;
                     margin: 0;
@@ -653,16 +652,14 @@ class CustomEmbed extends LibraryBase {
         const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
-        paginatedColumns.forEach((column: DataSetColumn) => {
+        paginatedColumns.forEach((file: DataSetFolderFile) => {
             columnsHtml += `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
-                    <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${file.FolderName || ''}</td>
+                    <td><span class="mui-chip">${file.FileType || ''}</span></td>
+                    <td>${file.FileDescription || 'N/A'}</td>
+                    <td>${file.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${file.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
             `;
         });
@@ -671,13 +668,11 @@ class CustomEmbed extends LibraryBase {
         try {
             this.updateSortIcons();
             
-            // Update page size display
             const pageSizeSelect = document.getElementById('pageSize');
             if (pageSizeSelect) {
                 (pageSizeSelect as HTMLSelectElement).value = this.rowsPerPage.toString();
             }
 
-            // Update pagination info in table footer
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
                 const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;

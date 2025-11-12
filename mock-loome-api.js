@@ -136,6 +136,111 @@ window.loomeApi = {
       ];
     }
 
+    // === GetDataSetFolderFileByDataSetID ===
+    if (id === "GetDataSetFolderFileByDataSetID") {
+      return [
+        {
+          FileType: ".csv",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 205,
+          DataSetFolderID: 196,
+          FolderName: "genomics"
+        },
+        {
+          FileType: ".gz",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 206,
+          DataSetFolderID: 197,
+          FolderName: "genomics\annotations"
+        },
+        {
+          FileType: ".zip",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 207,
+          DataSetFolderID: 198,
+          FolderName: "genomics\chrM-tutorial-data"
+        },
+        {
+          FileType: ".clc",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 208,
+          DataSetFolderID: 199,
+          FolderName: "genomics\chrM-tutorial-data\cancerData"
+        },
+        {
+          FileType: ".clc",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 209,
+          DataSetFolderID: 200,
+          FolderName: "genomics\chrM-tutorial-data\genomeTracks"
+        },
+        {
+          FileType: ".clc",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 210,
+          DataSetFolderID: 201,
+          FolderName: "genomics\chrM-tutorial-data\normalData"
+        },
+        {
+          FileType: ".fast5",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 211,
+          DataSetFolderID: 202,
+          FolderName: "genomics\nanopore"
+        },
+        {
+          FileType: ".fastq",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 212,
+          DataSetFolderID: 203,
+          FolderName: "genomics\paeruginosa-reads"
+        },
+        {
+          FileType: ".zip",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 213,
+          DataSetFolderID: 203,
+          FolderName: "genomics\paeruginosa-reads"
+        },
+        {
+          FileType: ".fasta",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 214,
+          DataSetFolderID: 204,
+          FolderName: "genomics\proteins"
+        },
+        {
+          FileType: ".gz",
+          FileDescription: "",
+          Redact: false,
+          Tokenise: false,
+          DataSetFolderFileID: 215,
+          DataSetFolderID: 205,
+          FolderName: "genomics\synthetic"
+        }
+      ];
+    }
+
     // === Default ===
     return { access_token: "mock-token-12345" };
   },
