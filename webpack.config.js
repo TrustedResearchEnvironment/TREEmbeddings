@@ -10,7 +10,7 @@ const buildDate = new Date().toISOString();
 
 // Shared configuration
 const commonConfig = {
-  mode: "production",
+  mode: "development", // Changed back to development to match original
   module: {
     rules: [
       {
@@ -23,6 +23,16 @@ const commonConfig = {
   resolve: {
     extensions: [".ts", ".js"],
   },
+  experiments: {
+    outputModule: true, // Added back from original config
+  },
+  plugins: [
+    // Add build date and time as a banner to the output file
+    new webpack.BannerPlugin({
+      banner: `Build Date: ${buildDate}`,
+      entryOnly: true,
+    }),
+  ],
 };
 
 export default [
@@ -34,11 +44,8 @@ export default [
       filename: "TREEntityDB.js",
       path: path.resolve(__dirname, "dist"),
       library: {
-        name: "TREEntityDB",
-        type: "umd",
-        export: "default",
+        type: "module", // Changed back to module type from original
       },
-      globalObject: "this",
     },
   },
   // TREEntityFolder bundle
@@ -49,11 +56,8 @@ export default [
       filename: "TREEntityFolder.js",
       path: path.resolve(__dirname, "dist"),
       library: {
-        name: "TREEntityFolder",
-        type: "umd",
-        export: "default",
+        type: "module", // Changed back to module type from original
       },
-      globalObject: "this",
     },
   },
 ];
