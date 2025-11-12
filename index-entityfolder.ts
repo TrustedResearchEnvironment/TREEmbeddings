@@ -124,11 +124,14 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, {
+            this.dataSet = await window.loomeApi.runApiRequest('GetDataSetID', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_GET_DATASET_COLUMNS, {
+            // print this dataset
+            console.log("Dataset Information:", this.dataSet);
+
+            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest('GetDataSetIDColumns', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
