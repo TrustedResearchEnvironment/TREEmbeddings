@@ -19,6 +19,17 @@ import {
     Typography
 } from '@mui/material';
 
+// API Constants
+// const API_GET_DATASET_METADATA = 6; //GetDataSetID
+// const API_GET_DATASET_COLUMNS = 7; //GetDatasetIDColumns
+// const API_GET_PROJECTS = 9; //GetAssistProjectsFilteredByUpn
+// const API_SUBMIT_DATASET_REQUEST = 17; //RequestDataSet
+
+const API_GET_DATASET_METADATA = 'GetDataSetID';
+const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
+const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
+const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
+
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
     ColumnName: string;
@@ -605,7 +616,8 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(17, {
+
+                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
@@ -715,7 +727,7 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(9, {});
+            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
@@ -813,3 +825,5 @@ export const definition: Customization.CustomizationLibrary = {
             }
     }
 };
+
+export default definition;
