@@ -152,7 +152,7 @@ class CustomEmbed extends LibraryBase {
             console.log("Dataset Information:", this.dataSet);
 
             const folderFilesResponse: FolderFilesResponse = await window.loomeApi.runApiRequest('GetDataSetFolderFileByDataSetID', {
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
+                data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 
             this.allColumns = folderFilesResponse.Results ?
