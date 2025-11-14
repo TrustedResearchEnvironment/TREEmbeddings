@@ -155,16 +155,14 @@ class CustomEmbed extends LibraryBase {
                 data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 
-            // Handle both array and wrapped response formats
-            this.allColumns = Array.isArray(folderFilesResponse) 
-                ? folderFilesResponse.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
-                    a.FolderName.localeCompare(b.FolderName)
-                )
-                : (folderFilesResponse.Results ?
-                    folderFilesResponse.Results.sort((a: DataSetFolderFile, b: DataSetFolderFile) => 
-                        a.FolderName.localeCompare(b.FolderName)
-                    ) :
-                    []);
+            let files: DataSetFolderFile[] = [];
+            if (folderFilesResponse) {
+                files = Array.isArray(folderFilesResponse) 
+                    ? folderFilesResponse 
+                    : (folderFilesResponse.Results || []);
+            }
+
+            this.allColumns = files.sort((a, b) => a.FolderName.localeCompare(b.FolderName));
 
             console.log("Folder Files:", this.allColumns);
 
