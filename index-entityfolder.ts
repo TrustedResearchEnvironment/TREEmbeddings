@@ -19,6 +19,17 @@ import {
     Typography
 } from '@mui/material';
 
+// API Constants
+// const API_GET_DATASET_METADATA = 6; //GetDataSetID
+// const API_GET_DATASET_COLUMNS = 7; //GetDatasetIDColumns
+// const API_GET_PROJECTS = 9; //GetAssistProjectsFilteredByUpn
+// const API_SUBMIT_DATASET_REQUEST = 17; //RequestDataSet
+
+const API_GET_DATASET_METADATA = 'GetDataSetID';
+const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
+const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
+const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
+
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
     ColumnName: string;
@@ -76,10 +87,31 @@ interface ProjectResponse {
     }[];
 }
 
+// Add new interface for folder file data
+interface DataSetFolderFile {
+    FileType: string;
+    FileDescription: string;
+    Redact: boolean;
+    Tokenise: boolean;
+    DataSetFolderFileID: number;
+    DataSetFolderID: number;
+    FolderName: string;
+}
+
+interface FolderFilesResponse {
+    CurrentPage: number;
+    PageCount: number;
+    PageSize: number;
+    RowCount: number;
+    FirstRowOnPage: number;
+    LastRowOnPage: number;
+    Results: DataSetFolderFile[];
+}
+
 class CustomEmbed extends LibraryBase {
     public token: string = "";
-    private allColumns: DataSetColumn[] = [];
-    private currentSortColumn: string = "name";
+    private allColumns: DataSetFolderFile[] = [];
+    private currentSortColumn: string = "FolderName";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
@@ -113,17 +145,26 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest(6, {
+            this.dataSet = await window.loomeApi.runApiRequest('GetDataSetID', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
+            console.log("Dataset Information:", this.dataSet);
+
+            const folderFilesResponse = await window.loomeApi.runApiRequest('GetDataSetFolderFileByDataSetID', {
+                data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 
-            this.allColumns = columnsResponse.Results ?
-                columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
-                [];
+            let files: DataSetFolderFile[] = [];
+            if (folderFilesResponse) {
+                files = Array.isArray(folderFilesResponse) 
+                    ? folderFilesResponse 
+                    : (folderFilesResponse.Results || []);
+            }
+
+            this.allColumns = files.sort((a, b) => a.FolderName.localeCompare(b.FolderName));
+
+            console.log("Folder Files:", this.allColumns);
 
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
@@ -163,7 +204,7 @@ class CustomEmbed extends LibraryBase {
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestDescription">Description</label>
-                                    <input id="RequestName" class="form-input" placeholder="Description for this request" required>
+                                    <input id="RequestDescription" class="form-input" placeholder="Description for this request" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
@@ -206,11 +247,9 @@ class CustomEmbed extends LibraryBase {
                         <table id="dataTable">
                             <thead>
                                 <tr>
-                                    <th data-sort="ColumnName">Column Name</th>
-                                    <th data-sort="ColumnType">Data Type</th>
-                                    <th data-sort="LogicalColumnName">Logical Name</th>
-                                    <th data-sort="BusinessDescription">Description</th>
-                                    <th data-sort="ExampleValue">Example</th>
+                                    <th data-sort="FolderName">Folder Name</th>
+                                    <th data-sort="FileType">File Type</th>
+                                    <th data-sort="FileDescription">Description</th>
                                     <th data-sort="Redact">Redacted</th>
                                     <th data-sort="Tokenise">Deidentified</th>
                                 </tr>
@@ -602,7 +641,8 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(17, {
+
+                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
@@ -638,16 +678,14 @@ class CustomEmbed extends LibraryBase {
         const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
-        paginatedColumns.forEach((column: DataSetColumn) => {
+        paginatedColumns.forEach((file: DataSetFolderFile) => {
             columnsHtml += `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
-                    <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${file.FolderName || ''}</td>
+                    <td><span class="mui-chip">${file.FileType || ''}</span></td>
+                    <td>${file.FileDescription || 'N/A'}</td>
+                    <td>${file.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${file.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
             `;
         });
@@ -656,13 +694,11 @@ class CustomEmbed extends LibraryBase {
         try {
             this.updateSortIcons();
             
-            // Update page size display
             const pageSizeSelect = document.getElementById('pageSize');
             if (pageSizeSelect) {
                 (pageSizeSelect as HTMLSelectElement).value = this.rowsPerPage.toString();
             }
 
-            // Update pagination info in table footer
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
                 const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;
@@ -712,7 +748,7 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(9, {});
+            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
@@ -810,3 +846,5 @@ export const definition: Customization.CustomizationLibrary = {
             }
     }
 };
+
+export default definition;

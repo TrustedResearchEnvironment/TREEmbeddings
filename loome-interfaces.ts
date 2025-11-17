@@ -9,7 +9,7 @@ declare global {
             put: <T>(url: string, data?: any) => Promise<T>;
             delete: <T>(url: string, data?: any) => Promise<T>;
             acquireToken: (scope: string) => Promise<string>;
-            runApiRequest: (id: number, params?: Record<string, any>) => Promise<any>;
+            runApiRequest: (id: number|string, params?: Record<string, any>) => Promise<any>;
         }
     }
 }
