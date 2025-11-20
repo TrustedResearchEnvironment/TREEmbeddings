@@ -113,11 +113,11 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest(6, {
+            this.dataSet = await window.loomeApi.runApiRequest('GetDataSetID', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
+            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest('GetDataSetIDColumns', {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -602,7 +602,7 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(17, {
+                        await window.loomeApi.runApiRequest('RequestDataSet', {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
@@ -712,7 +712,7 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(9, {});
+            const projectsResponse = await window.loomeApi.runApiRequest('GetAssistProjectsFilteredByUpn', {});
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
