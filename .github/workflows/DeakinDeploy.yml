@@ -1,0 +1,51 @@
+# Github action to build and publish to GitHub Releases
+name: Deakin Deploy
+on:
+  push:
+    branches:
+      - main
+      - DeakinDeploy
+  workflow_dispatch:
+
+# Add permissions needed for creating releases
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@trustedresearchenvironment'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build project
+        run: npm run build
+
+      - name: Install AzCopy
+        run: |
+          # Download and install AzCopy
+          wget -O azcopy_v10.tar.gz https://aka.ms/downloadazcopy-v10-linux && tar -xf azcopy_v10.tar.gz --strip-components=1
+          sudo cp ./azcopy /usr/bin/
+          sudo chmod +x /usr/bin/azcopy
+          # Verify installation
+          azcopy --version        
+          
+      - name: Copy dist files to Azure Blob Storage
+        run: |
+          # Copy all files from dist directory to Azure Blob Storage $web container
+          ls -al dist
+          azcopy sync "dist" "${{ secrets.DEAKIN_AZURE_STORAGE_SAS_URL }}" --delete-destination true  --put-md5
+          #LIKE THIS https://sttrewebdataonlyimptre.blob.core.windows.net/\$web?sp=racwdli&st=2025-10-01T00:25:25Z&se=2026-05-21T09:40:25Z&spr=https&sv=2024-11-04&sr=c&sig=8r9EcjnSOMEKEYY%3D
+
+        
