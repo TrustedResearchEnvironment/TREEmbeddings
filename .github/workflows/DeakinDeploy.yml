@@ -1,10 +1,10 @@
 # Github action to build and publish to GitHub Releases
-name: BizData Deploy
+name: Deakin Deploy
 on:
   push:
     branches:
       - main
-      - BizDataDeploy
+      - DeakinDeploy
   workflow_dispatch:
 
 # Add permissions needed for creating releases
