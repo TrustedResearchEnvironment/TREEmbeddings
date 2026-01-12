@@ -123,13 +123,13 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest('API_DATASET_ID', {
+            this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
             console.log("Dataset Information:", this.dataSet);
 
-            const folderFilesResponse = await window.loomeApi.runApiRequest('API_DATASETFOLDERFILE_ID', {
+            const folderFilesResponse = await window.loomeApi.runApiRequest(API_DATASETFOLDERFILE_ID, {
                 data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 

@@ -1,9 +1,23 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
-const API_DATASET_ID = 'GetDataSetID';
-const API_DATASETCOLUMN_ID = 'GetDatasetIDColumns';
-const API_REQUEST_DATASET = 'RequestDataSet';
-const API_ASSIST_PROJECTS = 'GetAssistProjectsFilteredByUpn';
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableContainer, 
+    TableHead, 
+    TableRow,
+    Paper,
+    TablePagination,
+    TableSortLabel,
+    Chip,
+    Card,
+    CardHeader,
+    CardContent,
+    Button,
+    Box,
+    Typography
+} from '@mui/material';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -62,6 +76,11 @@ interface ProjectResponse {
     }[];
 }
 
+const API_GET_DATASET_METADATA = 'GetDataSetID';
+const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
+const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
+const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
+
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
@@ -96,14 +115,14 @@ class CustomEmbed extends LibraryBase {
             this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
         }
     }
-
+    
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
+            this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_DATASETCOLUMN_ID, {
+            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -588,7 +607,7 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
+                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
@@ -698,7 +717,7 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_ASSIST_PROJECTS, {});
+            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
