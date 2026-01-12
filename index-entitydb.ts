@@ -1,23 +1,9 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableContainer, 
-    TableHead, 
-    TableRow,
-    Paper,
-    TablePagination,
-    TableSortLabel,
-    Chip,
-    Card,
-    CardHeader,
-    CardContent,
-    Button,
-    Box,
-    Typography
-} from '@mui/material';
+const API_DATASET_ID = 'GetDataSetID';
+const API_DATASETCOLUMN_ID = 'GetDatasetIDColumns';
+const API_REQUEST_DATASET = 'RequestDataSet';
+const API_ASSIST_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -113,11 +99,11 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
-            this.dataSet = await window.loomeApi.runApiRequest(6, {
+            this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(7, {
+            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_DATASETCOLUMN_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -602,7 +588,7 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(17, {
+                        await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
@@ -712,7 +698,7 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(9, {});
+            const projectsResponse = await window.loomeApi.runApiRequest(API_ASSIST_PROJECTS, {});
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
