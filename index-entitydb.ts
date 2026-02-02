@@ -380,6 +380,18 @@ class CustomEmbed extends LibraryBase {
                 .column-name-header .dropdown {
                     position: relative;
                 }
+                .dropdown-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    background: #f7f9fb;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    color: #22303f;
+                }
                 .header-text {
                     display: inline-flex;
                     align-items: center;
@@ -401,6 +413,59 @@ class CustomEmbed extends LibraryBase {
                 }
                 .dropdown-icon {
                     font-size: 16px;
+                }
+                .header-filter-cell {
+                    vertical-align: middle;
+                }
+                .header-filter {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .filter-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    cursor: pointer;
+                }
+                .filter-icon .material-icons {
+                    font-size: 18px;
+                    color: #6c7a86;
+                }
+                .filter-icon.filter-active .material-icons {
+                    color: #4ec4bc;
+                }
+                .popover {
+                    position: absolute;
+                    min-width: 120px;
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    border-radius: 6px;
+                    padding: 8px 6px;
+                    display: none;
+                    z-index: 9999;
+                }
+                .popover.show {
+                    display: block;
+                }
+                .popover-option {
+                    padding: 8px 10px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.95rem;
+                }
+                .popover-option:hover {
+                    background: #f3f6f7;
+                }
+                .popover-option.active {
+                    background: #4ec4bc;
+                    color: white;
                 }
                 .dropdown-menu {
                     position: absolute;
@@ -475,54 +540,6 @@ class CustomEmbed extends LibraryBase {
                     padding: 16px;
                     border-bottom: 1px solid #e0e0e0;
                 }
-                .header-filter-cell {
-                    vertical-align: middle;
-                }
-                .header-filter {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    position: relative;
-                }
-                .filter-icon {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 6px;
-                    border: 1px solid transparent;
-                    background: transparent;
-                    cursor: pointer;
-                    padding: 4px;
-                }
-                .filter-icon .material-icons {
-                    font-size: 18px;
-                    color: #6c7a86;
-                }
-                .filter-icon.filter-active .material-icons {
-                    color: #4ec4bc;
-                }
-                .popover {
-                    position: absolute;
-                    min-width: 120px;
-                    background: white;
-                    border: 1px solid #e0e0e0;
-                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
-                    border-radius: 6px;
-                    padding: 8px 6px;
-                    display: none;
-                    z-index: 9999;
-                }
-                .popover.show { display: block; }
-                .popover-option {
-                    padding: 8px 10px;
-                    cursor: pointer;
-                    border-radius: 4px;
-                    font-size: 0.95rem;
-                }
-                .popover-option:hover { background: #f3f6f7; }
-                .popover-option.active { background: #4ec4bc; color: white; }
                 .table-pagination {
                     padding: 16px;
                     display: flex;
@@ -841,10 +858,13 @@ class CustomEmbed extends LibraryBase {
                     e.stopPropagation();
                     const isOpen = columnNameDropdownMenu.classList.contains('show');
                     document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
+                    columnNameDropdownMenu.classList.remove('drop-up');
+                    columnNameDropdownMenu.style.bottom = '';
                     if (isOpen) {
                         columnNameDropdownMenu.classList.remove('show');
                         columnNameToggle.setAttribute('aria-expanded', 'false');
                     } else {
+                        this.positionDropdown(columnNameToggle, columnNameDropdownMenu);
                         columnNameDropdownMenu.classList.add('show');
                         columnNameToggle.setAttribute('aria-expanded', 'true');
                     }
@@ -1129,6 +1149,28 @@ class CustomEmbed extends LibraryBase {
         });
 
         this.updateColumnFilterCount();
+    }
+
+    private positionDropdown(trigger: HTMLElement, menu: HTMLElement): void {
+        menu.classList.remove('drop-up');
+        menu.classList.remove('align-left');
+        menu.classList.remove('align-right');
+
+        const rect = trigger.getBoundingClientRect();
+        const menuHeight = menu.offsetHeight || 280;
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+            menu.classList.add('drop-up');
+        }
+
+        if (rect.right + menu.offsetWidth > window.innerWidth) {
+            menu.classList.add('align-right');
+        } else {
+            menu.classList.add('align-left');
+        }
     }
 
     private updateColumnFilterCount = (): void => {
