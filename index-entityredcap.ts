@@ -219,17 +219,19 @@ class CustomEmbed extends LibraryBase {
                                 <tr>
                                     <th data-sort="ColumnName" class="column-name-header-cell">
                                         <div class="column-name-header">
-                                            <span class="header-text">Column Name</span>
-                                            <div class="dropdown" id="columnNameDropdown">
-                                                <button type="button" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Filter Column Names">
-                                                    <span class="toggle-text">Filter</span>
+                                            <span class="header-text" id="columnNameToggle" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+                                                Column Name
+                                                <span class="filter-inline">
                                                     <span class="filter-count" id="columnNameFilterCount"></span>
                                                     <span class="material-icons dropdown-icon">filter_alt</span>
-                                                </button>
+                                                </span>
+                                            </span>
+                                            <div class="dropdown" id="columnNameDropdown">
                                                 <div class="dropdown-menu" id="columnNameDropdownMenu">
                                                     <div class="dropdown-search">
                                                         <input type="text" id="columnNameSearchInput" placeholder="Search columns" autocomplete="off">
                                                     </div>
+                                                    <div id="columnNameSelectAllContainer"></div>
                                                     <div class="dropdown-list" id="columnNameCheckboxList"></div>
                                                 </div>
                                             </div>
@@ -357,12 +359,26 @@ class CustomEmbed extends LibraryBase {
                     cursor: pointer;
                     color: #22303f;
                 }
-                .dropdown-toggle .filter-count {
-                    font-size: 0.75rem;
+                .header-text {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    user-select: none;
+                    font-weight: 700;
+                }
+                .filter-inline {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-left: 8px;
                     font-weight: 600;
+                }
+                .filter-count {
+                    font-size: 0.75rem;
                     color: #4ec4bc;
                 }
-                .dropdown-toggle .dropdown-icon {
+                .dropdown-icon {
                     font-size: 16px;
                 }
                 .dropdown-menu {
@@ -728,21 +744,31 @@ class CustomEmbed extends LibraryBase {
             }
 
             const columnDropdown = document.getElementById('columnNameDropdown');
-            const dropdownToggle = columnDropdown?.querySelector('.dropdown-toggle') as HTMLButtonElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
+            const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
-            if (dropdownToggle && dropdownMenu) {
-                dropdownToggle.addEventListener('click', (event) => {
+            if (headerToggle && dropdownMenu) {
+                const toggleFn = (event: Event) => {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
-                    dropdownToggle.setAttribute('aria-expanded', String(isVisible));
+                    headerToggle.setAttribute('aria-expanded', String(isVisible));
+                };
+
+                headerToggle.addEventListener('click', toggleFn);
+                headerToggle.addEventListener('keydown', (e) => {
+                    if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
+                        e.preventDefault();
+                        toggleFn(e);
+                    }
                 });
 
+                // Prevent clicks inside the dropdown from closing it
                 dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
 
+                // Close when clicking outside
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
-                    dropdownToggle.setAttribute('aria-expanded', 'false');
+                    headerToggle.setAttribute('aria-expanded', 'false');
                 });
             }
 
@@ -861,7 +887,8 @@ class CustomEmbed extends LibraryBase {
 
     private renderColumnNameCheckboxes = (): void => {
         const listContainer = document.getElementById('columnNameCheckboxList');
-        if (!listContainer) return;
+        const selectAllContainer = document.getElementById('columnNameSelectAllContainer');
+        if (!listContainer || !selectAllContainer) return;
 
         const normalizedSearch = this.columnNameSearchTerm.trim().toLowerCase();
         const allOptions = this.getColumnNameOptions();
@@ -869,7 +896,51 @@ class CustomEmbed extends LibraryBase {
             ? allOptions.filter(name => name.toLowerCase().includes(normalizedSearch))
             : allOptions;
 
+        // clear
+        selectAllContainer.innerHTML = '';
         listContainer.innerHTML = '';
+
+        // Select All control
+        const selectAllLabel = document.createElement('label');
+        selectAllLabel.className = 'dropdown-item';
+        selectAllLabel.style.fontWeight = '600';
+
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'columnNameSelectAll';
+
+        const selectedVisibleCount = visibleOptions.filter(name => this.selectedColumnNames.has(name)).length;
+        if (visibleOptions.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.disabled = true;
+        } else if (selectedVisibleCount === visibleOptions.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedVisibleCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+
+        const selectAllText = document.createElement('span');
+        selectAllText.textContent = 'Select All';
+
+        selectAllLabel.append(selectAllCheckbox, selectAllText);
+        selectAllContainer.appendChild(selectAllLabel);
+
+        selectAllCheckbox.addEventListener('change', () => {
+            if (selectAllCheckbox.checked) {
+                visibleOptions.forEach(name => this.selectedColumnNames.add(name));
+            } else {
+                visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
+            }
+            this.currentPage = 1;
+            this.renderColumnNameCheckboxes();
+            this.updateTable();
+        });
 
         if (visibleOptions.length === 0) {
             const emptyState = document.createElement('div');
@@ -885,6 +956,7 @@ class CustomEmbed extends LibraryBase {
                 checkbox.type = 'checkbox';
                 checkbox.checked = this.selectedColumnNames.has(name);
                 checkbox.dataset.columnName = name;
+
                 checkbox.addEventListener('change', () => {
                     if (checkbox.checked) {
                         this.selectedColumnNames.add(name);
@@ -894,6 +966,12 @@ class CustomEmbed extends LibraryBase {
                     this.currentPage = 1;
                     this.updateColumnFilterCount();
                     this.updateTable();
+
+                    // update selectAll visual state
+                    const totalVisible = visibleOptions.length;
+                    const selectedNow = visibleOptions.filter(n => this.selectedColumnNames.has(n)).length;
+                    selectAllCheckbox.indeterminate = selectedNow > 0 && selectedNow < totalVisible;
+                    selectAllCheckbox.checked = selectedNow === totalVisible;
                 });
 
                 const labelText = document.createElement('span');
