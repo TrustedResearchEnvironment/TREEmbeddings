@@ -89,6 +89,8 @@ class CustomEmbed extends LibraryBase {
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
     private dataSet: DataSetMetadata | null = null;
+    private columnNameSearchTerm: string = "";
+    private selectedColumnNames: Set<string> = new Set();
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -130,6 +132,9 @@ class CustomEmbed extends LibraryBase {
                 columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
 
+            this.selectedColumnNames = new Set(this.getColumnNameOptions());
+            this.columnNameSearchTerm = '';
+
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
             }
@@ -140,6 +145,7 @@ class CustomEmbed extends LibraryBase {
             this.element.innerHTML = styles + datasetHtml;
 
             this.setupEventListeners();
+            this.renderColumnNameCheckboxes();
             this.updateTable();
         } catch (ex: unknown) {
             console.error("Error:", ex);
@@ -211,8 +217,24 @@ class CustomEmbed extends LibraryBase {
                         <table id="dataTable">
                             <thead>
                                 <tr>
-                                    <th data-sort="ColumnName">Column Name</th>
-                                    <th data-sort="ColumnType">Data Type</th>
+                                    <th data-sort="ColumnName" class="column-name-header-cell">
+                                        <div class="column-name-header">
+                                            <span class="header-text">Column Name</span>
+                                            <div class="dropdown" id="columnNameDropdown">
+                                                <button type="button" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Filter Column Names">
+                                                    <span class="toggle-text">Filter</span>
+                                                    <span class="filter-count" id="columnNameFilterCount"></span>
+                                                    <span class="material-icons dropdown-icon">filter_alt</span>
+                                                </button>
+                                                <div class="dropdown-menu" id="columnNameDropdownMenu">
+                                                    <div class="dropdown-search">
+                                                        <input type="text" id="columnNameSearchInput" placeholder="Search columns" autocomplete="off">
+                                                    </div>
+                                                    <div class="dropdown-list" id="columnNameCheckboxList"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </th>
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
@@ -313,6 +335,82 @@ class CustomEmbed extends LibraryBase {
                     font-size: 0.95rem;
                     // position: sticky;
                     // top: 0;
+                }
+                .column-name-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .column-name-header .dropdown {
+                    position: relative;
+                }
+                .dropdown-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    background: #f7f9fb;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    color: #22303f;
+                }
+                .dropdown-toggle .filter-count {
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    color: #4ec4bc;
+                }
+                .dropdown-toggle .dropdown-icon {
+                    font-size: 16px;
+                }
+                .dropdown-menu {
+                    position: absolute;
+                    top: calc(100% + 6px);
+                    right: 0;
+                    width: 260px;
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    padding: 12px;
+                    display: none;
+                    flex-direction: column;
+                    gap: 8px;
+                    z-index: 10;
+                }
+                .dropdown-menu.show {
+                    display: flex;
+                }
+                .dropdown-search input {
+                    width: 100%;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    font-size: 0.9rem;
+                }
+                .dropdown-list {
+                    max-height: 240px;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.85rem;
+                    color: #1f2a37;
+                }
+                .dropdown-item input {
+                    accent-color: #4ec4bc;
+                }
+                .dropdown-empty {
+                    font-size: 0.8rem;
+                    color: #616770;
+                    padding: 4px 2px;
                 }
                 #dataTable td {
                     padding: 16px;
@@ -563,7 +661,8 @@ class CustomEmbed extends LibraryBase {
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    const filteredCount = this.getFilteredColumns().length;
+                    const totalPages = Math.max(1, Math.ceil(filteredCount / this.rowsPerPage));
                     if (this.currentPage < totalPages) {
                         this.currentPage++;
                         this.updateTable();
@@ -627,6 +726,33 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
             }
+
+            const columnDropdown = document.getElementById('columnNameDropdown');
+            const dropdownToggle = columnDropdown?.querySelector('.dropdown-toggle') as HTMLButtonElement | null;
+            const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
+
+            if (dropdownToggle && dropdownMenu) {
+                dropdownToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const isVisible = dropdownMenu.classList.toggle('show');
+                    dropdownToggle.setAttribute('aria-expanded', String(isVisible));
+                });
+
+                dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
+
+                document.addEventListener('click', () => {
+                    dropdownMenu.classList.remove('show');
+                    dropdownToggle.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
+            if (searchInput) {
+                searchInput.addEventListener('input', (event) => {
+                    this.columnNameSearchTerm = (event.target as HTMLInputElement).value;
+                    this.renderColumnNameCheckboxes();
+                });
+            }
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -638,44 +764,62 @@ class CustomEmbed extends LibraryBase {
         const tbody = document.getElementById('columnsTableBody');
         if (!tbody) return;
 
+        const filteredColumns = this.getFilteredColumns();
+        const totalColumns = filteredColumns.length;
+        const totalPages = Math.max(1, Math.ceil(totalColumns / this.rowsPerPage));
+
+        if (this.currentPage > totalPages) {
+            this.currentPage = totalPages;
+        }
+
         const startIndex = (this.currentPage - 1) * this.rowsPerPage;
-        const endIndex = startIndex + this.rowsPerPage;
-        const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
+        const endIndex = Math.min(startIndex + this.rowsPerPage, totalColumns);
+        const paginatedColumns = filteredColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
-        paginatedColumns.forEach((column: DataSetColumn) => {
-            columnsHtml += `
+        if (totalColumns === 0) {
+            columnsHtml = `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
-                    <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td colspan="6">No columns match the selected filters.</td>
                 </tr>
             `;
-        });
+        } else {
+            paginatedColumns.forEach((column: DataSetColumn) => {
+                columnsHtml += `
+                    <tr>
+                        <td>${column.ColumnName || ''}</td>
+                        <td>${column.LogicalColumnName || ''}</td>
+                        <td>${column.BusinessDescription || 'N/A'}</td>
+                        <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                        <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                        <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    </tr>
+                `;
+            });
+        }
+        // Removed Column Type from above as there is no explicit ColumnType values in REDCap datasets
+        // <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
+
         tbody.innerHTML = columnsHtml;
 
         try {
             this.updateSortIcons();
-            
-            // Update page size display
+
             const pageSizeSelect = document.getElementById('pageSize');
             if (pageSizeSelect) {
                 (pageSizeSelect as HTMLSelectElement).value = this.rowsPerPage.toString();
             }
 
-            // Update pagination info in table footer
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
-                const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;
-                const endIndex = Math.min(startIndex + this.rowsPerPage - 1, this.allColumns.length);
+                const displayStart = totalColumns === 0 ? 0 : startIndex + 1;
+                const displayEnd = totalColumns === 0 ? 0 : endIndex;
                 paginationInfo.innerHTML = `
-                    Showing ${startIndex} to ${endIndex} of ${this.allColumns.length} entries
+                    Showing ${displayStart} to ${displayEnd} of ${totalColumns} entries
                 `;
             }
+
+            this.updatePaginationButtons(totalColumns);
         } catch (error) {
             console.error('Error updating table UI:', error);
         }
@@ -694,8 +838,9 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private updatePaginationButtons = (): void => {
-        const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+    private updatePaginationButtons = (totalColumns?: number): void => {
+        const entries = totalColumns ?? this.getFilteredColumns().length;
+        const totalPages = Math.max(1, Math.ceil(entries / this.rowsPerPage));
         
         // Update navigation buttons
         const prevPageBtn = document.querySelector('.prev-page');
@@ -707,6 +852,74 @@ class CustomEmbed extends LibraryBase {
         if (nextPageBtn) {
             nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
         }
+    }
+
+    private getColumnNameOptions = (): string[] => {
+        return Array.from(new Set(this.allColumns.map(column => column.ColumnName || '')))
+            .sort((a, b) => a.localeCompare(b));
+    }
+
+    private renderColumnNameCheckboxes = (): void => {
+        const listContainer = document.getElementById('columnNameCheckboxList');
+        if (!listContainer) return;
+
+        const normalizedSearch = this.columnNameSearchTerm.trim().toLowerCase();
+        const allOptions = this.getColumnNameOptions();
+        const visibleOptions = normalizedSearch
+            ? allOptions.filter(name => name.toLowerCase().includes(normalizedSearch))
+            : allOptions;
+
+        listContainer.innerHTML = '';
+
+        if (visibleOptions.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'dropdown-empty';
+            emptyState.textContent = 'No columns match that search';
+            listContainer.appendChild(emptyState);
+        } else {
+            visibleOptions.forEach((name) => {
+                const item = document.createElement('label');
+                item.className = 'dropdown-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = this.selectedColumnNames.has(name);
+                checkbox.dataset.columnName = name;
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        this.selectedColumnNames.add(name);
+                    } else {
+                        this.selectedColumnNames.delete(name);
+                    }
+                    this.currentPage = 1;
+                    this.updateColumnFilterCount();
+                    this.updateTable();
+                });
+
+                const labelText = document.createElement('span');
+                labelText.textContent = name || '(Empty Column Name)';
+
+                item.append(checkbox, labelText);
+                listContainer.appendChild(item);
+            });
+        }
+
+        this.updateColumnFilterCount();
+    }
+
+    private updateColumnFilterCount = (): void => {
+        const countIndicator = document.getElementById('columnNameFilterCount');
+        if (!countIndicator) return;
+
+        const total = this.getColumnNameOptions().length;
+        countIndicator.textContent = `${this.selectedColumnNames.size}/${total}`;
+    }
+
+    private getFilteredColumns = (): DataSetColumn[] => {
+        if (this.selectedColumnNames.size === 0) {
+            return [];
+        }
+        return this.allColumns.filter(column => this.selectedColumnNames.has(column.ColumnName || ''));
     }
 
 
