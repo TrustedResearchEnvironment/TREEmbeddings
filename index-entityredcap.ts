@@ -91,6 +91,9 @@ class CustomEmbed extends LibraryBase {
     private dataSet: DataSetMetadata | null = null;
     private columnNameSearchTerm: string = "";
     private selectedColumnNames: Set<string> = new Set();
+    private redactedFilter: 'all' | 'yes' | 'no' = 'all';
+    private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
+    private columnNameSortDirection: "asc" | "desc" = "asc";
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -231,6 +234,11 @@ class CustomEmbed extends LibraryBase {
                                                     <div class="dropdown-search">
                                                         <input type="text" id="columnNameSearchInput" placeholder="Search columns" autocomplete="off">
                                                     </div>
+                                                    <div class="column-name-sort-row">
+                                                        <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
+                                                        <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
+                                                        <span style="flex:1"></span>
+                                                    </div>
                                                     <div id="columnNameSelectAllContainer"></div>
                                                     <div class="dropdown-list" id="columnNameCheckboxList"></div>
                                                 </div>
@@ -240,8 +248,32 @@ class CustomEmbed extends LibraryBase {
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
-                                    <th data-sort="Redact">Redacted</th>
-                                    <th data-sort="Tokenise">Deidentified</th>
+                                    <th data-sort="Redact" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Redacted</span>
+                                            <button type="button" id="redactedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Redacted">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="redactedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
+                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Deidentified</span>
+                                            <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="deidentifiedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody"></tbody>
@@ -381,6 +413,59 @@ class CustomEmbed extends LibraryBase {
                 .dropdown-icon {
                     font-size: 16px;
                 }
+                .header-filter-cell {
+                    vertical-align: middle;
+                }
+                .header-filter {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .filter-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    cursor: pointer;
+                }
+                .filter-icon .material-icons {
+                    font-size: 18px;
+                    color: #6c7a86;
+                }
+                .filter-icon.filter-active .material-icons {
+                    color: #4ec4bc;
+                }
+                .popover {
+                    position: absolute;
+                    min-width: 120px;
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    border-radius: 6px;
+                    padding: 8px 6px;
+                    display: none;
+                    z-index: 9999;
+                }
+                .popover.show {
+                    display: block;
+                }
+                .popover-option {
+                    padding: 8px 10px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.95rem;
+                }
+                .popover-option:hover {
+                    background: #f3f6f7;
+                }
+                .popover-option.active {
+                    background: #4ec4bc;
+                    color: white;
+                }
                 .dropdown-menu {
                     position: absolute;
                     top: calc(100% + 6px);
@@ -405,6 +490,28 @@ class CustomEmbed extends LibraryBase {
                     border-radius: 4px;
                     border: 1px solid #d0d7e0;
                     font-size: 0.9rem;
+                }
+                .column-name-sort-row {
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    padding: 6px 2px;
+                }
+                .column-name-sort-row button {
+                    background: #f3f6f7;
+                    border: 1px solid #e0e6ea;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                }
+                .column-name-sort-row button:hover {
+                    background: #e9f2f1;
+                }
+                .column-name-sort-row button.active {
+                    background: #4ec4bc;
+                    color: white;
+                    border-color: #4ec4bc;
                 }
                 .dropdown-list {
                     max-height: 240px;
@@ -765,12 +872,96 @@ class CustomEmbed extends LibraryBase {
                 // Prevent clicks inside the dropdown from closing it
                 dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
 
+                // Wire sort buttons inside dropdown
+                const sortAscBtn = dropdownMenu.querySelector('button[data-action="sort-asc"]') as HTMLButtonElement | null;
+                const sortDescBtn = dropdownMenu.querySelector('button[data-action="sort-desc"]') as HTMLButtonElement | null;
+                const setSortButtonsState = () => {
+                    if (sortAscBtn) sortAscBtn.classList.toggle('active', this.columnNameSortDirection === 'asc');
+                    if (sortDescBtn) sortDescBtn.classList.toggle('active', this.columnNameSortDirection === 'desc');
+                };
+
+                if (sortAscBtn) {
+                    sortAscBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'asc';
+                        setSortButtonsState();
+                        this.renderColumnNameCheckboxes();
+                    });
+                }
+                if (sortDescBtn) {
+                    sortDescBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'desc';
+                        setSortButtonsState();
+                        this.renderColumnNameCheckboxes();
+                    });
+                }
+                setSortButtonsState();
+
                 // Close when clicking outside
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
                 });
             }
+
+            // Redacted popover
+            const redactedToggle = document.getElementById('redactedToggle');
+            const redactedPopover = document.getElementById('redactedPopover');
+            if (redactedToggle && redactedPopover) {
+                const togglePopover = (e: Event) => {
+                    e.stopPropagation();
+                    const show = redactedPopover.classList.toggle('show');
+                    redactedToggle.setAttribute('aria-expanded', String(show));
+                };
+                redactedToggle.addEventListener('click', togglePopover);
+                redactedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                // option clicks
+                redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
+                    opt.addEventListener('click', (e) => {
+                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
+                        this.redactedFilter = v;
+                        // update UI
+                        redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                        (opt as HTMLElement).classList.add('active');
+                        redactedToggle.classList.toggle('filter-active', v !== 'all');
+                        this.updateTable();
+                    });
+                });
+            }
+
+            // Deidentified popover
+            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+            if (deidentifiedToggle && deidentifiedPopover) {
+                const togglePopover = (e: Event) => {
+                    e.stopPropagation();
+                    const show = deidentifiedPopover.classList.toggle('show');
+                    deidentifiedToggle.setAttribute('aria-expanded', String(show));
+                };
+                deidentifiedToggle.addEventListener('click', togglePopover);
+                deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
+                    opt.addEventListener('click', (e) => {
+                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
+                        this.deidentifiedFilter = v;
+                        deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                        (opt as HTMLElement).classList.add('active');
+                        deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
+                        this.updateTable();
+                    });
+                });
+            }
+
+            // global click-away: close any open popovers
+            document.addEventListener('click', () => {
+                const popovers = document.querySelectorAll('.popover.show');
+                popovers.forEach(p => p.classList.remove('show'));
+                const toggles = document.querySelectorAll('.filter-icon[aria-expanded="true"]');
+                toggles.forEach(t => t.setAttribute('aria-expanded', 'false'));
+            });
 
             const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
             if (searchInput) {
@@ -892,9 +1083,14 @@ class CustomEmbed extends LibraryBase {
 
         const normalizedSearch = this.columnNameSearchTerm.trim().toLowerCase();
         const allOptions = this.getColumnNameOptions();
-        const visibleOptions = normalizedSearch
+        let visibleOptions = normalizedSearch
             ? allOptions.filter(name => name.toLowerCase().includes(normalizedSearch))
-            : allOptions;
+            : allOptions.slice();
+
+        // Apply sort direction
+        if (this.columnNameSortDirection === 'desc') {
+            visibleOptions = visibleOptions.slice().reverse();
+        }
 
         // clear
         selectAllContainer.innerHTML = '';
@@ -997,7 +1193,23 @@ class CustomEmbed extends LibraryBase {
         if (this.selectedColumnNames.size === 0) {
             return [];
         }
-        return this.allColumns.filter(column => this.selectedColumnNames.has(column.ColumnName || ''));
+        let results = this.allColumns.filter(column => this.selectedColumnNames.has(column.ColumnName || ''));
+
+        // Apply redacted filter
+        if (this.redactedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Redact));
+        } else if (this.redactedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Redact));
+        }
+
+        // Apply deidentified (Tokenise) filter
+        if (this.deidentifiedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Tokenise));
+        } else if (this.deidentifiedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Tokenise));
+        }
+
+        return results;
     }
 
 
