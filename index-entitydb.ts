@@ -89,6 +89,11 @@ class CustomEmbed extends LibraryBase {
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
     private dataSet: DataSetMetadata | null = null;
+    private columnNameSearchTerm: string = "";
+    private selectedColumnNames: Set<string> = new Set();
+    private columnNameSortDirection: "asc" | "desc" = "asc";
+    private redactedFilter: 'all' | 'yes' | 'no' = 'all';
+    private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -130,8 +135,64 @@ class CustomEmbed extends LibraryBase {
                 columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
 
+            // Initialize selected column names to all available options by default
+            this.selectedColumnNames = new Set(this.getColumnNameOptions());
+
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
+            }
+
+            // Column Name dropdown: toggle, search, sort, checkbox list
+            const columnNameToggle = document.getElementById('columnNameToggle');
+            const columnNameDropdown = document.getElementById('columnNameDropdown');
+            const columnNameDropdownMenu = document.getElementById('columnNameDropdownMenu');
+            if (columnNameToggle && columnNameDropdown && columnNameDropdownMenu) {
+                columnNameToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const wasOpen = columnNameDropdownMenu.classList.contains('show');
+                    // close any other open dropdowns
+                    document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
+                    if (!wasOpen) {
+                        columnNameDropdownMenu.classList.add('show');
+                        columnNameToggle.setAttribute('aria-expanded', 'true');
+                    } else {
+                        columnNameDropdownMenu.classList.remove('show');
+                        columnNameToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                columnNameToggle.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        (columnNameToggle as HTMLElement).click();
+                    }
+                });
+
+                // prevent dropdown closing when interacting inside
+                columnNameDropdownMenu.addEventListener('click', (ev) => ev.stopPropagation());
+
+                const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                        this.renderColumnNameCheckboxes();
+                    });
+                }
+
+                // sort buttons
+                columnNameDropdownMenu.querySelectorAll('button[data-action]').forEach(btn => {
+                    btn.addEventListener('click', (ev) => {
+                        const action = (ev.currentTarget as HTMLElement).getAttribute('data-action');
+                        if (action === 'sort-asc') this.columnNameSortDirection = 'asc';
+                        else this.columnNameSortDirection = 'desc';
+                        // update active styling
+                        columnNameDropdownMenu.querySelectorAll('.column-name-sort-row button').forEach(b => b.classList.toggle('active', b === ev.currentTarget));
+                        this.renderColumnNameCheckboxes();
+                    });
+                });
+
+                // render the checkboxes initially
+                this.renderColumnNameCheckboxes();
             }
             
             const datasetHtml = this.generateMainLayout(this.dataSet);
@@ -211,13 +272,61 @@ class CustomEmbed extends LibraryBase {
                         <table id="dataTable">
                             <thead>
                                 <tr>
-                                    <th data-sort="ColumnName">Column Name</th>
+                                    <th data-sort="ColumnName" class="column-name-header-cell">
+                                        <div class="column-name-header">
+                                            <span class="header-text" id="columnNameToggle" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+                                                Column Name
+                                                <span class="filter-inline">
+                                                    <span class="filter-count" id="columnNameFilterCount"></span>
+                                                    <span class="material-icons dropdown-icon">filter_alt</span>
+                                                </span>
+                                            </span>
+                                            <div class="dropdown" id="columnNameDropdown">
+                                                <div class="dropdown-menu" id="columnNameDropdownMenu">
+                                                    <div class="dropdown-search">
+                                                        <input type="text" id="columnNameSearchInput" placeholder="Search columns" autocomplete="off">
+                                                    </div>
+                                                    <div class="column-name-sort-row">
+                                                        <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
+                                                        <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
+                                                        <span style="flex:1"></span>
+                                                    </div>
+                                                    <div id="columnNameSelectAllContainer"></div>
+                                                    <div class="dropdown-list" id="columnNameCheckboxList"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </th>
                                     <th data-sort="ColumnType">Data Type</th>
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
-                                    <th data-sort="Redact">Redacted</th>
-                                    <th data-sort="Tokenise">Deidentified</th>
+                                    <th data-sort="Redact" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Redacted</span>
+                                            <button type="button" id="redactedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Redacted">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="redactedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
+                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Deidentified</span>
+                                            <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="deidentifiedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody"></tbody>
@@ -314,6 +423,106 @@ class CustomEmbed extends LibraryBase {
                     // position: sticky;
                     // top: 0;
                 }
+                .column-name-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .column-name-header .dropdown {
+                    position: relative;
+                }
+                .header-text {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    user-select: none;
+                    font-weight: 700;
+                }
+                .filter-inline {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-left: 8px;
+                    font-weight: 600;
+                }
+                .filter-count {
+                    font-size: 0.75rem;
+                    color: #4ec4bc;
+                }
+                .dropdown-icon {
+                    font-size: 16px;
+                }
+                .dropdown-menu {
+                    position: absolute;
+                    top: calc(100% + 6px);
+                    right: 0;
+                    width: 260px;
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    padding: 12px;
+                    display: none;
+                    flex-direction: column;
+                    gap: 8px;
+                    z-index: 10;
+                }
+                .dropdown-menu.show {
+                    display: flex;
+                }
+                .dropdown-search input {
+                    width: 100%;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    font-size: 0.9rem;
+                }
+                .column-name-sort-row {
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    padding: 6px 2px;
+                }
+                .column-name-sort-row button {
+                    background: #f3f6f7;
+                    border: 1px solid #e0e6ea;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                }
+                .column-name-sort-row button:hover {
+                    background: #e9f2f1;
+                }
+                .column-name-sort-row button.active {
+                    background: #4ec4bc;
+                    color: white;
+                    border-color: #4ec4bc;
+                }
+                .dropdown-list {
+                    max-height: 240px;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.85rem;
+                    color: #1f2a37;
+                }
+                .dropdown-item input {
+                    accent-color: #4ec4bc;
+                }
+                .dropdown-empty {
+                    font-size: 0.8rem;
+                    color: #616770;
+                    padding: 4px 2px;
+                }
                 #dataTable td {
                     padding: 16px;
                     border-bottom: 1px solid #e0e0e0;
@@ -387,6 +596,60 @@ class CustomEmbed extends LibraryBase {
                 .modal {
                     display: none;
                     position: fixed;
+                            .header-filter-cell {
+                                vertical-align: middle;
+                            }
+                            .header-filter {
+                                display: flex;
+                                align-items: center;
+                                gap: 8px;
+                                position: relative;
+                            }
+                            .filter-icon {
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                width: 34px;
+                                height: 34px;
+                                border-radius: 6px;
+                                border: 1px solid transparent;
+                                background: transparent;
+                                cursor: pointer;
+                            }
+                            .filter-icon .material-icons {
+                                font-size: 18px;
+                                color: #6c7a86;
+                            }
+                            .filter-icon.filter-active .material-icons {
+                                color: #4ec4bc;
+                            }
+                            .popover {
+                                position: absolute;
+                                min-width: 120px;
+                                background: white;
+                                border: 1px solid #e0e0e0;
+                                box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                                border-radius: 6px;
+                                padding: 8px 6px;
+                                display: none;
+                                z-index: 9999;
+                            }
+                            .popover.show {
+                                display: block;
+                            }
+                            .popover-option {
+                                padding: 8px 10px;
+                                cursor: pointer;
+                                border-radius: 4px;
+                                font-size: 0.95rem;
+                            }
+                            .popover-option:hover {
+                                background: #f3f6f7;
+                            }
+                            .popover-option.active {
+                                background: #4ec4bc;
+                                color: white;
+                            }
                     top: 0;
                     left: 0;
                     width: 100%;
@@ -627,6 +890,66 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
             }
+
+            // Redacted popover
+            const redactedToggle = document.getElementById('redactedToggle');
+            const redactedPopover = document.getElementById('redactedPopover');
+            if (redactedToggle && redactedPopover) {
+                const togglePopover = (e: Event) => {
+                    e.stopPropagation();
+                    const show = redactedPopover.classList.toggle('show');
+                    redactedToggle.setAttribute('aria-expanded', String(show));
+                };
+                redactedToggle.addEventListener('click', togglePopover);
+                redactedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
+                    opt.addEventListener('click', (e) => {
+                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
+                        this.redactedFilter = v;
+                        redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                        (opt as HTMLElement).classList.add('active');
+                        redactedToggle.classList.toggle('filter-active', v !== 'all');
+                        this.updateTable();
+                    });
+                });
+            }
+
+            // Deidentified popover
+            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+            if (deidentifiedToggle && deidentifiedPopover) {
+                const togglePopover = (e: Event) => {
+                    e.stopPropagation();
+                    const show = deidentifiedPopover.classList.toggle('show');
+                    deidentifiedToggle.setAttribute('aria-expanded', String(show));
+                };
+                deidentifiedToggle.addEventListener('click', togglePopover);
+                deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
+                    opt.addEventListener('click', (e) => {
+                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
+                        this.deidentifiedFilter = v;
+                        deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                        (opt as HTMLElement).classList.add('active');
+                        deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
+                        this.updateTable();
+                    });
+                });
+            }
+
+            // click-away to close any popovers or dropdowns
+            document.addEventListener('click', () => {
+                const popovers = document.querySelectorAll('.popover.show');
+                popovers.forEach(p => p.classList.remove('show'));
+                const toggles = document.querySelectorAll('.filter-icon[aria-expanded="true"]');
+                toggles.forEach(t => t.setAttribute('aria-expanded', 'false'));
+                const dropdowns = document.querySelectorAll('.dropdown-menu.show');
+                dropdowns.forEach(d => d.classList.remove('show'));
+                const columnToggle = document.getElementById('columnNameToggle');
+                if (columnToggle) columnToggle.setAttribute('aria-expanded', 'false');
+            });
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -638,9 +961,14 @@ class CustomEmbed extends LibraryBase {
         const tbody = document.getElementById('columnsTableBody');
         if (!tbody) return;
 
+        // Apply combined filters (column name selection + boolean filters) before pagination
+        const filteredColumns = this.getFilteredColumns();
+        const totalColumns = filteredColumns.length;
+        const totalPages = Math.max(1, Math.ceil(totalColumns / this.rowsPerPage));
+        if (this.currentPage > totalPages) this.currentPage = totalPages;
         const startIndex = (this.currentPage - 1) * this.rowsPerPage;
-        const endIndex = startIndex + this.rowsPerPage;
-        const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
+        const endIndex = Math.min(startIndex + this.rowsPerPage, totalColumns);
+        const paginatedColumns = filteredColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
         paginatedColumns.forEach((column: DataSetColumn) => {
@@ -670,10 +998,10 @@ class CustomEmbed extends LibraryBase {
             // Update pagination info in table footer
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
-                const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;
-                const endIndex = Math.min(startIndex + this.rowsPerPage - 1, this.allColumns.length);
+                const start = totalColumns === 0 ? 0 : (this.currentPage - 1) * this.rowsPerPage + 1;
+                const end = Math.min(start + this.rowsPerPage - 1, totalColumns);
                 paginationInfo.innerHTML = `
-                    Showing ${startIndex} to ${endIndex} of ${this.allColumns.length} entries
+                    Showing ${start} to ${end} of ${totalColumns} entries
                 `;
             }
         } catch (error) {
@@ -694,19 +1022,134 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private updatePaginationButtons = (): void => {
-        const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+    private updatePaginationButtons = (totalEntries?: number): void => {
+        const entries = totalEntries ?? this.getFilteredColumns().length;
+        const totalPages = Math.max(1, Math.ceil(entries / this.rowsPerPage));
         
         // Update navigation buttons
         const prevPageBtn = document.querySelector('.prev-page');
         const nextPageBtn = document.querySelector('.next-page');
         
-        if (prevPageBtn) {
-            prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
+        if (prevPageBtn) prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
+        if (nextPageBtn) nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
+    }
+
+    private getColumnNameOptions = (): string[] => {
+        return Array.from(new Set(this.allColumns.map(column => column.ColumnName || '')))
+            .sort((a, b) => a.localeCompare(b));
+    }
+
+    private renderColumnNameCheckboxes = (): void => {
+        const listContainer = document.getElementById('columnNameCheckboxList');
+        const selectAllContainer = document.getElementById('columnNameSelectAllContainer');
+        if (!listContainer || !selectAllContainer) return;
+
+        const options = this.getColumnNameOptions()
+            .filter(opt => opt.toLowerCase().includes(this.columnNameSearchTerm || ''))
+            .sort((a, b) => this.columnNameSortDirection === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
+
+        // Select All UI
+        selectAllContainer.innerHTML = '';
+        const selectAllWrapper = document.createElement('div');
+        selectAllWrapper.className = 'dropdown-item';
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'columnNameSelectAll';
+        const visibleCount = options.length;
+        const selectedVisibleCount = options.filter(o => this.selectedColumnNames.has(o)).length;
+        if (selectedVisibleCount === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
+        else if (selectedVisibleCount === visibleCount) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; }
+        else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; }
+
+        const label = document.createElement('label');
+        label.htmlFor = 'columnNameSelectAll';
+        label.textContent = `Select All (${selectedVisibleCount}/${visibleCount})`;
+        selectAllWrapper.appendChild(selectAllCheckbox);
+        selectAllWrapper.appendChild(label);
+        selectAllContainer.appendChild(selectAllWrapper);
+
+        selectAllCheckbox.addEventListener('change', (e) => {
+            const checked = (e.target as HTMLInputElement).checked;
+            options.forEach(opt => {
+                if (checked) this.selectedColumnNames.add(opt);
+                else this.selectedColumnNames.delete(opt);
+            });
+            // keep dropdown open; just re-render
+            this.renderColumnNameCheckboxes();
+            this.updateTable();
+        });
+
+        // render items
+        listContainer.innerHTML = '';
+        if (options.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'dropdown-empty';
+            empty.textContent = 'No matching columns';
+            listContainer.appendChild(empty);
+            this.updateColumnFilterCount();
+            return;
         }
-        if (nextPageBtn) {
-            nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
+
+        options.forEach(opt => {
+            const item = document.createElement('label');
+            item.className = 'dropdown-item';
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = this.selectedColumnNames.has(opt);
+            chk.addEventListener('change', (e) => {
+                const isChecked = (e.target as HTMLInputElement).checked;
+                if (isChecked) this.selectedColumnNames.add(opt);
+                else this.selectedColumnNames.delete(opt);
+                // keep dropdown open
+                this.renderColumnNameCheckboxes();
+                this.updateTable();
+            });
+            const span = document.createElement('span');
+            span.textContent = opt;
+            item.appendChild(chk);
+            item.appendChild(span);
+            listContainer.appendChild(item);
+        });
+
+        this.updateColumnFilterCount();
+    }
+
+    private updateColumnFilterCount = (): void => {
+        const el = document.getElementById('columnNameFilterCount');
+        if (!el) return;
+        const total = this.getColumnNameOptions().length;
+        const selected = this.selectedColumnNames.size;
+        el.textContent = selected === total ? '' : `${selected}/${total}`;
+    }
+
+    private getFilteredColumns = (): DataSetColumn[] => {
+        // Start from all columns
+        let filtered = this.allColumns.slice();
+
+        // Apply ColumnName set filter
+        if (this.selectedColumnNames && this.selectedColumnNames.size > 0) {
+            filtered = filtered.filter(c => this.selectedColumnNames.has(c.ColumnName || ''));
         }
+
+        // Apply boolean filters
+        if (this.redactedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Redact));
+        else if (this.redactedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Redact));
+
+        if (this.deidentifiedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Tokenise));
+        else if (this.deidentifiedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Tokenise));
+
+        // Apply sorting
+        if (this.currentSortColumn) {
+            filtered = filtered.sort((a: any, b: any) => {
+                const aVal = (a[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
+                const bVal = (b[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
+                if (typeof aVal === 'string') return this.currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                if (typeof aVal === 'number') return this.currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                return 0;
+            });
+        }
+
+        return filtered;
     }
 
 
