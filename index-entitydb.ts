@@ -142,58 +142,6 @@ class CustomEmbed extends LibraryBase {
                 throw new Error('Dataset information not available');
             }
 
-            // Column Name dropdown: toggle, search, sort, checkbox list
-            const columnNameToggle = document.getElementById('columnNameToggle');
-            const columnNameDropdown = document.getElementById('columnNameDropdown');
-            const columnNameDropdownMenu = document.getElementById('columnNameDropdownMenu');
-            if (columnNameToggle && columnNameDropdown && columnNameDropdownMenu) {
-                columnNameToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const wasOpen = columnNameDropdownMenu.classList.contains('show');
-                    // close any other open dropdowns
-                    document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
-                    if (!wasOpen) {
-                        columnNameDropdownMenu.classList.add('show');
-                        columnNameToggle.setAttribute('aria-expanded', 'true');
-                    } else {
-                        columnNameDropdownMenu.classList.remove('show');
-                        columnNameToggle.setAttribute('aria-expanded', 'false');
-                    }
-                });
-
-                columnNameToggle.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Enter' || ev.key === ' ') {
-                        ev.preventDefault();
-                        (columnNameToggle as HTMLElement).click();
-                    }
-                });
-
-                // prevent dropdown closing when interacting inside
-                columnNameDropdownMenu.addEventListener('click', (ev) => ev.stopPropagation());
-
-                const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-                if (searchInput) {
-                    searchInput.addEventListener('input', () => {
-                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
-                        this.renderColumnNameCheckboxes();
-                    });
-                }
-
-                // sort buttons
-                columnNameDropdownMenu.querySelectorAll('button[data-action]').forEach(btn => {
-                    btn.addEventListener('click', (ev) => {
-                        const action = (ev.currentTarget as HTMLElement).getAttribute('data-action');
-                        if (action === 'sort-asc') this.columnNameSortDirection = 'asc';
-                        else this.columnNameSortDirection = 'desc';
-                        // update active styling
-                        columnNameDropdownMenu.querySelectorAll('.column-name-sort-row button').forEach(b => b.classList.toggle('active', b === ev.currentTarget));
-                        this.renderColumnNameCheckboxes();
-                    });
-                });
-
-                // render the checkboxes initially
-                this.renderColumnNameCheckboxes();
-            }
             
             const datasetHtml = this.generateMainLayout(this.dataSet);
             const styles = this.generateStyles();
@@ -527,6 +475,54 @@ class CustomEmbed extends LibraryBase {
                     padding: 16px;
                     border-bottom: 1px solid #e0e0e0;
                 }
+                .header-filter-cell {
+                    vertical-align: middle;
+                }
+                .header-filter {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    position: relative;
+                }
+                .filter-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    cursor: pointer;
+                    padding: 4px;
+                }
+                .filter-icon .material-icons {
+                    font-size: 18px;
+                    color: #6c7a86;
+                }
+                .filter-icon.filter-active .material-icons {
+                    color: #4ec4bc;
+                }
+                .popover {
+                    position: absolute;
+                    min-width: 120px;
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    border-radius: 6px;
+                    padding: 8px 6px;
+                    display: none;
+                    z-index: 9999;
+                }
+                .popover.show { display: block; }
+                .popover-option {
+                    padding: 8px 10px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.95rem;
+                }
+                .popover-option:hover { background: #f3f6f7; }
+                .popover-option.active { background: #4ec4bc; color: white; }
                 .table-pagination {
                     padding: 16px;
                     display: flex;
@@ -596,60 +592,6 @@ class CustomEmbed extends LibraryBase {
                 .modal {
                     display: none;
                     position: fixed;
-                            .header-filter-cell {
-                                vertical-align: middle;
-                            }
-                            .header-filter {
-                                display: flex;
-                                align-items: center;
-                                gap: 8px;
-                                position: relative;
-                            }
-                            .filter-icon {
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                width: 34px;
-                                height: 34px;
-                                border-radius: 6px;
-                                border: 1px solid transparent;
-                                background: transparent;
-                                cursor: pointer;
-                            }
-                            .filter-icon .material-icons {
-                                font-size: 18px;
-                                color: #6c7a86;
-                            }
-                            .filter-icon.filter-active .material-icons {
-                                color: #4ec4bc;
-                            }
-                            .popover {
-                                position: absolute;
-                                min-width: 120px;
-                                background: white;
-                                border: 1px solid #e0e0e0;
-                                box-shadow: 0 12px 30px rgba(0,0,0,0.15);
-                                border-radius: 6px;
-                                padding: 8px 6px;
-                                display: none;
-                                z-index: 9999;
-                            }
-                            .popover.show {
-                                display: block;
-                            }
-                            .popover-option {
-                                padding: 8px 10px;
-                                cursor: pointer;
-                                border-radius: 4px;
-                                font-size: 0.95rem;
-                            }
-                            .popover-option:hover {
-                                background: #f3f6f7;
-                            }
-                            .popover-option.active {
-                                background: #4ec4bc;
-                                color: white;
-                            }
                     top: 0;
                     left: 0;
                     width: 100%;
@@ -891,6 +833,54 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
+            // Column Name dropdown (header triggers)
+            const columnNameToggle = document.getElementById('columnNameToggle');
+            const columnNameDropdownMenu = document.getElementById('columnNameDropdownMenu');
+            if (columnNameToggle && columnNameDropdownMenu) {
+                const toggleDropdown = (e: Event) => {
+                    e.stopPropagation();
+                    const isOpen = columnNameDropdownMenu.classList.contains('show');
+                    document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
+                    if (isOpen) {
+                        columnNameDropdownMenu.classList.remove('show');
+                        columnNameToggle.setAttribute('aria-expanded', 'false');
+                    } else {
+                        columnNameDropdownMenu.classList.add('show');
+                        columnNameToggle.setAttribute('aria-expanded', 'true');
+                    }
+                };
+
+                columnNameToggle.addEventListener('click', toggleDropdown);
+                columnNameToggle.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        toggleDropdown(ev);
+                    }
+                });
+
+                columnNameDropdownMenu.addEventListener('click', (ev) => ev.stopPropagation());
+
+                const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                        this.renderColumnNameCheckboxes();
+                    });
+                }
+
+                columnNameDropdownMenu.querySelectorAll('button[data-action]').forEach(btn => {
+                    btn.addEventListener('click', (ev) => {
+                        const action = (ev.currentTarget as HTMLElement).getAttribute('data-action');
+                        if (action === 'sort-asc') this.columnNameSortDirection = 'asc';
+                        else this.columnNameSortDirection = 'desc';
+                        columnNameDropdownMenu.querySelectorAll('.column-name-sort-row button').forEach(b => b.classList.toggle('active', b === ev.currentTarget));
+                        this.renderColumnNameCheckboxes();
+                    });
+                });
+
+                this.renderColumnNameCheckboxes();
+            }
+
             // Redacted popover
             const redactedToggle = document.getElementById('redactedToggle');
             const redactedPopover = document.getElementById('redactedPopover');
@@ -901,7 +891,18 @@ class CustomEmbed extends LibraryBase {
                     redactedToggle.setAttribute('aria-expanded', String(show));
                 };
                 redactedToggle.addEventListener('click', togglePopover);
+                // also toggle when clicking the header text
+                const redactedHeaderText = redactedToggle.parentElement?.querySelector('.header-text');
+                if (redactedHeaderText) redactedHeaderText.addEventListener('click', togglePopover);
+
                 redactedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                // initialize active option and icon state
+                redactedPopover.querySelectorAll('.popover-option').forEach(o => {
+                    const el = o as HTMLElement;
+                    el.classList.toggle('active', el.dataset.value === this.redactedFilter);
+                });
+                redactedToggle.classList.toggle('filter-active', this.redactedFilter !== 'all');
 
                 redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
                     opt.addEventListener('click', (e) => {
@@ -911,6 +912,9 @@ class CustomEmbed extends LibraryBase {
                         (opt as HTMLElement).classList.add('active');
                         redactedToggle.classList.toggle('filter-active', v !== 'all');
                         this.updateTable();
+                        // close popover after selection
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
                     });
                 });
             }
@@ -925,7 +929,17 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedToggle.setAttribute('aria-expanded', String(show));
                 };
                 deidentifiedToggle.addEventListener('click', togglePopover);
+                const deidentifiedHeaderText = deidentifiedToggle.parentElement?.querySelector('.header-text');
+                if (deidentifiedHeaderText) deidentifiedHeaderText.addEventListener('click', togglePopover);
+
                 deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
+
+                // initialize active option and icon state
+                deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => {
+                    const el = o as HTMLElement;
+                    el.classList.toggle('active', el.dataset.value === this.deidentifiedFilter);
+                });
+                deidentifiedToggle.classList.toggle('filter-active', this.deidentifiedFilter !== 'all');
 
                 deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
                     opt.addEventListener('click', (e) => {
@@ -935,6 +949,9 @@ class CustomEmbed extends LibraryBase {
                         (opt as HTMLElement).classList.add('active');
                         deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
                         this.updateTable();
+                        // close popover after selection
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     });
                 });
             }
