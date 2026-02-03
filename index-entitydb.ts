@@ -442,18 +442,31 @@ class CustomEmbed extends LibraryBase {
                 }
                 .popover {
                     position: absolute;
+                    top: calc(100% + 6px);
+                    left: auto;
+                    right: 0;
                     min-width: 120px;
-                    background: white;
+                    width: auto;
+                    max-width: 90vw;
+                    background: #fff;
                     border: 1px solid #e0e0e0;
                     box-shadow: 0 12px 30px rgba(0,0,0,0.15);
                     border-radius: 6px;
                     padding: 8px 6px;
                     display: none;
                     z-index: 9999;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
                 }
-                .popover.show {
+
+                .popover.show, .dropdown-menu.show {
                     display: block;
+                    opacity: 1;
+                    transform: translateY(0);
                 }
+
                 .popover-option {
                     padding: 8px 10px;
                     cursor: pointer;
@@ -481,6 +494,11 @@ class CustomEmbed extends LibraryBase {
                     flex-direction: column;
                     gap: 8px;
                     z-index: 10;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
+                    transform-origin: top right;
                 }
                 .dropdown-menu.show {
                     display: flex;
@@ -1152,24 +1170,50 @@ class CustomEmbed extends LibraryBase {
     }
 
     private positionDropdown(trigger: HTMLElement, menu: HTMLElement): void {
-        menu.classList.remove('drop-up');
-        menu.classList.remove('align-left');
-        menu.classList.remove('align-right');
+        // Clear any previous inline positioning
+        menu.style.left = '';
+        menu.style.right = '';
+        menu.style.top = '';
+        menu.style.bottom = '';
+        menu.style.maxWidth = '';
 
         const rect = trigger.getBoundingClientRect();
-        const menuHeight = menu.offsetHeight || 280;
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
+
+        const spaceRight = viewportWidth - rect.right;
+        const spaceLeft = rect.left;
         const spaceBelow = viewportHeight - rect.bottom;
         const spaceAbove = rect.top;
 
-        if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+        // Vertical: prefer below unless not enough space
+        if (spaceBelow >= menuHeight || spaceBelow >= spaceAbove) {
+            menu.style.top = 'calc(100% + 6px)';
+            menu.classList.remove('drop-up');
+        } else {
+            menu.style.bottom = 'calc(100% + 6px)';
             menu.classList.add('drop-up');
         }
 
-        if (rect.right + menu.offsetWidth > window.innerWidth) {
-            menu.classList.add('align-right');
+        // Horizontal: align to right edge of header when possible, else left edge
+        if (spaceRight >= menuWidth) {
+            menu.style.right = '0';
+            menu.style.left = 'auto';
+        } else if (spaceLeft >= menuWidth) {
+            menu.style.left = '0';
+            menu.style.right = 'auto';
         } else {
-            menu.classList.add('align-left');
+            const clampWidth = Math.max(120, Math.min(menuWidth, Math.max(spaceRight, spaceLeft) - 16));
+            menu.style.maxWidth = clampWidth + 'px';
+            if (spaceRight >= spaceLeft) {
+                menu.style.right = '0';
+                menu.style.left = 'auto';
+            } else {
+                menu.style.left = '0';
+                menu.style.right = 'auto';
+            }
         }
     }
 
@@ -1312,8 +1356,8 @@ export const definition: Customization.CustomizationLibrary = {
         },
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
-                const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
-                element.instance = instance;
-            }
+            const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+            element.instance = instance;
+        }
     }
 };

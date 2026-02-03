@@ -441,31 +441,31 @@ class CustomEmbed extends LibraryBase {
                 }
                 .popover {
                     position: absolute;
+                    top: calc(100% + 6px);
+                    left: auto;
+                    right: 0;
                     min-width: 120px;
-                    background: white;
+                    width: auto;
+                    max-width: 90vw;
+                    background: #fff;
                     border: 1px solid #e0e0e0;
                     box-shadow: 0 12px 30px rgba(0,0,0,0.15);
                     border-radius: 6px;
                     padding: 8px 6px;
                     display: none;
                     z-index: 9999;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
                 }
-                .popover.show {
+
+                .popover.show, .dropdown-menu.show {
                     display: block;
+                    opacity: 1;
+                    transform: translateY(0);
                 }
-                .popover-option {
-                    padding: 8px 10px;
-                    cursor: pointer;
-                    border-radius: 4px;
-                    font-size: 0.95rem;
-                }
-                .popover-option:hover {
-                    background: #f3f6f7;
-                }
-                .popover-option.active {
-                    background: #4ec4bc;
-                    color: white;
-                }
+
                 .dropdown-menu {
                     position: absolute;
                     top: calc(100% + 6px);
@@ -480,6 +480,11 @@ class CustomEmbed extends LibraryBase {
                     flex-direction: column;
                     gap: 8px;
                     z-index: 10;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
+                    transform-origin: top right;
                 }
                 .dropdown-menu.show {
                     display: flex;
@@ -1313,8 +1318,8 @@ export const definition: Customization.CustomizationLibrary = {
         },
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
-                const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
-                element.instance = instance;
-            }
+            const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+            element.instance = instance;
+        }
     }
 };
