@@ -930,7 +930,12 @@ class CustomEmbed extends LibraryBase {
                         if (p !== redactedPopover) p.classList.remove('show');
                     });
                     // Toggle this popover
-                    const show = redactedPopover.classList.toggle('show');
+                    const show = !redactedPopover.classList.contains('show');
+                    if (show) {
+                        redactedPopover.classList.add('show');
+                    } else {
+                        redactedPopover.classList.remove('show');
+                    }
                     redactedToggle.setAttribute('aria-expanded', String(show));
                 };
                 redactedToggle.addEventListener('click', togglePopover);
@@ -961,7 +966,12 @@ class CustomEmbed extends LibraryBase {
                         if (p !== deidentifiedPopover) p.classList.remove('show');
                     });
                     // Toggle this popover
-                    const show = deidentifiedPopover.classList.toggle('show');
+                    const show = !deidentifiedPopover.classList.contains('show');
+                    if (show) {
+                        deidentifiedPopover.classList.add('show');
+                    } else {
+                        deidentifiedPopover.classList.remove('show');
+                    }
                     deidentifiedToggle.setAttribute('aria-expanded', String(show));
                 };
                 deidentifiedToggle.addEventListener('click', togglePopover);
@@ -1196,14 +1206,21 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
+    // private updateColumnFilterCount = (): void => {
+    //     const el = document.getElementById('columnNameFilterCount');
+    //     if (!el) return;
+    //     const total = this.getColumnNameOptions().length;
+    //     const selected = this.selectedColumnNames.size;
+    //     el.textContent = selected === total ? '' : `${selected}/${total}`;
+    // }
     private updateColumnFilterCount = (): void => {
-        const el = document.getElementById('columnNameFilterCount');
-        if (!el) return;
-        const total = this.getColumnNameOptions().length;
-        const selected = this.selectedColumnNames.size;
-        el.textContent = selected === total ? '' : `${selected}/${total}`;
-    }
+        const countIndicator = document.getElementById('columnNameFilterCount');
+        if (!countIndicator) return;
 
+        const total = this.getColumnNameOptions().length;
+        countIndicator.textContent = `${this.selectedColumnNames.size}/${total}`;
+    }
+    
     private getFilteredColumns = (): DataSetColumn[] => {
         // Start from all columns
         let filtered = this.allColumns.slice();
