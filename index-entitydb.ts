@@ -925,34 +925,27 @@ class CustomEmbed extends LibraryBase {
             if (redactedToggle && redactedPopover) {
                 const togglePopover = (e: Event) => {
                     e.stopPropagation();
+                    // Close all other popovers
+                    document.querySelectorAll('.popover.show').forEach(p => {
+                        if (p !== redactedPopover) p.classList.remove('show');
+                    });
+                    // Toggle this popover
                     const show = redactedPopover.classList.toggle('show');
                     redactedToggle.setAttribute('aria-expanded', String(show));
                 };
                 redactedToggle.addEventListener('click', togglePopover);
-                // also toggle when clicking the header text
-                const redactedHeaderText = redactedToggle.parentElement?.querySelector('.header-text');
-                if (redactedHeaderText) redactedHeaderText.addEventListener('click', togglePopover);
-
                 redactedPopover.addEventListener('click', (e) => e.stopPropagation());
 
-                // initialize active option and icon state
-                redactedPopover.querySelectorAll('.popover-option').forEach(o => {
-                    const el = o as HTMLElement;
-                    el.classList.toggle('active', el.dataset.value === this.redactedFilter);
-                });
-                redactedToggle.classList.toggle('filter-active', this.redactedFilter !== 'all');
-
+                // option clicks
                 redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
                     opt.addEventListener('click', (e) => {
                         const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
                         this.redactedFilter = v;
+                        // update UI
                         redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
                         (opt as HTMLElement).classList.add('active');
                         redactedToggle.classList.toggle('filter-active', v !== 'all');
                         this.updateTable();
-                        // close popover after selection
-                        redactedPopover.classList.remove('show');
-                        redactedToggle.setAttribute('aria-expanded', 'false');
                     });
                 });
             }
@@ -963,21 +956,16 @@ class CustomEmbed extends LibraryBase {
             if (deidentifiedToggle && deidentifiedPopover) {
                 const togglePopover = (e: Event) => {
                     e.stopPropagation();
+                    // Close all other popovers
+                    document.querySelectorAll('.popover.show').forEach(p => {
+                        if (p !== deidentifiedPopover) p.classList.remove('show');
+                    });
+                    // Toggle this popover
                     const show = deidentifiedPopover.classList.toggle('show');
                     deidentifiedToggle.setAttribute('aria-expanded', String(show));
                 };
                 deidentifiedToggle.addEventListener('click', togglePopover);
-                const deidentifiedHeaderText = deidentifiedToggle.parentElement?.querySelector('.header-text');
-                if (deidentifiedHeaderText) deidentifiedHeaderText.addEventListener('click', togglePopover);
-
                 deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
-
-                // initialize active option and icon state
-                deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => {
-                    const el = o as HTMLElement;
-                    el.classList.toggle('active', el.dataset.value === this.deidentifiedFilter);
-                });
-                deidentifiedToggle.classList.toggle('filter-active', this.deidentifiedFilter !== 'all');
 
                 deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
                     opt.addEventListener('click', (e) => {
@@ -987,23 +975,14 @@ class CustomEmbed extends LibraryBase {
                         (opt as HTMLElement).classList.add('active');
                         deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
                         this.updateTable();
-                        // close popover after selection
-                        deidentifiedPopover.classList.remove('show');
-                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     });
                 });
             }
 
-            // click-away to close any popovers or dropdowns
+            // global click-away: close any open popovers
             document.addEventListener('click', () => {
-                const popovers = document.querySelectorAll('.popover.show');
-                popovers.forEach(p => p.classList.remove('show'));
-                const toggles = document.querySelectorAll('.filter-icon[aria-expanded="true"]');
-                toggles.forEach(t => t.setAttribute('aria-expanded', 'false'));
-                const dropdowns = document.querySelectorAll('.dropdown-menu.show');
-                dropdowns.forEach(d => d.classList.remove('show'));
-                const columnToggle = document.getElementById('columnNameToggle');
-                if (columnToggle) columnToggle.setAttribute('aria-expanded', 'false');
+                document.querySelectorAll('.popover.show').forEach(p => p.classList.remove('show'));
+                document.querySelectorAll('.filter-icon[aria-expanded="true"]').forEach(t => t.setAttribute('aria-expanded', 'false'));
             });
         } catch (error) {
             console.error('Error setting up event listeners:', error);

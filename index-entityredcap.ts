@@ -916,6 +916,11 @@ class CustomEmbed extends LibraryBase {
             if (redactedToggle && redactedPopover) {
                 const togglePopover = (e: Event) => {
                     e.stopPropagation();
+                    // Close all other popovers
+                    document.querySelectorAll('.popover.show').forEach(p => {
+                        if (p !== redactedPopover) p.classList.remove('show');
+                    });
+                    // Toggle this popover
                     const show = redactedPopover.classList.toggle('show');
                     redactedToggle.setAttribute('aria-expanded', String(show));
                 };
@@ -942,6 +947,11 @@ class CustomEmbed extends LibraryBase {
             if (deidentifiedToggle && deidentifiedPopover) {
                 const togglePopover = (e: Event) => {
                     e.stopPropagation();
+                    // Close all other popovers
+                    document.querySelectorAll('.popover.show').forEach(p => {
+                        if (p !== deidentifiedPopover) p.classList.remove('show');
+                    });
+                    // Toggle this popover
                     const show = deidentifiedPopover.classList.toggle('show');
                     deidentifiedToggle.setAttribute('aria-expanded', String(show));
                 };
@@ -962,10 +972,8 @@ class CustomEmbed extends LibraryBase {
 
             // global click-away: close any open popovers
             document.addEventListener('click', () => {
-                const popovers = document.querySelectorAll('.popover.show');
-                popovers.forEach(p => p.classList.remove('show'));
-                const toggles = document.querySelectorAll('.filter-icon[aria-expanded="true"]');
-                toggles.forEach(t => t.setAttribute('aria-expanded', 'false'));
+                document.querySelectorAll('.popover.show').forEach(p => p.classList.remove('show'));
+                document.querySelectorAll('.filter-icon[aria-expanded="true"]').forEach(t => t.setAttribute('aria-expanded', 'false'));
             });
 
             const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
