@@ -502,6 +502,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .dropdown-menu.show {
                     display: flex;
+                    width: fit-content;
                 }
                 .dropdown-search input {
                     width: 100%;

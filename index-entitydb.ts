@@ -381,9 +381,7 @@ class CustomEmbed extends LibraryBase {
                 .column-name-header .dropdown {
                     position: relative;
                 }
-                th.column-name-header-cell {
-                    position: relative;
-                }
+
                 .dropdown-toggle {
                     display: inline-flex;
                     align-items: center;
@@ -507,6 +505,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .dropdown-menu.show {
                     display: flex;
+                    width: fit-content;
                 }
                 .dropdown-search input {
                     width: 100%;
