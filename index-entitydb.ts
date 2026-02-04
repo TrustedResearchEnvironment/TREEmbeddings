@@ -149,6 +149,7 @@ class CustomEmbed extends LibraryBase {
             this.element.innerHTML = styles + datasetHtml;
 
             this.setupEventListeners();
+            this.renderColumnNameCheckboxes();
             this.updateTable();
         } catch (ex: unknown) {
             console.error("Error:", ex);
