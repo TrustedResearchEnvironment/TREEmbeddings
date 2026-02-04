@@ -759,75 +759,75 @@ class CustomEmbed extends LibraryBase {
         try {
             // Sort headers
             const headers = document.querySelectorAll('#dataTable th[data-sort]');
-            headers.forEach(header => {
-                header.addEventListener('click', () => {
-                    const sortType = header.getAttribute('data-sort');
-                    if (sortType) {
-                        if (this.currentSortColumn === sortType) {
-                            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+
+            // Redacted popover toggle
+                const redactedToggle = document.getElementById('redactedToggle');
+                const redactedPopover = document.getElementById('redactedPopover');
+                if (redactedToggle && redactedPopover) {
+                    redactedToggle.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const isVisible = redactedPopover.classList.contains('show');
+                        if (!isVisible) {
+                            redactedPopover.classList.add('show');
+                            redactedToggle.setAttribute('aria-expanded', 'true');
                         } else {
-                            this.currentSortColumn = sortType;
-                            this.currentSortDirection = 'asc';
+                            redactedPopover.classList.remove('show');
+                            redactedToggle.setAttribute('aria-expanded', 'false');
                         }
-                        this.currentPage = 1;
-                        this.updateTable();
+                    });
+                    // Redacted popover option click
+                    redactedPopover.querySelectorAll('.popover-option').forEach(option => {
+                        option.addEventListener('click', (event) => {
+                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
+                            this.redactedFilter = value;
+                            this.updateTable();
+                            redactedPopover.classList.remove('show');
+                            redactedToggle.setAttribute('aria-expanded', 'false');
+                        });
+                    });
+                }
+                // Deidentified popover toggle
+                const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+                const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+                if (deidentifiedToggle && deidentifiedPopover) {
+                    deidentifiedToggle.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const isVisible = deidentifiedPopover.classList.contains('show');
+                        if (!isVisible) {
+                            deidentifiedPopover.classList.add('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'true');
+                        } else {
+                            deidentifiedPopover.classList.remove('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                    // Deidentified popover option click
+                    deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
+                        option.addEventListener('click', (event) => {
+                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
+                            this.deidentifiedFilter = value;
+                            this.updateTable();
+                            deidentifiedPopover.classList.remove('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                        });
+                    });
+                }
+                // Close popovers when clicking outside
+                document.addEventListener('click', (event) => {
+                    const target = event.target as HTMLElement;
+                    if (redactedPopover && redactedPopover.classList.contains('show') &&
+                        !redactedPopover.contains(target) &&
+                        redactedToggle && !redactedToggle.contains(target)) {
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
+                    }
+                    if (deidentifiedPopover && deidentifiedPopover.classList.contains('show') &&
+                        !deidentifiedPopover.contains(target) &&
+                        deidentifiedToggle && !deidentifiedToggle.contains(target)) {
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
                 });
-            });
-
-            // Page size selector
-            const pageSize = document.getElementById('pageSize');
-            if (pageSize) {
-                pageSize.addEventListener('change', (e) => {
-                    const newSize = parseInt((e.target as HTMLSelectElement).value);
-                    if (!isNaN(newSize)) {
-                        this.rowsPerPage = newSize;
-                        this.currentPage = 1;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            // Navigation buttons
-            const prevBtn = document.querySelector('.prev-page');
-            const nextBtn = document.querySelector('.next-page');
-
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => {
-                    if (this.currentPage > 1) {
-                        this.currentPage--;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
-                    if (this.currentPage < totalPages) {
-                        this.currentPage++;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            // Request Dataset button
-            const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
-            if (requestBtn) {
-                requestBtn.addEventListener('click', async () => {
-                    console.log('Button clicked, attempting to fetch projects...');
-                    requestBtn.disabled = true;
-                    try {
-                        console.log('Before API call');
-                        await this.createRequestModal();
-                        console.log('After API call');
-                    } catch (error) {
-                        console.error('Error in button click handler:', error);
-                    } finally {
-                        requestBtn.disabled = false;
-                    }
-                });
-            }
 
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
@@ -868,137 +868,65 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
-            // Column Name dropdown (header triggers)
-            const columnNameToggle = document.getElementById('columnNameToggle');
-            const columnNameDropdownMenu = document.getElementById('columnNameDropdownMenu');
-            if (columnNameToggle && columnNameDropdownMenu) {
-                const toggleDropdown = (e: Event) => {
-                    e.stopPropagation();
-                    const isOpen = columnNameDropdownMenu.classList.contains('show');
-                    document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
-                    columnNameDropdownMenu.classList.remove('drop-up');
-                    columnNameDropdownMenu.style.bottom = '';
-                    if (isOpen) {
-                        columnNameDropdownMenu.classList.remove('show');
-                        columnNameToggle.setAttribute('aria-expanded', 'false');
-                    } else {
-                        this.positionDropdown(columnNameToggle, columnNameDropdownMenu);
-                        columnNameDropdownMenu.classList.add('show');
-                        columnNameToggle.setAttribute('aria-expanded', 'true');
-                    }
+            const columnDropdown = document.getElementById('columnNameDropdown');
+            const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
+            const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
+
+            if (headerToggle && dropdownMenu) {
+                const toggleFn = (event: Event) => {
+                    event.stopPropagation();
+                    const isVisible = dropdownMenu.classList.toggle('show');
+                    headerToggle.setAttribute('aria-expanded', String(isVisible));
                 };
 
-                columnNameToggle.addEventListener('click', toggleDropdown);
-                columnNameToggle.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Enter' || ev.key === ' ') {
-                        ev.preventDefault();
-                        toggleDropdown(ev);
+                headerToggle.addEventListener('click', toggleFn);
+                headerToggle.addEventListener('keydown', (e) => {
+                    if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
+                        e.preventDefault();
+                        toggleFn(e);
                     }
                 });
 
-                columnNameDropdownMenu.addEventListener('click', (ev) => ev.stopPropagation());
+                // Prevent clicks inside the dropdown from closing it
+                dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
 
-                const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-                if (searchInput) {
-                    searchInput.addEventListener('input', () => {
-                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                // Wire sort buttons inside dropdown
+                const sortAscBtn = dropdownMenu.querySelector('button[data-action="sort-asc"]') as HTMLButtonElement | null;
+                const sortDescBtn = dropdownMenu.querySelector('button[data-action="sort-desc"]') as HTMLButtonElement | null;
+                const setSortButtonsState = () => {
+                    if (sortAscBtn) sortAscBtn.classList.toggle('active', this.columnNameSortDirection === 'asc');
+                    if (sortDescBtn) sortDescBtn.classList.toggle('active', this.columnNameSortDirection === 'desc');
+                };
+
+                if (sortAscBtn) {
+                    sortAscBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'asc';
+                        setSortButtonsState();
                         this.renderColumnNameCheckboxes();
                     });
                 }
-
-                columnNameDropdownMenu.querySelectorAll('button[data-action]').forEach(btn => {
-                    btn.addEventListener('click', (ev) => {
-                        const action = (ev.currentTarget as HTMLElement).getAttribute('data-action');
-                        if (action === 'sort-asc') this.columnNameSortDirection = 'asc';
-                        else this.columnNameSortDirection = 'desc';
-                        columnNameDropdownMenu.querySelectorAll('.column-name-sort-row button').forEach(b => b.classList.toggle('active', b === ev.currentTarget));
+                if (sortDescBtn) {
+                    sortDescBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'desc';
+                        setSortButtonsState();
                         this.renderColumnNameCheckboxes();
                     });
-                });
+                }
+                setSortButtonsState();
 
-                this.renderColumnNameCheckboxes();
-            }
-
-            // Redacted popover
-            const redactedToggle = document.getElementById('redactedToggle');
-            const redactedPopover = document.getElementById('redactedPopover');
-            if (redactedToggle && redactedPopover) {
-                const togglePopover = (e: Event) => {
-                    e.stopPropagation();
-                    // Close all other popovers
-                    document.querySelectorAll('.popover.show').forEach(p => {
-                        if (p !== redactedPopover) p.classList.remove('show');
-                    });
-                    // Toggle this popover
-                    const show = !redactedPopover.classList.contains('show');
-                    if (show) {
-                        redactedPopover.classList.add('show');
-                    } else {
-                        redactedPopover.classList.remove('show');
-                    }
-                    redactedToggle.setAttribute('aria-expanded', String(show));
-                };
-                redactedToggle.addEventListener('click', togglePopover);
-                redactedPopover.addEventListener('click', (e) => e.stopPropagation());
-
-                // option clicks
-                redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
-                    opt.addEventListener('click', (e) => {
-                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
-                        this.redactedFilter = v;
-                        // update UI
-                        redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                        (opt as HTMLElement).classList.add('active');
-                        redactedToggle.classList.toggle('filter-active', v !== 'all');
-                        this.updateTable();
-                    });
+                // Close when clicking outside
+                document.addEventListener('click', () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
                 });
             }
 
-            // Deidentified popover
-            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
-            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
-            if (deidentifiedToggle && deidentifiedPopover) {
-                const togglePopover = (e: Event) => {
-                    e.stopPropagation();
-                    // Close all other popovers
-                    document.querySelectorAll('.popover.show').forEach(p => {
-                        if (p !== deidentifiedPopover) p.classList.remove('show');
-                    });
-                    // Toggle this popover
-                    const show = !deidentifiedPopover.classList.contains('show');
-                    if (show) {
-                        deidentifiedPopover.classList.add('show');
-                    } else {
-                        deidentifiedPopover.classList.remove('show');
-                    }
-                    deidentifiedToggle.setAttribute('aria-expanded', String(show));
-                };
-                deidentifiedToggle.addEventListener('click', togglePopover);
-                deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
-
-                deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
-                    opt.addEventListener('click', (e) => {
-                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
-                        this.deidentifiedFilter = v;
-                        deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                        (opt as HTMLElement).classList.add('active');
-                        deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
-                        this.updateTable();
-                    });
-                });
-            }
-
-            // global click-away: close any open popovers
-            document.addEventListener('click', () => {
-                document.querySelectorAll('.popover.show').forEach(p => p.classList.remove('show'));
-                document.querySelectorAll('.filter-icon[aria-expanded="true"]').forEach(t => t.setAttribute('aria-expanded', 'false'));
-            });
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
     }
-
 
 
     private updateTable = (): void => {

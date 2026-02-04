@@ -745,76 +745,75 @@ class CustomEmbed extends LibraryBase {
         try {
             // Sort headers
             const headers = document.querySelectorAll('#dataTable th[data-sort]');
-            headers.forEach(header => {
-                header.addEventListener('click', () => {
-                    const sortType = header.getAttribute('data-sort');
-                    if (sortType) {
-                        if (this.currentSortColumn === sortType) {
-                            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+
+            // Redacted popover toggle
+                const redactedToggle = document.getElementById('redactedToggle');
+                const redactedPopover = document.getElementById('redactedPopover');
+                if (redactedToggle && redactedPopover) {
+                    redactedToggle.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const isVisible = redactedPopover.classList.contains('show');
+                        if (!isVisible) {
+                            redactedPopover.classList.add('show');
+                            redactedToggle.setAttribute('aria-expanded', 'true');
                         } else {
-                            this.currentSortColumn = sortType;
-                            this.currentSortDirection = 'asc';
+                            redactedPopover.classList.remove('show');
+                            redactedToggle.setAttribute('aria-expanded', 'false');
                         }
-                        this.currentPage = 1;
-                        this.updateTable();
+                    });
+                    // Redacted popover option click
+                    redactedPopover.querySelectorAll('.popover-option').forEach(option => {
+                        option.addEventListener('click', (event) => {
+                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
+                            this.redactedFilter = value;
+                            this.updateTable();
+                            redactedPopover.classList.remove('show');
+                            redactedToggle.setAttribute('aria-expanded', 'false');
+                        });
+                    });
+                }
+                // Deidentified popover toggle
+                const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+                const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+                if (deidentifiedToggle && deidentifiedPopover) {
+                    deidentifiedToggle.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const isVisible = deidentifiedPopover.classList.contains('show');
+                        if (!isVisible) {
+                            deidentifiedPopover.classList.add('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'true');
+                        } else {
+                            deidentifiedPopover.classList.remove('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                    // Deidentified popover option click
+                    deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
+                        option.addEventListener('click', (event) => {
+                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
+                            this.deidentifiedFilter = value;
+                            this.updateTable();
+                            deidentifiedPopover.classList.remove('show');
+                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                        });
+                    });
+                }
+                // Close popovers when clicking outside
+                document.addEventListener('click', (event) => {
+                    const target = event.target as HTMLElement;
+                    if (redactedPopover && redactedPopover.classList.contains('show') &&
+                        !redactedPopover.contains(target) &&
+                        redactedToggle && !redactedToggle.contains(target)) {
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
+                    }
+                    if (deidentifiedPopover && deidentifiedPopover.classList.contains('show') &&
+                        !deidentifiedPopover.contains(target) &&
+                        deidentifiedToggle && !deidentifiedToggle.contains(target)) {
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
                 });
-            });
-
-            // Page size selector
-            const pageSize = document.getElementById('pageSize');
-            if (pageSize) {
-                pageSize.addEventListener('change', (e) => {
-                    const newSize = parseInt((e.target as HTMLSelectElement).value);
-                    if (!isNaN(newSize)) {
-                        this.rowsPerPage = newSize;
-                        this.currentPage = 1;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            // Navigation buttons
-            const prevBtn = document.querySelector('.prev-page');
-            const nextBtn = document.querySelector('.next-page');
-
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => {
-                    if (this.currentPage > 1) {
-                        this.currentPage--;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => {
-                    const filteredCount = this.getFilteredColumns().length;
-                    const totalPages = Math.max(1, Math.ceil(filteredCount / this.rowsPerPage));
-                    if (this.currentPage < totalPages) {
-                        this.currentPage++;
-                        this.updateTable();
-                    }
-                });
-            }
-
-            // Request Dataset button
-            const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
-            if (requestBtn) {
-                requestBtn.addEventListener('click', async () => {
-                    console.log('Button clicked, attempting to fetch projects...');
-                    requestBtn.disabled = true;
-                    try {
-                        console.log('Before API call');
-                        await this.createRequestModal();
-                        console.log('After API call');
-                    } catch (error) {
-                        console.error('Error in button click handler:', error);
-                    } finally {
-                        requestBtn.disabled = false;
-                    }
-                });
-            }
 
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
@@ -910,89 +909,6 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
-            // Redacted popover
-            const redactedToggle = document.getElementById('redactedToggle');
-            const redactedPopover = document.getElementById('redactedPopover');
-            if (redactedToggle && redactedPopover) {
-                const togglePopover = (e: Event) => {
-                    e.stopPropagation();
-                    // Close all other popovers
-                    document.querySelectorAll('.popover.show').forEach(p => {
-                        if (p !== redactedPopover) p.classList.remove('show');
-                    });
-                    // Toggle this popover
-                    const show = !redactedPopover.classList.contains('show');
-                    if (show) {
-                        redactedPopover.classList.add('show');
-                    } else {
-                        redactedPopover.classList.remove('show');
-                    }
-                    redactedToggle.setAttribute('aria-expanded', String(show));
-                };
-                redactedToggle.addEventListener('click', togglePopover);
-                redactedPopover.addEventListener('click', (e) => e.stopPropagation());
-
-                // option clicks
-                redactedPopover.querySelectorAll('.popover-option').forEach(opt => {
-                    opt.addEventListener('click', (e) => {
-                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
-                        this.redactedFilter = v;
-                        // update UI
-                        redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                        (opt as HTMLElement).classList.add('active');
-                        redactedToggle.classList.toggle('filter-active', v !== 'all');
-                        this.updateTable();
-                    });
-                });
-            }
-
-            // Deidentified popover
-            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
-            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
-            if (deidentifiedToggle && deidentifiedPopover) {
-                const togglePopover = (e: Event) => {
-                    e.stopPropagation();
-                    // Close all other popovers
-                    document.querySelectorAll('.popover.show').forEach(p => {
-                        if (p !== deidentifiedPopover) p.classList.remove('show');
-                    });
-                    // Toggle this popover
-                    const show = !deidentifiedPopover.classList.contains('show');
-                    if (show) {
-                        deidentifiedPopover.classList.add('show');
-                    } else {
-                        deidentifiedPopover.classList.remove('show');
-                    }
-                    deidentifiedToggle.setAttribute('aria-expanded', String(show));
-                };
-                deidentifiedToggle.addEventListener('click', togglePopover);
-                deidentifiedPopover.addEventListener('click', (e) => e.stopPropagation());
-
-                deidentifiedPopover.querySelectorAll('.popover-option').forEach(opt => {
-                    opt.addEventListener('click', (e) => {
-                        const v = (opt as HTMLElement).dataset.value as 'yes'|'no'|'all';
-                        this.deidentifiedFilter = v;
-                        deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                        (opt as HTMLElement).classList.add('active');
-                        deidentifiedToggle.classList.toggle('filter-active', v !== 'all');
-                        this.updateTable();
-                    });
-                });
-            }
-
-            // global click-away: close any open popovers
-            document.addEventListener('click', () => {
-                document.querySelectorAll('.popover.show').forEach(p => p.classList.remove('show'));
-                document.querySelectorAll('.filter-icon[aria-expanded="true"]').forEach(t => t.setAttribute('aria-expanded', 'false'));
-            });
-
-            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-            if (searchInput) {
-                searchInput.addEventListener('input', (event) => {
-                    this.columnNameSearchTerm = (event.target as HTMLInputElement).value;
-                    this.renderColumnNameCheckboxes();
-                });
-            }
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
