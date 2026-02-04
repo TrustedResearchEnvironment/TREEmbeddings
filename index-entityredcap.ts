@@ -814,7 +814,7 @@ class CustomEmbed extends LibraryBase {
                             // Remove active from all, add to selected
                             deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
                             (event.target as HTMLElement).classList.add('active');
-                            deidentifiedPopover.classList.toggle('filter-active', value !== 'all');
+                            deidentifiedToggle.classList.toggle('filter-active', value !== 'all');
                             
                             this.updateTable();
                             deidentifiedPopover.classList.remove('show');
