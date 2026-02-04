@@ -421,6 +421,7 @@ class CustomEmbed extends LibraryBase {
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                    position: relative;
                 }
                 .filter-icon {
                     display: inline-flex;
@@ -761,73 +762,85 @@ class CustomEmbed extends LibraryBase {
             const headers = document.querySelectorAll('#dataTable th[data-sort]');
 
             // Redacted popover toggle
-                const redactedToggle = document.getElementById('redactedToggle');
-                const redactedPopover = document.getElementById('redactedPopover');
-                if (redactedToggle && redactedPopover) {
-                    redactedToggle.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        const isVisible = redactedPopover.classList.contains('show');
-                        if (!isVisible) {
-                            redactedPopover.classList.add('show');
-                            redactedToggle.setAttribute('aria-expanded', 'true');
-                        } else {
-                            redactedPopover.classList.remove('show');
-                            redactedToggle.setAttribute('aria-expanded', 'false');
-                        }
-                    });
+            const redactedToggle = document.getElementById('redactedToggle');
+            const redactedPopover = document.getElementById('redactedPopover');
+            if (redactedToggle && redactedPopover) {
+                redactedToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const isVisible = redactedPopover.classList.contains('show');
+                    if (!isVisible) {
+                        redactedPopover.classList.add('show');
+                        redactedToggle.setAttribute('aria-expanded', 'true');
+                    } else {
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
+                    }
                     // Redacted popover option click
                     redactedPopover.querySelectorAll('.popover-option').forEach(option => {
                         option.addEventListener('click', (event) => {
                             const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
                             this.redactedFilter = value;
+                            // Remove active from all, add to selected
+                            redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                            (event.target as HTMLElement).classList.add('active');
+                            redactedToggle.classList.toggle('filter-active', value !== 'all');
                             this.updateTable();
                             redactedPopover.classList.remove('show');
                             redactedToggle.setAttribute('aria-expanded', 'false');
                         });
                     });
-                }
-                // Deidentified popover toggle
-                const deidentifiedToggle = document.getElementById('deidentifiedToggle');
-                const deidentifiedPopover = document.getElementById('deidentifiedPopover');
-                if (deidentifiedToggle && deidentifiedPopover) {
-                    deidentifiedToggle.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        const isVisible = deidentifiedPopover.classList.contains('show');
-                        if (!isVisible) {
-                            deidentifiedPopover.classList.add('show');
-                            deidentifiedToggle.setAttribute('aria-expanded', 'true');
-                        } else {
-                            deidentifiedPopover.classList.remove('show');
-                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
-                        }
-                    });
+                });
+            }
+            // Deidentified popover toggle
+            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+            if (deidentifiedToggle && deidentifiedPopover) {
+                deidentifiedToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const isVisible = deidentifiedPopover.classList.contains('show');
+                    if (!isVisible) {
+                        deidentifiedPopover.classList.add('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'true');
+                    } else {
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                    }
+                
                     // Deidentified popover option click
                     deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
                         option.addEventListener('click', (event) => {
                             const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
                             this.deidentifiedFilter = value;
+
+                            // Remove active from all, add to selected
+                            deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
+                            (event.target as HTMLElement).classList.add('active');
+                            deidentifiedPopover.classList.toggle('filter-active', value !== 'all');
+                            
                             this.updateTable();
                             deidentifiedPopover.classList.remove('show');
                             deidentifiedToggle.setAttribute('aria-expanded', 'false');
                         });
                     });
-                }
-                // Close popovers when clicking outside
-                document.addEventListener('click', (event) => {
-                    const target = event.target as HTMLElement;
-                    if (redactedPopover && redactedPopover.classList.contains('show') &&
-                        !redactedPopover.contains(target) &&
-                        redactedToggle && !redactedToggle.contains(target)) {
-                        redactedPopover.classList.remove('show');
-                        redactedToggle.setAttribute('aria-expanded', 'false');
-                    }
-                    if (deidentifiedPopover && deidentifiedPopover.classList.contains('show') &&
-                        !deidentifiedPopover.contains(target) &&
-                        deidentifiedToggle && !deidentifiedToggle.contains(target)) {
-                        deidentifiedPopover.classList.remove('show');
-                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
-                    }
+
                 });
+            }
+            // Close popovers when clicking outside
+            document.addEventListener('click', (event) => {
+                const target = event.target as HTMLElement;
+                if (redactedPopover && redactedPopover.classList.contains('show') &&
+                    !redactedPopover.contains(target) &&
+                    redactedToggle && !redactedToggle.contains(target)) {
+                    redactedPopover.classList.remove('show');
+                    redactedToggle.setAttribute('aria-expanded', 'false');
+                }
+                if (deidentifiedPopover && deidentifiedPopover.classList.contains('show') &&
+                    !deidentifiedPopover.contains(target) &&
+                    deidentifiedToggle && !deidentifiedToggle.contains(target)) {
+                    deidentifiedPopover.classList.remove('show');
+                    deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
 
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
