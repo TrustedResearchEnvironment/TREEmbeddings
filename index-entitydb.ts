@@ -887,20 +887,10 @@ class CustomEmbed extends LibraryBase {
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
-
                 const toggleFn = (event: Event) => {
                     event.stopPropagation();
-                    const isVisible = dropdownMenu.classList.contains('show');
-                    // close any other open dropdowns
-                    document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
-                    if (!isVisible) {
-                        this.positionDropdown(headerToggle, dropdownMenu);
-                        dropdownMenu.classList.add('show');
-                        headerToggle.setAttribute('aria-expanded', 'true');
-                    } else {
-                        dropdownMenu.classList.remove('show');
-                        headerToggle.setAttribute('aria-expanded', 'false');
-                    }
+                    const isVisible = dropdownMenu.classList.toggle('show');
+                    headerToggle.setAttribute('aria-expanded', String(isVisible));
                 };
 
                 headerToggle.addEventListener('click', toggleFn);
@@ -946,6 +936,7 @@ class CustomEmbed extends LibraryBase {
                     headerToggle.setAttribute('aria-expanded', 'false');
                 });
             }
+
 
         } catch (error) {
             console.error('Error setting up event listeners:', error);
