@@ -760,6 +760,114 @@ class CustomEmbed extends LibraryBase {
         try {
             // Sort headers
             const headers = document.querySelectorAll('#dataTable th[data-sort]');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const sortType = header.getAttribute('data-sort');
+                    if (sortType) {
+                        if (this.currentSortColumn === sortType) {
+                            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this.currentSortColumn = sortType;
+                            this.currentSortDirection = 'asc';
+                        }
+                        this.currentPage = 1;
+                        this.updateTable();
+                    }
+                });
+            });
+
+            // Page size selector
+            const pageSize = document.getElementById('pageSize');
+            if (pageSize) {
+                pageSize.addEventListener('change', (e) => {
+                    const newSize = parseInt((e.target as HTMLSelectElement).value);
+                    if (!isNaN(newSize)) {
+                        this.rowsPerPage = newSize;
+                        this.currentPage = 1;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            // Navigation buttons
+            const prevBtn = document.querySelector('.prev-page');
+            const nextBtn = document.querySelector('.next-page');
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (this.currentPage > 1) {
+                        this.currentPage--;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    if (this.currentPage < totalPages) {
+                        this.currentPage++;
+                        this.updateTable();
+                    }
+                });
+            }
+
+            // Request Dataset button
+            const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
+            if (requestBtn) {
+                requestBtn.addEventListener('click', async () => {
+                    console.log('Button clicked, attempting to fetch projects...');
+                    requestBtn.disabled = true;
+                    try {
+                        console.log('Before API call');
+                        await this.createRequestModal();
+                        console.log('After API call');
+                    } catch (error) {
+                        console.error('Error in button click handler:', error);
+                    } finally {
+                        requestBtn.disabled = false;
+                    }
+                });
+            }
+
+            const requestForm = document.getElementById('requestForm');
+            if (requestForm) {
+                requestForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    try {
+                        if (!this.dataSet) {
+                            throw new Error('Dataset information not available');
+                        }
+
+                        const formData = {
+                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
+                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value,
+                            datasetId: this.dataSet.DataSetID,
+                            approvers: this.dataSet.Approvers,
+                        };
+
+                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                            DataSetID: formData.datasetId,
+                            approvers: formData.approvers,
+                            assistProjectID: parseInt(formData.projectId),
+                            description: formData.description,
+                            requestName: formData.requestName,
+                        });
+                        
+                        alert('Request submitted successfully!');
+                        
+                        // Close the modal on success
+                        const modal = document.getElementById('requestDatasetModal');
+                        if (modal) modal.classList.remove('show');
+
+                    } catch (error) {
+                        console.error('Error submitting request:', error);
+                        alert('Failed to submit request. Please try again.');
+                    }
+                });
+            }
 
             // Redacted popover toggle
             const redactedToggle = document.getElementById('redactedToggle');
@@ -842,44 +950,6 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
-            const requestForm = document.getElementById('requestForm');
-            if (requestForm) {
-                requestForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    try {
-                        if (!this.dataSet) {
-                            throw new Error('Dataset information not available');
-                        }
-
-                        const formData = {
-                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
-                            projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value,
-                            datasetId: this.dataSet.DataSetID,
-                            approvers: this.dataSet.Approvers,
-                        };
-
-                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            description: formData.description,
-                            requestName: formData.requestName,
-                        });
-                        
-                        alert('Request submitted successfully!');
-                        
-                        // Close the modal on success
-                        const modal = document.getElementById('requestDatasetModal');
-                        if (modal) modal.classList.remove('show');
-
-                    } catch (error) {
-                        console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
-                    }
-                });
-            }
 
             const columnDropdown = document.getElementById('columnNameDropdown');
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
