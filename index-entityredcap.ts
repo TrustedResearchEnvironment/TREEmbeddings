@@ -950,6 +950,14 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
+            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                        this.renderColumnNameCheckboxes();
+                    });
+                }
+
 
             const columnDropdown = document.getElementById('columnNameDropdown');
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
