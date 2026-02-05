@@ -84,7 +84,7 @@ const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
-    private currentSortColumn: string = "name";
+    private currentSortColumn: string = "ColumnName";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
@@ -1000,7 +1000,7 @@ class CustomEmbed extends LibraryBase {
                         this.columnNameSortDirection = 'desc';
                         setSortButtonsState();
                         this.renderColumnNameCheckboxes();
-                        
+
                         this.currentPage = 1;
                         this.currentSortColumn = 'ColumnName';
                         this.currentSortDirection = 'desc';

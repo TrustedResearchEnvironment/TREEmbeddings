@@ -84,7 +84,7 @@ const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
-    private currentSortColumn: string = "name";
+    private currentSortColumn: string = "ColumnName";
     private currentSortDirection: "asc" | "desc" = "asc";
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
@@ -1231,13 +1231,6 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    // private updateColumnFilterCount = (): void => {
-    //     const el = document.getElementById('columnNameFilterCount');
-    //     if (!el) return;
-    //     const total = this.getColumnNameOptions().length;
-    //     const selected = this.selectedColumnNames.size;
-    //     el.textContent = selected === total ? '' : `${selected}/${total}`;
-    // }
     private updateColumnFilterCount = (): void => {
         const countIndicator = document.getElementById('columnNameFilterCount');
         if (!countIndicator) return;
