@@ -987,6 +987,9 @@ class CustomEmbed extends LibraryBase {
                         this.columnNameSortDirection = 'asc';
                         setSortButtonsState();
                         this.renderColumnNameCheckboxes();
+                        
+                        this.currentPage = 1;
+                        this.currentSortDirection = 'asc';
                         this.updateTable();
                     });
                 }
@@ -996,6 +999,9 @@ class CustomEmbed extends LibraryBase {
                         this.columnNameSortDirection = 'desc';
                         setSortButtonsState();
                         this.renderColumnNameCheckboxes();
+                        
+                        this.currentPage = 1;
+                        this.currentSortDirection = 'desc';
                         this.updateTable();
                     });
                 }
