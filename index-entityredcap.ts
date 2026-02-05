@@ -759,22 +759,22 @@ class CustomEmbed extends LibraryBase {
     public setupEventListeners = (): void => {
         try {
             // Sort headers
-            const headers = document.querySelectorAll('#dataTable th[data-sort]');
-            headers.forEach(header => {
-                header.addEventListener('click', () => {
-                    const sortType = header.getAttribute('data-sort');
-                    if (sortType) {
-                        if (this.currentSortColumn === sortType) {
-                            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            this.currentSortColumn = sortType;
-                            this.currentSortDirection = 'asc';
-                        }
-                        this.currentPage = 1;
-                        this.updateTable();
-                    }
-                });
-            });
+            // const headers = document.querySelectorAll('#dataTable th[data-sort]');
+            // headers.forEach(header => {
+            //     header.addEventListener('click', () => {
+            //         const sortType = header.getAttribute('data-sort');
+            //         if (sortType) {
+            //             if (this.currentSortColumn === sortType) {
+            //                 this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+            //             } else {
+            //                 this.currentSortColumn = sortType;
+            //                 this.currentSortDirection = 'asc';
+            //             }
+            //             this.currentPage = 1;
+            //             this.updateTable();
+            //         }
+            //     });
+            // });
 
             // Page size selector
             const pageSize = document.getElementById('pageSize');
@@ -987,6 +987,7 @@ class CustomEmbed extends LibraryBase {
                         this.columnNameSortDirection = 'asc';
                         setSortButtonsState();
                         this.renderColumnNameCheckboxes();
+                        this.updateTable();
                     });
                 }
                 if (sortDescBtn) {
@@ -995,6 +996,7 @@ class CustomEmbed extends LibraryBase {
                         this.columnNameSortDirection = 'desc';
                         setSortButtonsState();
                         this.renderColumnNameCheckboxes();
+                        this.updateTable();
                     });
                 }
                 setSortButtonsState();
