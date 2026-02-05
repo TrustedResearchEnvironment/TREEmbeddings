@@ -1006,7 +1006,7 @@ class CustomEmbed extends LibraryBase {
 
                         this.currentPage = 1;
                         this.currentSortColumn = 'ColumnName';
-                        this.currentSortDirection = 'asc';
+                        this.currentSortDirection = 'desc';
                         this.updateTable();
                     });
                 }
