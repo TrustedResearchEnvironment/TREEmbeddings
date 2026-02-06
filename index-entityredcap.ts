@@ -1264,6 +1264,17 @@ class CustomEmbed extends LibraryBase {
             results = results.filter(c => !Boolean(c.Tokenise));
         }
 
+        // Apply sorting
+        if (this.currentSortColumn) {
+            results = results.sort((a: any, b: any) => {
+                const aVal = (a[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
+                const bVal = (b[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
+                if (typeof aVal === 'string') return this.currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                if (typeof aVal === 'number') return this.currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                return 0;
+            });
+        }
+
         return results;
     }
 
