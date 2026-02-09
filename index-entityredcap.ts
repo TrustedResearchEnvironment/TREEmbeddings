@@ -153,6 +153,7 @@ class CustomEmbed extends LibraryBase {
                     requestBtn.disabled = true;
                     requestBtn.textContent = "Disabled - Data Set is inactive";
                 }
+                alert("This dataset is currently inactive and cannot be requested. It could be that its data source is inactive as well. Please contact your platform administrator for more information.");
             }
 
             this.setupEventListeners();
