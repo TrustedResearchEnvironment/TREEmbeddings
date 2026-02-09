@@ -147,6 +147,14 @@ class CustomEmbed extends LibraryBase {
 
             this.element.innerHTML = styles + datasetHtml;
 
+            if (this.dataSet.IsActive == false) {
+                const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
+                if (requestBtn) {
+                    requestBtn.disabled = true;
+                    requestBtn.textContent = "Disabled - Data Set is inactive";
+                }
+            }
+
             this.setupEventListeners();
             this.renderColumnNameCheckboxes();
             this.updateTable();
