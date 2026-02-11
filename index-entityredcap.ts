@@ -217,6 +217,7 @@ class CustomEmbed extends LibraryBase {
                             <div class="chips">
                                 <span class="mui-chip">ID: ${dataSet.DataSetID}</span>
                                 <span class="mui-chip">Owner: ${dataSet.Owner}</span>
+                                <span class="mui-chip">Owner: ${dataSet.Approvers}</span>
                                 <span class="mui-chip">Modified: ${new Date(dataSet.ModifiedDate).toLocaleDateString()}</span>
                             </div>
                             <p>${dataSet.Description}</p>
