@@ -1,23 +1,5 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableContainer, 
-    TableHead, 
-    TableRow,
-    Paper,
-    TablePagination,
-    TableSortLabel,
-    Chip,
-    Card,
-    CardHeader,
-    CardContent,
-    Button,
-    Box,
-    Typography
-} from '@mui/material';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
