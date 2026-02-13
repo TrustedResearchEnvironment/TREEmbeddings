@@ -91,9 +91,9 @@ class CustomEmbed extends LibraryBase {
     private dataSet: DataSetMetadata | null = null;
     private columnNameSearchTerm: string = "";
     private selectedColumnNames: Set<string> = new Set();
-    private columnNameSortDirection: "asc" | "desc" = "asc";
     private redactedFilter: 'all' | 'yes' | 'no' = 'all';
     private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
+    private columnNameSortDirection: "asc" | "desc" = "asc";
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -108,18 +108,6 @@ class CustomEmbed extends LibraryBase {
         await this.buildPage();
     }
 
-    public getAccessToken = async (): Promise<void> => {
-        try {
-            const authId = this.getParamValue('ApiAuthRequestId')?.value
-            const authResponse = await window.loomeApi.runApiRequest(authId);
-            this.token = authResponse.access_token;
-        }
-        catch (ex: unknown) {
-            console.log(ex);
-            const error = ex as Error;
-            this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
-        }
-    }
     
     public buildPage = async (): Promise<void> => {
         try {
@@ -135,13 +123,12 @@ class CustomEmbed extends LibraryBase {
                 columnsResponse.Results.sort((a: DataSetColumn, b: DataSetColumn) => a.DisplayOrder - b.DisplayOrder) :
                 [];
 
-            // Initialize selected column names to all available options by default
             this.selectedColumnNames = new Set(this.getColumnNameOptions());
+            this.columnNameSearchTerm = '';
 
             if (!this.dataSet) {
                 throw new Error('Dataset information not available');
             }
-
             
             const datasetHtml = this.generateMainLayout(this.dataSet);
             const styles = this.generateStyles();
@@ -256,7 +243,6 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
-                                    <th data-sort="ColumnType">Data Type</th>
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
@@ -391,7 +377,6 @@ class CustomEmbed extends LibraryBase {
                 .column-name-header .dropdown {
                     position: relative;
                 }
-
                 .dropdown-toggle {
                     display: inline-flex;
                     align-items: center;
@@ -771,7 +756,6 @@ class CustomEmbed extends LibraryBase {
 
     public setupEventListeners = (): void => {
         try {
-            
             // Sort headers
             // const headers = document.querySelectorAll('#dataTable th[data-sort]');
             // headers.forEach(header => {
@@ -818,8 +802,7 @@ class CustomEmbed extends LibraryBase {
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
-                    const totalEntries = this.getFilteredColumns().length;
-                    const totalPages = Math.max(1, Math.ceil(totalEntries / this.rowsPerPage));
+                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
                     if (this.currentPage < totalPages) {
                         this.currentPage++;
                         this.updateTable();
@@ -884,80 +867,64 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
+            const bindPopoverOptions = (
+                popover: HTMLElement,
+                toggle: HTMLElement,
+                setFilter: (value: 'all' | 'yes' | 'no') => void,
+            ): void => {
+                const options = Array.from(popover.querySelectorAll('.popover-option')) as HTMLElement[];
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const value = option.getAttribute('data-value') as 'all' | 'yes' | 'no';
+                        if (!value) return;
+                        setFilter(value);
+                        options.forEach(o => o.classList.remove('active'));
+                        option.classList.add('active');
+                        toggle.classList.toggle('filter-active', value !== 'all');
+                        this.currentPage = 1;
+                        this.updateTable();
+                        popover.classList.remove('show');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    });
+                });
+            };
+
             // Redacted popover toggle
             const redactedToggle = document.getElementById('redactedToggle');
             const redactedPopover = document.getElementById('redactedPopover');
             if (redactedToggle && redactedPopover) {
-                const handleRedactedOptionClick = (event: Event) => {
-                    const target = event.target as HTMLElement | null;
-                    if (!target) {
-                    return;
-                    }
-                    const value = target.getAttribute('data-value') as 'all' | 'yes' | 'no';
-                    this.redactedFilter = value;
-                    // Remove active from all, add to selected
-                    redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                    target.classList.add('active');
-                    redactedToggle.classList.toggle('filter-active', value !== 'all');
-                    this.updateTable();
-                    redactedPopover.classList.remove('show');
-                    redactedToggle.setAttribute('aria-expanded', 'false');
-                };
-
-                // Attach redacted popover option click listeners once
-                redactedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleRedactedOptionClick);
-                });
-
                 redactedToggle.addEventListener('click', (event) => {
                     event.stopPropagation();
                     const isVisible = redactedPopover.classList.contains('show');
                     if (!isVisible) {
-                    redactedPopover.classList.add('show');
-                    redactedToggle.setAttribute('aria-expanded', 'true');
+                        redactedPopover.classList.add('show');
+                        redactedToggle.setAttribute('aria-expanded', 'true');
                     } else {
-                    redactedPopover.classList.remove('show');
-                    redactedToggle.setAttribute('aria-expanded', 'false');
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
                     }
+                });
+                bindPopoverOptions(redactedPopover, redactedToggle, (value) => {
+                    this.redactedFilter = value;
                 });
             }
             // Deidentified popover toggle
             const deidentifiedToggle = document.getElementById('deidentifiedToggle');
             const deidentifiedPopover = document.getElementById('deidentifiedPopover');
             if (deidentifiedToggle && deidentifiedPopover) {
-                const handleDeidentifiedOptionClick = (event: Event) => {
-                    const target = event.target as HTMLElement | null;
-                    if (!target) {
-                    return;
-                    }
-                    const value = target.getAttribute('data-value') as 'all' | 'yes' | 'no';
-                    this.deidentifiedFilter = value;
-
-                    // Remove active from all, add to selected
-                    deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                    target.classList.add('active');
-                    deidentifiedToggle.classList.toggle('filter-active', value !== 'all');
-
-                    this.updateTable();
-                    deidentifiedPopover.classList.remove('show');
-                    deidentifiedToggle.setAttribute('aria-expanded', 'false');
-                };
-
-                // Attach deidentified popover option click listeners once
-                deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleDeidentifiedOptionClick);
-                });
-
                 deidentifiedToggle.addEventListener('click', (event) => {
                     event.stopPropagation();
                     const isVisible = deidentifiedPopover.classList.contains('show');
                     if (!isVisible) {
-                    deidentifiedPopover.classList.add('show');
-                    deidentifiedToggle.setAttribute('aria-expanded', 'true');
+                        deidentifiedPopover.classList.add('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'true');
                     } else {
-                    deidentifiedPopover.classList.remove('show');
-                    deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
+                });
+                bindPopoverOptions(deidentifiedPopover, deidentifiedToggle, (value) => {
+                    this.deidentifiedFilter = value;
                 });
             }
             // Close popovers when clicking outside
@@ -984,6 +951,7 @@ class CustomEmbed extends LibraryBase {
                         this.renderColumnNameCheckboxes();
                     });
                 }
+
 
             const columnDropdown = document.getElementById('columnNameDropdown');
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
@@ -1050,60 +1018,73 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
-
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
     }
 
 
+
+
     private updateTable = (): void => {
         const tbody = document.getElementById('columnsTableBody');
         if (!tbody) return;
 
-        // Apply combined filters (column name selection + boolean filters) before pagination
         const filteredColumns = this.getFilteredColumns();
         const totalColumns = filteredColumns.length;
         const totalPages = Math.max(1, Math.ceil(totalColumns / this.rowsPerPage));
-        if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+        if (this.currentPage > totalPages) {
+            this.currentPage = totalPages;
+        }
+
         const startIndex = (this.currentPage - 1) * this.rowsPerPage;
         const endIndex = Math.min(startIndex + this.rowsPerPage, totalColumns);
         const paginatedColumns = filteredColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
-        paginatedColumns.forEach((column: DataSetColumn) => {
-            columnsHtml += `
+        if (totalColumns === 0) {
+            columnsHtml = `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
-                    <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td colspan="6">No columns match the selected filters.</td>
                 </tr>
             `;
-        });
+        } else {
+            paginatedColumns.forEach((column: DataSetColumn) => {
+                columnsHtml += `
+                    <tr>
+                        <td>${column.ColumnName || ''}</td>
+                        <td>${column.LogicalColumnName || ''}</td>
+                        <td>${column.BusinessDescription || 'N/A'}</td>
+                        <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                        <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                        <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    </tr>
+                `;
+            });
+        }
+        // Removed Column Type from above as there is no explicit ColumnType values in REDCap datasets
+        // <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
+
         tbody.innerHTML = columnsHtml;
 
         try {
             this.updateSortIcons();
-            
-            // Update page size display
+
             const pageSizeSelect = document.getElementById('pageSize');
             if (pageSizeSelect) {
                 (pageSizeSelect as HTMLSelectElement).value = this.rowsPerPage.toString();
             }
 
-            // Update pagination info in table footer
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
-                const start = totalColumns === 0 ? 0 : (this.currentPage - 1) * this.rowsPerPage + 1;
-                const end = Math.min(start + this.rowsPerPage - 1, totalColumns);
+                const displayStart = totalColumns === 0 ? 0 : startIndex + 1;
+                const displayEnd = totalColumns === 0 ? 0 : endIndex;
                 paginationInfo.innerHTML = `
-                    Showing ${start} to ${end} of ${totalColumns} entries
+                    Showing ${displayStart} to ${displayEnd} of ${totalColumns} entries
                 `;
             }
+
             this.updatePaginationButtons(totalColumns);
         } catch (error) {
             console.error('Error updating table UI:', error);
@@ -1123,16 +1104,20 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private updatePaginationButtons = (totalEntries?: number): void => {
-        const entries = totalEntries ?? this.getFilteredColumns().length;
+    private updatePaginationButtons = (totalColumns?: number): void => {
+        const entries = totalColumns ?? this.getFilteredColumns().length;
         const totalPages = Math.max(1, Math.ceil(entries / this.rowsPerPage));
         
         // Update navigation buttons
         const prevPageBtn = document.querySelector('.prev-page');
         const nextPageBtn = document.querySelector('.next-page');
         
-        if (prevPageBtn) prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
-        if (nextPageBtn) nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
+        if (prevPageBtn) {
+            prevPageBtn.classList.toggle('disabled', this.currentPage === 1);
+        }
+        if (nextPageBtn) {
+            nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
+        }
     }
 
     private getColumnNameOptions = (): string[] => {
@@ -1145,122 +1130,104 @@ class CustomEmbed extends LibraryBase {
         const selectAllContainer = document.getElementById('columnNameSelectAllContainer');
         if (!listContainer || !selectAllContainer) return;
 
-        const options = this.getColumnNameOptions()
-            .filter(opt => opt.toLowerCase().includes(this.columnNameSearchTerm || ''))
-            .sort((a, b) => this.columnNameSortDirection === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
+        const normalizedSearch = this.columnNameSearchTerm.trim().toLowerCase();
+        const allOptions = this.getColumnNameOptions();
+        let visibleOptions = normalizedSearch
+            ? allOptions.filter(name => name.toLowerCase().includes(normalizedSearch))
+            : allOptions.slice();
 
-        // Select All UI
+        // Apply sort direction
+        if (this.columnNameSortDirection === 'desc') {
+            visibleOptions = visibleOptions.slice().reverse();
+        }
+
+        // clear
         selectAllContainer.innerHTML = '';
-        const selectAllWrapper = document.createElement('div');
-        selectAllWrapper.className = 'dropdown-item';
+        listContainer.innerHTML = '';
+
+        // Select All control
+        const selectAllLabel = document.createElement('label');
+        selectAllLabel.className = 'dropdown-item';
+        selectAllLabel.style.fontWeight = '600';
+
         const selectAllCheckbox = document.createElement('input');
         selectAllCheckbox.type = 'checkbox';
         selectAllCheckbox.id = 'columnNameSelectAll';
-        const visibleCount = options.length;
-        const selectedVisibleCount = options.filter(o => this.selectedColumnNames.has(o)).length;
-        if (selectedVisibleCount === 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-        else if (selectedVisibleCount === visibleCount) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; }
-        else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; }
 
-        const label = document.createElement('label');
-        label.htmlFor = 'columnNameSelectAll';
-        label.textContent = `Select All (${selectedVisibleCount}/${visibleCount})`;
-        selectAllWrapper.appendChild(selectAllCheckbox);
-        selectAllWrapper.appendChild(label);
-        selectAllContainer.appendChild(selectAllWrapper);
+        const selectedVisibleCount = visibleOptions.filter(name => this.selectedColumnNames.has(name)).length;
+        if (visibleOptions.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.disabled = true;
+        } else if (selectedVisibleCount === visibleOptions.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedVisibleCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
 
-        selectAllCheckbox.addEventListener('change', (e) => {
-            const checked = (e.target as HTMLInputElement).checked;
-            options.forEach(opt => {
-                if (checked) this.selectedColumnNames.add(opt);
-                else this.selectedColumnNames.delete(opt);
-            });
-            // keep dropdown open; just re-render
+        const selectAllText = document.createElement('span');
+        selectAllText.textContent = 'Select All';
+
+        selectAllLabel.append(selectAllCheckbox, selectAllText);
+        selectAllContainer.appendChild(selectAllLabel);
+
+        selectAllCheckbox.addEventListener('change', () => {
+            if (selectAllCheckbox.checked) {
+                visibleOptions.forEach(name => this.selectedColumnNames.add(name));
+            } else {
+                visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
+            }
+            this.currentPage = 1;
             this.renderColumnNameCheckboxes();
             this.updateTable();
         });
 
-        // render items
-        listContainer.innerHTML = '';
-        if (options.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'dropdown-empty';
-            empty.textContent = 'No matching columns';
-            listContainer.appendChild(empty);
-            this.updateColumnFilterCount();
-            return;
-        }
+        if (visibleOptions.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'dropdown-empty';
+            emptyState.textContent = 'No columns match that search';
+            listContainer.appendChild(emptyState);
+        } else {
+            visibleOptions.forEach((name) => {
+                const item = document.createElement('label');
+                item.className = 'dropdown-item';
 
-        options.forEach(opt => {
-            const item = document.createElement('label');
-            item.className = 'dropdown-item';
-            const chk = document.createElement('input');
-            chk.type = 'checkbox';
-            chk.checked = this.selectedColumnNames.has(opt);
-            chk.addEventListener('change', (e) => {
-                const isChecked = (e.target as HTMLInputElement).checked;
-                if (isChecked) this.selectedColumnNames.add(opt);
-                else this.selectedColumnNames.delete(opt);
-                // keep dropdown open
-                this.renderColumnNameCheckboxes();
-                this.updateTable();
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = this.selectedColumnNames.has(name);
+                checkbox.dataset.columnName = name;
+
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        this.selectedColumnNames.add(name);
+                    } else {
+                        this.selectedColumnNames.delete(name);
+                    }
+                    this.currentPage = 1;
+                    this.updateColumnFilterCount();
+                    this.updateTable();
+
+                    // update selectAll visual state
+                    const totalVisible = visibleOptions.length;
+                    const selectedNow = visibleOptions.filter(n => this.selectedColumnNames.has(n)).length;
+                    selectAllCheckbox.indeterminate = selectedNow > 0 && selectedNow < totalVisible;
+                    selectAllCheckbox.checked = selectedNow === totalVisible;
+                });
+
+                const labelText = document.createElement('span');
+                labelText.textContent = name || '(Empty Column Name)';
+
+                item.append(checkbox, labelText);
+                listContainer.appendChild(item);
             });
-            const span = document.createElement('span');
-            span.textContent = opt;
-            item.appendChild(chk);
-            item.appendChild(span);
-            listContainer.appendChild(item);
-        });
+        }
 
         this.updateColumnFilterCount();
-    }
-
-    private positionDropdown(trigger: HTMLElement, menu: HTMLElement): void {
-        // Clear any previous inline positioning
-        menu.style.left = '';
-        menu.style.right = '';
-        menu.style.top = '';
-        menu.style.bottom = '';
-        menu.style.maxWidth = '';
-
-        const rect = trigger.getBoundingClientRect();
-        const menuWidth = menu.offsetWidth;
-        const menuHeight = menu.offsetHeight;
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        const spaceRight = viewportWidth - rect.right;
-        const spaceLeft = rect.left;
-        const spaceBelow = viewportHeight - rect.bottom;
-        const spaceAbove = rect.top;
-
-        // Vertical: prefer below unless not enough space
-        if (spaceBelow >= menuHeight || spaceBelow >= spaceAbove) {
-            menu.style.top = 'calc(100% + 6px)';
-            menu.classList.remove('drop-up');
-        } else {
-            menu.style.bottom = 'calc(100% + 6px)';
-            menu.classList.add('drop-up');
-        }
-
-        // Horizontal: align to right edge of header when possible, else left edge
-        if (spaceRight >= menuWidth) {
-            menu.style.right = '0';
-            menu.style.left = 'auto';
-        } else if (spaceLeft >= menuWidth) {
-            menu.style.left = '0';
-            menu.style.right = 'auto';
-        } else {
-            const clampWidth = Math.max(120, Math.min(menuWidth, Math.max(spaceRight, spaceLeft) - 16));
-            menu.style.maxWidth = clampWidth + 'px';
-            if (spaceRight >= spaceLeft) {
-                menu.style.right = '0';
-                menu.style.left = 'auto';
-            } else {
-                menu.style.left = '0';
-                menu.style.right = 'auto';
-            }
-        }
     }
 
     private updateColumnFilterCount = (): void => {
@@ -1270,29 +1237,30 @@ class CustomEmbed extends LibraryBase {
         const total = this.getColumnNameOptions().length;
         countIndicator.textContent = `${this.selectedColumnNames.size}/${total}`;
     }
-    
+
     private getFilteredColumns = (): DataSetColumn[] => {
-        // Start from all columns
-        let filtered = this.allColumns.slice();
-
-        // Apply ColumnName set filter
-        if (this.selectedColumnNames) {
-            // Treat an explicitly empty selection as "show none"
-            if (this.selectedColumnNames.size === 0) {
-                return [];
-            }
-            filtered = filtered.filter(c => this.selectedColumnNames!.has(c.ColumnName || ''));
+        if (this.selectedColumnNames.size === 0) {
+            return [];
         }
-        // Apply boolean filters
-        if (this.redactedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Redact));
-        else if (this.redactedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Redact));
+        let results = this.allColumns.filter(column => this.selectedColumnNames.has(column.ColumnName || ''));
 
-        if (this.deidentifiedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Tokenise));
-        else if (this.deidentifiedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Tokenise));
+        // Apply redacted filter
+        if (this.redactedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Redact));
+        } else if (this.redactedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Redact));
+        }
+
+        // Apply deidentified (Tokenise) filter
+        if (this.deidentifiedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Tokenise));
+        } else if (this.deidentifiedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Tokenise));
+        }
 
         // Apply sorting
         if (this.currentSortColumn) {
-            filtered = filtered.sort((a: any, b: any) => {
+            results = results.sort((a: any, b: any) => {
                 const aVal = (a[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
                 const bVal = (b[this.currentSortColumn as keyof DataSetColumn] ?? '') as any;
                 if (typeof aVal === 'string') return this.currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
@@ -1301,7 +1269,7 @@ class CustomEmbed extends LibraryBase {
             });
         }
 
-        return filtered;
+        return results;
     }
 
 
