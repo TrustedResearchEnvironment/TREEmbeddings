@@ -818,7 +818,8 @@ class CustomEmbed extends LibraryBase {
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    const totalEntries = this.getFilteredColumns().length;
+                    const totalPages = Math.max(1, Math.ceil(totalEntries / this.rowsPerPage));
                     if (this.currentPage < totalPages) {
                         this.currentPage++;
                         this.updateTable();
@@ -1091,6 +1092,7 @@ class CustomEmbed extends LibraryBase {
                     Showing ${start} to ${end} of ${totalColumns} entries
                 `;
             }
+            this.updatePaginationButtons(totalColumns);
         } catch (error) {
             console.error('Error updating table UI:', error);
         }
