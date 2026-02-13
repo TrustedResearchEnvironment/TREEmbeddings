@@ -1262,9 +1262,12 @@ class CustomEmbed extends LibraryBase {
         let filtered = this.allColumns.slice();
 
         // Apply ColumnName set filter
-        if (this.selectedColumnNames && this.selectedColumnNames.size > 0) {
-            filtered = filtered.filter(c => this.selectedColumnNames.has(c.ColumnName || ''));
-        }
+        if (this.selectedColumnNames) {
+            // Treat an explicitly empty selection as "show none"
+            if (this.selectedColumnNames.size === 0) {
+                return [];
+            }
+            filtered = filtered.filter(c => this.selectedColumnNames!.has(c.ColumnName || ''));
 
         // Apply boolean filters
         if (this.redactedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Redact));
