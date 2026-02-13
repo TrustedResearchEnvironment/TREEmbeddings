@@ -899,6 +899,7 @@ class CustomEmbed extends LibraryBase {
                     redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
                     target.classList.add('active');
                     redactedToggle.classList.toggle('filter-active', value !== 'all');
+                    this.currentPage = 1;
                     this.updateTable();
                     redactedPopover.classList.remove('show');
                     redactedToggle.setAttribute('aria-expanded', 'false');
@@ -938,6 +939,7 @@ class CustomEmbed extends LibraryBase {
                     target.classList.add('active');
                     deidentifiedToggle.classList.toggle('filter-active', value !== 'all');
 
+                    this.currentPage = 1;
                     this.updateTable();
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
@@ -1213,54 +1215,6 @@ class CustomEmbed extends LibraryBase {
         });
 
         this.updateColumnFilterCount();
-    }
-
-    private positionDropdown(trigger: HTMLElement, menu: HTMLElement): void {
-        // Clear any previous inline positioning
-        menu.style.left = '';
-        menu.style.right = '';
-        menu.style.top = '';
-        menu.style.bottom = '';
-        menu.style.maxWidth = '';
-
-        const rect = trigger.getBoundingClientRect();
-        const menuWidth = menu.offsetWidth;
-        const menuHeight = menu.offsetHeight;
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        const spaceRight = viewportWidth - rect.right;
-        const spaceLeft = rect.left;
-        const spaceBelow = viewportHeight - rect.bottom;
-        const spaceAbove = rect.top;
-
-        // Vertical: prefer below unless not enough space
-        if (spaceBelow >= menuHeight || spaceBelow >= spaceAbove) {
-            menu.style.top = 'calc(100% + 6px)';
-            menu.classList.remove('drop-up');
-        } else {
-            menu.style.bottom = 'calc(100% + 6px)';
-            menu.classList.add('drop-up');
-        }
-
-        // Horizontal: align to right edge of header when possible, else left edge
-        if (spaceRight >= menuWidth) {
-            menu.style.right = '0';
-            menu.style.left = 'auto';
-        } else if (spaceLeft >= menuWidth) {
-            menu.style.left = '0';
-            menu.style.right = 'auto';
-        } else {
-            const clampWidth = Math.max(120, Math.min(menuWidth, Math.max(spaceRight, spaceLeft) - 16));
-            menu.style.maxWidth = clampWidth + 'px';
-            if (spaceRight >= spaceLeft) {
-                menu.style.right = '0';
-                menu.style.left = 'auto';
-            } else {
-                menu.style.left = '0';
-                menu.style.right = 'auto';
-            }
-        }
     }
 
     private updateColumnFilterCount = (): void => {
