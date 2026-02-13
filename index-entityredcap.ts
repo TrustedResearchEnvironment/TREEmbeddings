@@ -174,7 +174,7 @@ class CustomEmbed extends LibraryBase {
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestDescription">Description</label>
-                                    <input id="RequestName" class="form-input" placeholder="Description for this request" required>
+                                    <input id="RequestDescription" class="form-input" placeholder="Description for this request" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
