@@ -195,7 +195,7 @@ class CustomEmbed extends LibraryBase {
                 <div class="mui-card">
                     <div class="card-header">
                         <div class="header-content">
-                            <h2>${dataSet.Name}</h2>
+                            <h2>${this.escapeHtml(dataSet.Name)}</h2>
                             <button id="requestDatasetBtn">
                                 <span class="material-icons">data_exploration</span>
                                 Request Data Set
@@ -203,12 +203,12 @@ class CustomEmbed extends LibraryBase {
                         </div>
                         <div class="metadata">
                             <div class="chips">
-                                <span class="mui-chip">ID: ${dataSet.DataSetID}</span>
-                                <span class="mui-chip">Owner: ${dataSet.Owner}</span>
-                                <span class="mui-chip">Approver: ${dataSet.Approvers}</span>
+                                <span class="mui-chip">ID: ${this.escapeHtml(dataSet.DataSetID)}</span>
+                                <span class="mui-chip">Owner: ${this.escapeHtml(dataSet.Owner)}</span>
+                                <span class="mui-chip">Approver: ${this.escapeHtml(dataSet.Approvers)}</span>
                                 <span class="mui-chip">Modified: ${new Date(dataSet.ModifiedDate).toLocaleDateString()}</span>
                             </div>
-                            <p>${dataSet.Description}</p>
+                            <p>${this.escapeHtml(dataSet.Description)}</p>
                         </div>
                     </div>
                 </div>
@@ -1051,12 +1051,16 @@ class CustomEmbed extends LibraryBase {
             `;
         } else {
             paginatedColumns.forEach((column: DataSetColumn) => {
+                const columnName = this.escapeHtml(column.ColumnName);
+                const logicalColumnName = this.escapeHtml(column.LogicalColumnName);
+                const businessDescription = column.BusinessDescription ? this.escapeHtml(column.BusinessDescription) : 'N/A';
+                const exampleValue = column.ExampleValue ? this.escapeHtml(column.ExampleValue) : 'N/A';
                 columnsHtml += `
                     <tr>
-                        <td>${column.ColumnName || ''}</td>
-                        <td>${column.LogicalColumnName || ''}</td>
-                        <td>${column.BusinessDescription || 'N/A'}</td>
-                        <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                        <td>${columnName}</td>
+                        <td>${logicalColumnName}</td>
+                        <td>${businessDescription}</td>
+                        <td><span class="code-cell">${exampleValue}</span></td>
                         <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                         <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>
@@ -1236,6 +1240,18 @@ class CustomEmbed extends LibraryBase {
 
         const total = this.getColumnNameOptions().length;
         countIndicator.textContent = `${this.selectedColumnNames.size}/${total}`;
+    }
+
+    private escapeHtml(value: unknown): string {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     private getFilteredColumns = (): DataSetColumn[] => {
