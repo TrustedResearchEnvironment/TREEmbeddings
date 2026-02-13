@@ -1282,7 +1282,7 @@ class CustomEmbed extends LibraryBase {
                 return [];
             }
             filtered = filtered.filter(c => this.selectedColumnNames!.has(c.ColumnName || ''));
-
+        }
         // Apply boolean filters
         if (this.redactedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Redact));
         else if (this.redactedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Redact));
