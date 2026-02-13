@@ -108,18 +108,6 @@ class CustomEmbed extends LibraryBase {
         await this.buildPage();
     }
 
-    public getAccessToken = async (): Promise<void> => {
-        try {
-            const authId = this.getParamValue('ApiAuthRequestId')?.value
-            const authResponse = await window.loomeApi.runApiRequest(authId);
-            this.token = authResponse.access_token;
-        }
-        catch (ex: unknown) {
-            console.log(ex);
-            const error = ex as Error;
-            this.errorCallback("Error", "Unable obtain access token", error.message, this.element)
-        }
-    }
     
     public buildPage = async (): Promise<void> => {
         try {
