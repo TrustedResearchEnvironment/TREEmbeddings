@@ -879,6 +879,28 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
+            const bindPopoverOptions = (
+                popover: HTMLElement,
+                toggle: HTMLElement,
+                setFilter: (value: 'all' | 'yes' | 'no') => void,
+            ): void => {
+                const options = Array.from(popover.querySelectorAll('.popover-option')) as HTMLElement[];
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const value = option.getAttribute('data-value') as 'all' | 'yes' | 'no';
+                        if (!value) return;
+                        setFilter(value);
+                        options.forEach(o => o.classList.remove('active'));
+                        option.classList.add('active');
+                        toggle.classList.toggle('filter-active', value !== 'all');
+                        this.currentPage = 1;
+                        this.updateTable();
+                        popover.classList.remove('show');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    });
+                });
+            };
+
             // Redacted popover toggle
             const redactedToggle = document.getElementById('redactedToggle');
             const redactedPopover = document.getElementById('redactedPopover');
@@ -893,20 +915,9 @@ class CustomEmbed extends LibraryBase {
                         redactedPopover.classList.remove('show');
                         redactedToggle.setAttribute('aria-expanded', 'false');
                     }
-                    // Redacted popover option click
-                    redactedPopover.querySelectorAll('.popover-option').forEach(option => {
-                        option.addEventListener('click', (event) => {
-                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
-                            this.redactedFilter = value;
-                            // Remove active from all, add to selected
-                            redactedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                            (event.target as HTMLElement).classList.add('active');
-                            redactedToggle.classList.toggle('filter-active', value !== 'all');
-                            this.updateTable();
-                            redactedPopover.classList.remove('show');
-                            redactedToggle.setAttribute('aria-expanded', 'false');
-                        });
-                    });
+                });
+                bindPopoverOptions(redactedPopover, redactedToggle, (value) => {
+                    this.redactedFilter = value;
                 });
             }
             // Deidentified popover toggle
@@ -923,24 +934,9 @@ class CustomEmbed extends LibraryBase {
                         deidentifiedPopover.classList.remove('show');
                         deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
-                
-                    // Deidentified popover option click
-                    deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
-                        option.addEventListener('click', (event) => {
-                            const value = (event.target as HTMLElement).getAttribute('data-value') as 'all' | 'yes' | 'no';
-                            this.deidentifiedFilter = value;
-
-                            // Remove active from all, add to selected
-                            deidentifiedPopover.querySelectorAll('.popover-option').forEach(o => o.classList.remove('active'));
-                            (event.target as HTMLElement).classList.add('active');
-                            deidentifiedToggle.classList.toggle('filter-active', value !== 'all');
-                            
-                            this.updateTable();
-                            deidentifiedPopover.classList.remove('show');
-                            deidentifiedToggle.setAttribute('aria-expanded', 'false');
-                        });
-                    });
-
+                });
+                bindPopoverOptions(deidentifiedPopover, deidentifiedToggle, (value) => {
+                    this.deidentifiedFilter = value;
                 });
             }
             // Close popovers when clicking outside
