@@ -48,6 +48,18 @@ export default [
       },
     },
   },
+  // TREEntityREDCap bundle
+  {
+    ...commonConfig,
+    entry: "./index-entityredcap.ts",
+    output: {
+      filename: "TREEntityREDCap.js",
+      path: path.resolve(__dirname, "dist"),
+      library: {
+        type: "module", // Changed back to module type from original
+      },
+    },
+  },
   // TREEntityFolder bundle
   {
     ...commonConfig,
