@@ -94,6 +94,11 @@ class CustomEmbed extends LibraryBase {
     private currentPage: number = 1;
     private rowsPerPage: number = 10;
     private dataSet: DataSetMetadata | null = null;
+    private columnNameSearchTerm: string = "";
+    private selectedColumnNames: Set<string> = new Set();
+    private redactedFilter: 'all' | 'yes' | 'no' = 'all';
+    private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
+    private columnNameSortDirection: "asc" | "desc" = "asc";
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -141,6 +146,9 @@ class CustomEmbed extends LibraryBase {
             }
 
             this.allColumns = files.sort((a, b) => a.FolderName.localeCompare(b.FolderName));
+            this.selectedColumnNames = new Set(this.getColumnNameOptions());
+            this.columnNameSearchTerm = '';
+            this.columnNameSortDirection = 'asc';
 
             console.log("Folder Files:", this.allColumns);
 
@@ -154,6 +162,7 @@ class CustomEmbed extends LibraryBase {
             this.element.innerHTML = styles + datasetHtml;
 
             this.setupEventListeners();
+            this.renderColumnNameCheckboxes();
             this.updateTable();
         } catch (ex: unknown) {
             console.error("Error:", ex);
@@ -225,11 +234,59 @@ class CustomEmbed extends LibraryBase {
                         <table id="dataTable">
                             <thead>
                                 <tr>
-                                    <th data-sort="FolderName">Folder Name</th>
+                                    <th data-sort="FolderName" class="column-name-header-cell">
+                                        <div class="column-name-header">
+                                            <span class="header-text" id="columnNameToggle" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+                                                Folder Name
+                                                <span class="filter-inline">
+                                                    <span class="filter-count" id="columnNameFilterCount"></span>
+                                                    <span class="material-icons dropdown-icon">filter_alt</span>
+                                                </span>
+                                            </span>
+                                            <div class="dropdown" id="columnNameDropdown">
+                                                <div class="dropdown-menu" id="columnNameDropdownMenu">
+                                                    <div class="dropdown-search">
+                                                        <input type="text" id="columnNameSearchInput" placeholder="Search folders" autocomplete="off">
+                                                    </div>
+                                                    <div class="column-name-sort-row">
+                                                        <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
+                                                        <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
+                                                        <span style="flex:1"></span>
+                                                    </div>
+                                                    <div id="columnNameSelectAllContainer"></div>
+                                                    <div class="dropdown-list" id="columnNameCheckboxList"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </th>
                                     <th data-sort="FileType">File Type</th>
                                     <th data-sort="FileDescription">Description</th>
-                                    <th data-sort="Redact">Redacted</th>
-                                    <th data-sort="Tokenise">Deidentified</th>
+                                    <th data-sort="Redact" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Redacted</span>
+                                            <button type="button" id="redactedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Redacted">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="redactedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
+                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                        <div class="header-filter">
+                                            <span class="header-text">Deidentified</span>
+                                            <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
+                                                <span class="material-icons">filter_list</span>
+                                            </button>
+                                            <div class="popover" id="deidentifiedPopover">
+                                                <div class="popover-option" data-value="yes">Yes</div>
+                                                <div class="popover-option" data-value="no">No</div>
+                                                <div class="popover-option" data-value="all">Show All</div>
+                                            </div>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="columnsTableBody"></tbody>
@@ -325,6 +382,191 @@ class CustomEmbed extends LibraryBase {
                     font-size: 0.95rem;
                     // position: sticky;
                     // top: 0;
+                }
+                .column-name-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .column-name-header .dropdown {
+                    position: relative;
+                }
+                .dropdown-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    background: #f7f9fb;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    color: #22303f;
+                }
+                .header-text {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    user-select: none;
+                    font-weight: 700;
+                }
+                .filter-inline {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-left: 8px;
+                    font-weight: 600;
+                }
+                .filter-count {
+                    font-size: 0.75rem;
+                    color: #4ec4bc;
+                }
+                .dropdown-icon {
+                    font-size: 16px;
+                }
+                .header-filter-cell {
+                    vertical-align: middle;
+                }
+                .header-filter {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    position: relative;
+                }
+                .filter-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    cursor: pointer;
+                }
+                .filter-icon .material-icons {
+                    font-size: 18px;
+                    color: #6c7a86;
+                }
+                .filter-icon.filter-active .material-icons {
+                    color: #4ec4bc;
+                }
+                .popover {
+                    position: absolute;
+                    top: calc(100% + 6px);
+                    left: auto;
+                    right: 0;
+                    min-width: 120px;
+                    width: auto;
+                    max-width: 90vw;
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    border-radius: 6px;
+                    padding: 8px 6px;
+                    display: none;
+                    z-index: 9999;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
+                }
+
+                .popover.show, .dropdown-menu.show {
+                    display: block;
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+
+                .popover-option {
+                    padding: 8px 10px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.95rem;
+                }
+                .popover-option:hover {
+                    background: #f3f6f7;
+                }
+                .popover-option.active {
+                    background: #4ec4bc;
+                    color: white;
+                }
+                .dropdown-menu {
+                    position: absolute;
+                    top: calc(100% + 6px);
+                    right: 0;
+                    width: 260px;
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+                    padding: 12px;
+                    display: none;
+                    flex-direction: column;
+                    gap: 8px;
+                    z-index: 10;
+                    opacity: 0;
+                    transform: translateY(-6px);
+                    transition: opacity 160ms ease, transform 160ms ease;
+                    will-change: transform, opacity;
+                    transform-origin: top right;
+                }
+                .dropdown-menu.show {
+                    display: flex;
+                    width: fit-content;
+                }
+                .dropdown-search input {
+                    width: 100%;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    border: 1px solid #d0d7e0;
+                    font-size: 0.9rem;
+                }
+                .column-name-sort-row {
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    padding: 6px 2px;
+                }
+                .column-name-sort-row button {
+                    background: #f3f6f7;
+                    border: 1px solid #e0e6ea;
+                    padding: 6px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                }
+                .column-name-sort-row button:hover {
+                    background: #e9f2f1;
+                }
+                .column-name-sort-row button.active {
+                    background: #4ec4bc;
+                    color: white;
+                    border-color: #4ec4bc;
+                }
+                .dropdown-list {
+                    max-height: 240px;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.85rem;
+                    color: #1f2a37;
+                }
+                .dropdown-item input {
+                    accent-color: #4ec4bc;
+                }
+                .dropdown-empty {
+                    font-size: 0.8rem;
+                    color: #616770;
+                    padding: 4px 2px;
                 }
                 #dataTable td {
                     padding: 16px;
@@ -640,6 +882,152 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
             }
+
+            const bindPopoverOptions = (
+                popover: HTMLElement,
+                toggle: HTMLElement,
+                setFilter: (value: 'all' | 'yes' | 'no') => void,
+            ): void => {
+                const options = Array.from(popover.querySelectorAll('.popover-option')) as HTMLElement[];
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const value = option.getAttribute('data-value') as 'all' | 'yes' | 'no';
+                        if (!value) return;
+                        setFilter(value);
+                        options.forEach(o => o.classList.remove('active'));
+                        option.classList.add('active');
+                        toggle.classList.toggle('filter-active', value !== 'all');
+                        this.currentPage = 1;
+                        this.updateTable();
+                        popover.classList.remove('show');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    });
+                });
+            };
+
+            const redactedToggle = document.getElementById('redactedToggle');
+            const redactedPopover = document.getElementById('redactedPopover');
+            if (redactedToggle && redactedPopover) {
+                redactedToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const isVisible = redactedPopover.classList.contains('show');
+                    if (!isVisible) {
+                        redactedPopover.classList.add('show');
+                        redactedToggle.setAttribute('aria-expanded', 'true');
+                    } else {
+                        redactedPopover.classList.remove('show');
+                        redactedToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                bindPopoverOptions(redactedPopover, redactedToggle, (value) => {
+                    this.redactedFilter = value;
+                });
+            }
+            const deidentifiedToggle = document.getElementById('deidentifiedToggle');
+            const deidentifiedPopover = document.getElementById('deidentifiedPopover');
+            if (deidentifiedToggle && deidentifiedPopover) {
+                deidentifiedToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const isVisible = deidentifiedPopover.classList.contains('show');
+                    if (!isVisible) {
+                        deidentifiedPopover.classList.add('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'true');
+                    } else {
+                        deidentifiedPopover.classList.remove('show');
+                        deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                bindPopoverOptions(deidentifiedPopover, deidentifiedToggle, (value) => {
+                    this.deidentifiedFilter = value;
+                });
+            }
+            document.addEventListener('click', (event) => {
+                const target = event.target as HTMLElement;
+                if (redactedPopover && redactedPopover.classList.contains('show') &&
+                    !redactedPopover.contains(target) &&
+                    redactedToggle && !redactedToggle.contains(target)) {
+                    redactedPopover.classList.remove('show');
+                    redactedToggle.setAttribute('aria-expanded', 'false');
+                }
+                if (deidentifiedPopover && deidentifiedPopover.classList.contains('show') &&
+                    !deidentifiedPopover.contains(target) &&
+                    deidentifiedToggle && !deidentifiedToggle.contains(target)) {
+                    deidentifiedPopover.classList.remove('show');
+                    deidentifiedToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                    this.renderColumnNameCheckboxes();
+                });
+            }
+
+            const columnDropdown = document.getElementById('columnNameDropdown');
+            const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
+            const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
+
+            if (headerToggle && dropdownMenu) {
+                const toggleFn = (event: Event) => {
+                    event.stopPropagation();
+                    const isVisible = dropdownMenu.classList.toggle('show');
+                    headerToggle.setAttribute('aria-expanded', String(isVisible));
+                };
+
+                headerToggle.addEventListener('click', toggleFn);
+                headerToggle.addEventListener('keydown', (e) => {
+                    if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
+                        e.preventDefault();
+                        toggleFn(e);
+                    }
+                });
+
+                dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
+
+                const sortAscBtn = dropdownMenu.querySelector('button[data-action="sort-asc"]') as HTMLButtonElement | null;
+                const sortDescBtn = dropdownMenu.querySelector('button[data-action="sort-desc"]') as HTMLButtonElement | null;
+                const setSortButtonsState = () => {
+                    if (sortAscBtn) sortAscBtn.classList.toggle('active', this.columnNameSortDirection === 'asc');
+                    if (sortDescBtn) sortDescBtn.classList.toggle('active', this.columnNameSortDirection === 'desc');
+                };
+
+                if (sortAscBtn) {
+                    sortAscBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'asc';
+                        setSortButtonsState();
+                        this.renderColumnNameCheckboxes();
+
+                        this.currentPage = 1;
+                        this.currentSortColumn = 'FolderName';
+                        this.currentSortDirection = 'asc';
+                        this.updateTable();
+                    });
+                }
+                if (sortDescBtn) {
+                    sortDescBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.columnNameSortDirection = 'desc';
+                        setSortButtonsState();
+                        this.renderColumnNameCheckboxes();
+
+                        this.currentPage = 1;
+                        this.currentSortColumn = 'FolderName';
+                        this.currentSortDirection = 'desc';
+                        this.updateTable();
+                    });
+                }
+                setSortButtonsState();
+
+                document.addEventListener('click', () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -651,22 +1039,41 @@ class CustomEmbed extends LibraryBase {
         const tbody = document.getElementById('columnsTableBody');
         if (!tbody) return;
 
+        const filteredColumns = this.getFilteredColumns();
+        const totalColumns = filteredColumns.length;
+        const totalPages = Math.max(1, Math.ceil(totalColumns / this.rowsPerPage));
+
+        if (this.currentPage > totalPages) {
+            this.currentPage = totalPages;
+        }
+
         const startIndex = (this.currentPage - 1) * this.rowsPerPage;
-        const endIndex = startIndex + this.rowsPerPage;
-        const paginatedColumns = this.allColumns.slice(startIndex, endIndex);
+        const endIndex = Math.min(startIndex + this.rowsPerPage, totalColumns);
+        const paginatedColumns = filteredColumns.slice(startIndex, endIndex);
 
         let columnsHtml = '';
-        paginatedColumns.forEach((file: DataSetFolderFile) => {
-            columnsHtml += `
+        if (totalColumns === 0) {
+            columnsHtml = `
                 <tr>
-                    <td>${file.FolderName || ''}</td>
-                    <td><span class="mui-chip">${file.FileType || ''}</span></td>
-                    <td>${file.FileDescription || 'N/A'}</td>
-                    <td>${file.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${file.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td colspan="5">No folders match the selected filters.</td>
                 </tr>
             `;
-        });
+        } else {
+            paginatedColumns.forEach((file: DataSetFolderFile) => {
+                const folderName = this.escapeHtml(file.FolderName);
+                const fileType = this.escapeHtml(file.FileType);
+                const description = file.FileDescription ? this.escapeHtml(file.FileDescription) : 'N/A';
+                columnsHtml += `
+                    <tr>
+                        <td>${folderName}</td>
+                        <td><span class="mui-chip">${fileType}</span></td>
+                        <td>${description}</td>
+                        <td>${file.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                        <td>${file.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    </tr>
+                `;
+            });
+        }
         tbody.innerHTML = columnsHtml;
 
         try {
@@ -679,15 +1086,16 @@ class CustomEmbed extends LibraryBase {
 
             const paginationInfo = document.querySelector('.pagination-info');
             if (paginationInfo) {
-                const startIndex = (this.currentPage - 1) * this.rowsPerPage + 1;
-                const endIndex = Math.min(startIndex + this.rowsPerPage - 1, this.allColumns.length);
+                const displayStart = totalColumns === 0 ? 0 : startIndex + 1;
+                const displayEnd = totalColumns === 0 ? 0 : endIndex;
                 paginationInfo.innerHTML = `
-                    Showing ${startIndex} to ${endIndex} of ${this.allColumns.length} entries
+                    Showing ${displayStart} to ${displayEnd} of ${totalColumns} entries
                 `;
             }
         } catch (error) {
             console.error('Error updating table UI:', error);
         }
+        this.updatePaginationButtons(totalColumns);
     }
 
     private updateSortIcons = (): void => {
@@ -703,10 +1111,10 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
-    private updatePaginationButtons = (): void => {
-        const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+    private updatePaginationButtons = (totalColumns?: number): void => {
+        const entries = totalColumns ?? this.getFilteredColumns().length;
+        const totalPages = Math.max(1, Math.ceil(entries / this.rowsPerPage));
         
-        // Update navigation buttons
         const prevPageBtn = document.querySelector('.prev-page');
         const nextPageBtn = document.querySelector('.next-page');
         
@@ -716,6 +1124,163 @@ class CustomEmbed extends LibraryBase {
         if (nextPageBtn) {
             nextPageBtn.classList.toggle('disabled', this.currentPage >= totalPages);
         }
+    }
+
+    private getColumnNameOptions = (): string[] => {
+        return Array.from(new Set(this.allColumns.map(column => column.FolderName || '')))
+            .sort((a, b) => a.localeCompare(b));
+    }
+
+    private renderColumnNameCheckboxes = (): void => {
+        const listContainer = document.getElementById('columnNameCheckboxList');
+        const selectAllContainer = document.getElementById('columnNameSelectAllContainer');
+        if (!listContainer || !selectAllContainer) return;
+
+        const normalizedSearch = this.columnNameSearchTerm.trim().toLowerCase();
+        const allOptions = this.getColumnNameOptions();
+        let visibleOptions = normalizedSearch
+            ? allOptions.filter(name => name.toLowerCase().includes(normalizedSearch))
+            : allOptions.slice();
+
+        if (this.columnNameSortDirection === 'desc') {
+            visibleOptions = visibleOptions.slice().reverse();
+        }
+
+        selectAllContainer.innerHTML = '';
+        listContainer.innerHTML = '';
+
+        const selectAllLabel = document.createElement('label');
+        selectAllLabel.className = 'dropdown-item';
+        selectAllLabel.style.fontWeight = '600';
+
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'columnNameSelectAll';
+
+        const selectedVisibleCount = visibleOptions.filter(name => this.selectedColumnNames.has(name)).length;
+        if (visibleOptions.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.disabled = true;
+        } else if (selectedVisibleCount === visibleOptions.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedVisibleCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+
+        const selectAllText = document.createElement('span');
+        selectAllText.textContent = 'Select All';
+
+        selectAllLabel.append(selectAllCheckbox, selectAllText);
+        selectAllContainer.appendChild(selectAllLabel);
+
+        selectAllCheckbox.addEventListener('change', () => {
+            if (selectAllCheckbox.checked) {
+                visibleOptions.forEach(name => this.selectedColumnNames.add(name));
+            } else {
+                visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
+            }
+            this.currentPage = 1;
+            this.renderColumnNameCheckboxes();
+            this.updateTable();
+        });
+
+        if (visibleOptions.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'dropdown-empty';
+            emptyState.textContent = 'No folders match that search';
+            listContainer.appendChild(emptyState);
+        } else {
+            visibleOptions.forEach((name) => {
+                const item = document.createElement('label');
+                item.className = 'dropdown-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = this.selectedColumnNames.has(name);
+                checkbox.dataset.columnName = name;
+
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        this.selectedColumnNames.add(name);
+                    } else {
+                        this.selectedColumnNames.delete(name);
+                    }
+                    this.currentPage = 1;
+                    this.updateColumnFilterCount();
+                    this.updateTable();
+
+                    const totalVisible = visibleOptions.length;
+                    const selectedNow = visibleOptions.filter(n => this.selectedColumnNames.has(n)).length;
+                    selectAllCheckbox.indeterminate = selectedNow > 0 && selectedNow < totalVisible;
+                    selectAllCheckbox.checked = selectedNow === totalVisible;
+                });
+
+                const labelText = document.createElement('span');
+                labelText.textContent = name || '(Empty Folder Name)';
+
+                item.append(checkbox, labelText);
+                listContainer.appendChild(item);
+            });
+        }
+
+        this.updateColumnFilterCount();
+    }
+
+    private updateColumnFilterCount = (): void => {
+        const countIndicator = document.getElementById('columnNameFilterCount');
+        if (!countIndicator) return;
+
+        const total = this.getColumnNameOptions().length;
+        countIndicator.textContent = `${this.selectedColumnNames.size}/${total}`;
+    }
+
+    private escapeHtml(value: unknown): string {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    private getFilteredColumns = (): DataSetFolderFile[] => {
+        if (this.selectedColumnNames.size === 0) {
+            return [];
+        }
+        let results = this.allColumns.filter(column => this.selectedColumnNames.has(column.FolderName || ''));
+
+        if (this.redactedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Redact));
+        } else if (this.redactedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Redact));
+        }
+
+        if (this.deidentifiedFilter === 'yes') {
+            results = results.filter(c => Boolean(c.Tokenise));
+        } else if (this.deidentifiedFilter === 'no') {
+            results = results.filter(c => !Boolean(c.Tokenise));
+        }
+
+        if (this.currentSortColumn) {
+            results = results.sort((a: any, b: any) => {
+                const aVal = (a[this.currentSortColumn as keyof DataSetFolderFile] ?? '') as any;
+                const bVal = (b[this.currentSortColumn as keyof DataSetFolderFile] ?? '') as any;
+                if (typeof aVal === 'string') return this.currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                if (typeof aVal === 'number') return this.currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                return 0;
+            });
+        }
+
+        return results;
     }
 
 
