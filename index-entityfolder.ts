@@ -212,7 +212,7 @@ class CustomEmbed extends LibraryBase {
                 <div class="mui-card">
                     <div class="card-header">
                         <div class="header-content">
-                            <h2>${dataSet.Name}</h2>
+                            <h2>${this.escapeHtml(dataSet.Name)}</h2>
                             <button id="requestDatasetBtn">
                                 <span class="material-icons">data_exploration</span>
                                 Request Data Set
@@ -220,11 +220,12 @@ class CustomEmbed extends LibraryBase {
                         </div>
                         <div class="metadata">
                             <div class="chips">
-                                <span class="mui-chip">ID: ${dataSet.DataSetID}</span>
-                                <span class="mui-chip">Owner: ${dataSet.Owner}</span>
+                                <span class="mui-chip">ID: ${this.escapeHtml(dataSet.DataSetID)}</span>
+                                <span class="mui-chip">Owner: ${this.escapeHtml(dataSet.Owner)}</span>
+                                <span class="mui-chip">Approver: ${this.escapeHtml(dataSet.Approvers)}</span>
                                 <span class="mui-chip">Modified: ${new Date(dataSet.ModifiedDate).toLocaleDateString()}</span>
                             </div>
-                            <p>${dataSet.Description}</p>
+                            <p>${this.escapeHtml(dataSet.Description)}</p>
                         </div>
                     </div>
                 </div>
