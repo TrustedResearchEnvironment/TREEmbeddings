@@ -187,7 +187,7 @@ class CustomEmbed extends LibraryBase {
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
-                                    <input id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required>
+                                    <input id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="255">
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
