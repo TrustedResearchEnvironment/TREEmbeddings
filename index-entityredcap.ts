@@ -155,8 +155,8 @@ class CustomEmbed extends LibraryBase {
                                     <input id="RequestName" class="form-input" placeholder="Name for this request" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="RequestDescription">Description</label>
-                                    <input id="RequestDescription" class="form-input" placeholder="Description for this request" required>
+                                    <label for="RequestPurpose">Purpose</label>
+                                    <input id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="255">
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
@@ -225,6 +225,7 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
+                                    <th data-sort="ColumnType">Column Type</th>
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
@@ -237,7 +238,7 @@ class CustomEmbed extends LibraryBase {
                                             <div class="popover" id="redactedPopover">
                                                 <div class="popover-option" data-value="yes">Yes</div>
                                                 <div class="popover-option" data-value="no">No</div>
-                                                <div class="popover-option" data-value="all">Show All</div>
+                                                <div class="popover-option" data-value="all">All Data</div>
                                             </div>
                                         </div>
                                     </th>
@@ -250,7 +251,7 @@ class CustomEmbed extends LibraryBase {
                                             <div class="popover" id="deidentifiedPopover">
                                                 <div class="popover-option" data-value="yes">Yes</div>
                                                 <div class="popover-option" data-value="no">No</div>
-                                                <div class="popover-option" data-value="all">Show All</div>
+                                                <div class="popover-option" data-value="all">All Data</div>
                                             </div>
                                         </div>
                                     </th>
@@ -823,7 +824,7 @@ class CustomEmbed extends LibraryBase {
                         const formData = {
                             requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
                             projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            description: (document.getElementById('RequestDescription') as HTMLInputElement)?.value,
+                            purpose: (document.getElementById('RequestPurpose') as HTMLInputElement)?.value,
                             datasetId: this.dataSet.DataSetID,
                             approvers: this.dataSet.Approvers,
                         };
@@ -832,7 +833,7 @@ class CustomEmbed extends LibraryBase {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
-                            description: formData.description,
+                            purpose: formData.purpose,
                             requestName: formData.requestName,
                         });
                         
@@ -1034,12 +1035,14 @@ class CustomEmbed extends LibraryBase {
         } else {
             paginatedColumns.forEach((column: DataSetColumn) => {
                 const columnName = this.escapeHtml(column.ColumnName);
+                const columnType = this.escapeHtml(column.ColumnType);                
                 const logicalColumnName = this.escapeHtml(column.LogicalColumnName);
                 const businessDescription = column.BusinessDescription ? this.escapeHtml(column.BusinessDescription) : 'N/A';
                 const exampleValue = column.ExampleValue ? this.escapeHtml(column.ExampleValue) : 'N/A';
                 columnsHtml += `
                     <tr>
                         <td>${columnName}</td>
+                        <td><span class="mui-chip">${columnType || ''}</span></td>
                         <td>${logicalColumnName}</td>
                         <td>${businessDescription}</td>
                         <td><span class="code-cell">${exampleValue}</span></td>
