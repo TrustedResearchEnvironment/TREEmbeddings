@@ -225,6 +225,7 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
+                                    <th data-sort="ColumnType">Column Type</th>
                                     <th data-sort="LogicalColumnName">Logical Name</th>
                                     <th data-sort="BusinessDescription">Description</th>
                                     <th data-sort="ExampleValue">Example</th>
@@ -1034,12 +1035,14 @@ class CustomEmbed extends LibraryBase {
         } else {
             paginatedColumns.forEach((column: DataSetColumn) => {
                 const columnName = this.escapeHtml(column.ColumnName);
+                const columnType = this.escapeHtml(column.ColumnType);                
                 const logicalColumnName = this.escapeHtml(column.LogicalColumnName);
                 const businessDescription = column.BusinessDescription ? this.escapeHtml(column.BusinessDescription) : 'N/A';
                 const exampleValue = column.ExampleValue ? this.escapeHtml(column.ExampleValue) : 'N/A';
                 columnsHtml += `
                     <tr>
                         <td>${columnName}</td>
+                        <td><span class="mui-chip">${columnType || ''}</span></td>
                         <td>${logicalColumnName}</td>
                         <td>${businessDescription}</td>
                         <td><span class="code-cell">${exampleValue}</span></td>
