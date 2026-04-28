@@ -8,7 +8,7 @@ interface DataSetColumn {
     LogicalColumnName: string;
     BusinessDescription: string;
     ExampleValue: string;
-    Tokenise: boolean;
+    Deidentify: boolean;
     TokenIdentifierType: number;
     Redact: boolean;
     DisplayOrder: number;
@@ -242,7 +242,7 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
-                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                    <th data-sort="Deidentify" class="header-filter-cell">
                                         <div class="header-filter">
                                             <span class="header-text">Deidentified</span>
                                             <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
@@ -1047,7 +1047,7 @@ class CustomEmbed extends LibraryBase {
                         <td>${businessDescription}</td>
                         <td><span class="code-cell">${exampleValue}</span></td>
                         <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                        <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                        <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>
                 `;
             });
@@ -1252,11 +1252,11 @@ class CustomEmbed extends LibraryBase {
             results = results.filter(c => !Boolean(c.Redact));
         }
 
-        // Apply deidentified (Tokenise) filter
+        // Apply deidentified (Deidentify) filter
         if (this.deidentifiedFilter === 'yes') {
-            results = results.filter(c => Boolean(c.Tokenise));
+            results = results.filter(c => Boolean(c.Deidentify));
         } else if (this.deidentifiedFilter === 'no') {
-            results = results.filter(c => !Boolean(c.Tokenise));
+            results = results.filter(c => !Boolean(c.Deidentify));
         }
 
         // Apply sorting
