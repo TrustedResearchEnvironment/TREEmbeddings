@@ -863,13 +863,19 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                        const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
                             purpose: formData.purpose,
                             requestName: formData.requestName,
                         });
+
+                        if (response && response.status_code && response.status_code >= 400) {
+                            console.error(`Error ${response.status_code}: ${response.detail}`);
+                            alert(`Error ${response.status_code}: ${response.detail}`);
+                            return;
+                        }
                         
                         alert('Request submitted successfully!');
                         
