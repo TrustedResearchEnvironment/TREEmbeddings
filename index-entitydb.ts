@@ -770,13 +770,13 @@ class CustomEmbed extends LibraryBase {
 
                 .char-counter {
                     font-size: 0.75rem;
-                    color: #666;
                     text-align: right;
-                    display: block;
+                    display: none;
                     margin-top: 4px;
                 }
 
                 .char-counter.warning {
+                    display: block;
                     color: #d32f2f;
                     font-weight: 600;
                 }
