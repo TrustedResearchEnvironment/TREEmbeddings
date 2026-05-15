@@ -15,7 +15,7 @@ interface DataSetColumn {
     LogicalColumnName: string;
     BusinessDescription: string;
     ExampleValue: string;
-    Tokenise: boolean;
+    Deidentify: boolean;
     TokenIdentifierType: number;
     Redact: boolean;
     DisplayOrder: number;
@@ -70,7 +70,7 @@ interface DataSetFolderFile {
     FileType: string;
     FileDescription: string;
     Redact: boolean;
-    Tokenise: boolean;
+    Deidentify: boolean;
     DataSetFolderFileID: number;
     DataSetFolderID: number;
     FolderName: string;
@@ -275,7 +275,7 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
-                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                    <th data-sort="Deidentify" class="header-filter-cell">
                                         <div class="header-filter">
                                             <span class="header-text">Deidentified</span>
                                             <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
@@ -863,14 +863,20 @@ class CustomEmbed extends LibraryBase {
                         };
 
 
-                        await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
+                        const response = await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
                             purpose: formData.purpose,
                             requestName: formData.requestName,
                         });
-                        
+
+                        if (response && response.status_code && response.status_code >= 400) {
+                            console.error(`Error ${response.status_code}: ${response.detail}`);
+                            alert(`Error ${response.status_code}: ${response.detail}`);
+                            return;
+                        }
+                         
                         alert('Request submitted successfully!');
                         
                         // Close the modal on success
@@ -1070,7 +1076,7 @@ class CustomEmbed extends LibraryBase {
                         <td><span class="mui-chip">${fileType}</span></td>
                         <td>${description}</td>
                         <td>${file.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                        <td>${file.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                        <td>${file.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>
                 `;
             });
@@ -1266,9 +1272,9 @@ class CustomEmbed extends LibraryBase {
         }
 
         if (this.deidentifiedFilter === 'yes') {
-            results = results.filter(c => Boolean(c.Tokenise));
+            results = results.filter(c => Boolean(c.Deidentify));
         } else if (this.deidentifiedFilter === 'no') {
-            results = results.filter(c => !Boolean(c.Tokenise));
+            results = results.filter(c => !Boolean(c.Deidentify));
         }
 
         if (this.currentSortColumn) {

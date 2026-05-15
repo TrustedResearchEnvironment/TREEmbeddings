@@ -26,7 +26,7 @@ interface DataSetColumn {
     LogicalColumnName: string;
     BusinessDescription: string;
     ExampleValue: string;
-    Tokenise: boolean;
+    Deidentify: boolean;
     TokenIdentifierType: number;
     Redact: boolean;
     DisplayOrder: number;
@@ -273,7 +273,7 @@ class CustomEmbed extends LibraryBase {
                                             </div>
                                         </div>
                                     </th>
-                                    <th data-sort="Tokenise" class="header-filter-cell">
+                                    <th data-sort="Deidentify" class="header-filter-cell">
                                         <div class="header-filter">
                                             <span class="header-text">Deidentified</span>
                                             <button type="button" id="deidentifiedToggle" class="filter-icon" aria-haspopup="true" aria-expanded="false" title="Filter Deidentified">
@@ -863,13 +863,19 @@ class CustomEmbed extends LibraryBase {
                             approvers: this.dataSet.Approvers,
                         };
 
-                        await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                        const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
                             approvers: formData.approvers,
                             assistProjectID: parseInt(formData.projectId),
                             purpose: formData.purpose,
                             requestName: formData.requestName,
                         });
+
+                        if (response && response.status_code && response.status_code >= 400) {
+                            console.error(`Error ${response.status_code}: ${response.detail}`);
+                            alert(`Error ${response.status_code}: ${response.detail}`);
+                            return;
+                        }
                         
                         alert('Request submitted successfully!');
                         
@@ -1082,7 +1088,7 @@ class CustomEmbed extends LibraryBase {
                     <td>${column.BusinessDescription || 'N/A'}</td>
                     <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
                     <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
-                    <td>${column.Tokenise ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
+                    <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
             `;
         });
@@ -1241,8 +1247,8 @@ class CustomEmbed extends LibraryBase {
         if (this.redactedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Redact));
         else if (this.redactedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Redact));
 
-        if (this.deidentifiedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Tokenise));
-        else if (this.deidentifiedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Tokenise));
+        if (this.deidentifiedFilter === 'yes') filtered = filtered.filter(c => Boolean(c.Deidentify));
+        else if (this.deidentifiedFilter === 'no') filtered = filtered.filter(c => !Boolean(c.Deidentify));
 
         // Apply sorting
         if (this.currentSortColumn) {
