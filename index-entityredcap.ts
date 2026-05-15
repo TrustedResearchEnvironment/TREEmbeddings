@@ -152,11 +152,13 @@ class CustomEmbed extends LibraryBase {
                             <form id="requestForm" class="request-form">
                                 <div class="form-group">
                                     <label for="RequestName">Request Name</label>
-                                    <input id="RequestName" class="form-input" placeholder="Name for this request" required>
+                                    <input id="RequestName" class="form-input" placeholder="Name for this request" required maxlength="100">
+                                    <span class="char-counter" id="RequestNameCounter">0/100</span>
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
-                                    <input id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="255">
+                                    <textarea id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="500" rows="3"></textarea>
+                                    <span class="char-counter" id="RequestPurposeCounter">0/500</span>
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
@@ -733,6 +735,19 @@ class CustomEmbed extends LibraryBase {
                 .button-secondary:hover {
                     background: #d0d0d0;
                 }
+
+                .char-counter {
+                    font-size: 0.75rem;
+                    color: #666;
+                    text-align: right;
+                    display: block;
+                    margin-top: 4px;
+                }
+
+                .char-counter.warning {
+                    color: #d32f2f;
+                    font-weight: 600;
+                }
             </style>
         `;
     }
@@ -811,6 +826,23 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
+            // Character counter logic
+            const setupCharCounter = (inputId: string, counterId: string, maxLen: number) => {
+                const input = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null;
+                const counter = document.getElementById(counterId) as HTMLElement | null;
+                if (input && counter) {
+                    const update = () => {
+                        const len = input.value.length;
+                        counter.textContent = `${len}/${maxLen}`;
+                        counter.classList.toggle('warning', len >= maxLen * 0.8);
+                    };
+                    input.addEventListener('input', update);
+                    update();
+                }
+            };
+            setupCharCounter('RequestName', 'RequestNameCounter', 100);
+            setupCharCounter('RequestPurpose', 'RequestPurposeCounter', 500);
+
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
                 requestForm.addEventListener('submit', async (e) => {
@@ -824,10 +856,19 @@ class CustomEmbed extends LibraryBase {
                         const formData = {
                             requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
                             projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            purpose: (document.getElementById('RequestPurpose') as HTMLInputElement)?.value,
+                            purpose: (document.getElementById('RequestPurpose') as HTMLTextAreaElement)?.value,
                             datasetId: this.dataSet.DataSetID,
                             approvers: this.dataSet.Approvers,
                         };
+
+                        const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
+                        const invalidFields: string[] = [];
+                        if (specialCharPattern.test(formData.requestName)) invalidFields.push('Request Name');
+                        if (specialCharPattern.test(formData.purpose)) invalidFields.push('Purpose');
+                        if (invalidFields.length > 0) {
+                            alert(`The following field(s) contain invalid special characters: ${invalidFields.join(', ')}. Please remove them and try again.`);
+                            return;
+                        }
 
                         const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
