@@ -887,12 +887,20 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         const formData = {
-                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            requestName: ((document.getElementById('RequestName') as HTMLInputElement)?.value ?? '').trim(),
                             projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            purpose: (document.getElementById('RequestPurpose') as HTMLTextAreaElement)?.value,
+                            purpose: ((document.getElementById('RequestPurpose') as HTMLTextAreaElement)?.value ?? '').trim(),
                             datasetId: this.dataSet.DataSetID,
                             approvers: this.dataSet.Approvers,
                         };
+
+                        const emptyFields: string[] = [];
+                        if (!formData.requestName) emptyFields.push('Request Name');
+                        if (!formData.purpose) emptyFields.push('Purpose');
+                        if (emptyFields.length > 0) {
+                            alert(`The following field(s) cannot be empty or whitespace only: ${emptyFields.join(', ')}.`);
+                            return;
+                        }
 
                         const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
                         const invalidFields: string[] = [];
