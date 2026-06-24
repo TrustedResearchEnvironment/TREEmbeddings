@@ -1070,9 +1070,9 @@ class CustomEmbed extends LibraryBase {
                         const scrollTop = window.scrollY || document.documentElement.scrollTop;
                         const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
-                        dropdownMenu.style.position = 'absolute';
-                        dropdownMenu.style.top = `${rect.bottom + scrollTop}px`;
-                        dropdownMenu.style.left = `${rect.left + scrollLeft}px`;
+                        dropdownMenu.style.position = 'fixed';
+                        dropdownMenu.style.top = `${rect.bottom}px`;
+                        dropdownMenu.style.left = `${rect.left}px`;
                         dropdownMenu.style.right = 'auto';
                         dropdownMenu.style.minWidth = '250px';
                         dropdownMenu.style.zIndex = '2000001';
