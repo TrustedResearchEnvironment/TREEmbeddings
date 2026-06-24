@@ -255,20 +255,18 @@ class CustomEmbed extends LibraryBase {
                                                     <span class="material-icons dropdown-icon">filter_alt</span>
                                                 </span>
                                             </span>
-                                            <div class="dropdown-bridge">
-                                                <div class="dropdown" id="columnNameDropdown">
-                                                    <div class="dropdown-menu" id="columnNameDropdownMenu">
-                                                        <div class="dropdown-search">
-                                                            <input type="text" id="columnNameSearchInput" placeholder="Search folders" autocomplete="off">
-                                                        </div>
-                                                        <div class="column-name-sort-row">
-                                                            <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
-                                                            <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
-                                                            <span style="flex:1"></span>
-                                                        </div>
-                                                        <div id="columnNameSelectAllContainer"></div>
-                                                        <div class="dropdown-list" id="columnNameCheckboxList"></div>
+                                            <div class="dropdown" id="columnNameDropdown">
+                                                <div class="dropdown-menu" id="columnNameDropdownMenu">
+                                                    <div class="dropdown-search">
+                                                        <input type="text" id="columnNameSearchInput" placeholder="Search folders" autocomplete="off">
                                                     </div>
+                                                    <div class="column-name-sort-row">
+                                                        <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
+                                                        <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
+                                                        <span style="flex:1"></span>
+                                                    </div>
+                                                    <div id="columnNameSelectAllContainer"></div>
+                                                    <div class="dropdown-list" id="columnNameCheckboxList"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -529,7 +527,7 @@ class CustomEmbed extends LibraryBase {
                     transform-origin: top right;
                 }
                 .dropdown-menu.show {
-                    display: flex;
+                    display: block !important;
                     width: fit-content;
                 }
                 .dropdown-search input {
@@ -794,34 +792,30 @@ class CustomEmbed extends LibraryBase {
                     font-weight: 600;
                 }
 
-                th.column-name-header-cell {
-                    position: relative;
-                    overflow: visible !important;
-                }
-
-                .dropdown-bridge {
-                    position: absolute;
-                    bottom: 0;         
-                    left: 0;           
-                    width: 0;         
-                    height: 0;
-                    overflow: visible; 
-                }
-
                 #columnNameDropdown {
                     position: absolute;
-                    top: 4px;          
-                    left: 0;
-
-                    min-width: 250px;  
-                    width: max-content; 
+                    display: none; 
+                    min-width: 250px; 
                     
+
                     background: #ffffff;
                     border: 1px solid #dee2e6;
                     border-radius: 8px;
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-                    z-index: 99999;     
+                    z-index: 999999; 
+                    padding: 12px;
+                    box-sizing: border-box;
                 }
+
+                .dropdown-search input {
+                    width: 100%;
+                    padding: 6px 10px;
+                    margin-bottom: 8px;
+                    box-sizing: border-box;
+                }
+
+
+
 
             </style>
         `;
@@ -1063,7 +1057,7 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
-            const columnDropdown = document.getElementById('columnNameDropdown');
+            const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
@@ -1072,6 +1066,28 @@ class CustomEmbed extends LibraryBase {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
+
+                    if (isFullscreen) {
+                        // 1. Move the dropdown element directly to the body layer to bypass table width constraints
+                        document.body.appendChild(dropdownMenu);
+
+                        // 2. Find the parent table header cell wrapper
+                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                        if (thCell) {
+                            // 3. Compute live pixel screen bounding dimensions
+                            const rect = thCell.getBoundingClientRect();
+                            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                            const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+                            // 4. Force dropdown card alignment precisely to the lower-left corner of the th
+                            dropdownMenu.style.position = 'absolute';
+                            dropdownMenu.style.top = `${rect.bottom + scrollTop}px`; // Anchors right below th lower line
+                            dropdownMenu.style.left = `${rect.left + scrollLeft}px`; // Anchors strictly to left boundary line
+                            dropdownMenu.style.right = 'auto';                       // Erases right alignment
+                            dropdownMenu.style.minWidth = '250px';                    // Dictates desired minimum display size
+                            dropdownMenu.style.zIndex = '2000001';                    // Floats directly above full-screen table modules
+                        }
+                    }
                 };
 
                 headerToggle.addEventListener('click', toggleFn);
@@ -1124,6 +1140,7 @@ class CustomEmbed extends LibraryBase {
                     headerToggle.setAttribute('aria-expanded', 'false');
                 });
             }
+
 
 
         } catch (error) {
