@@ -787,13 +787,13 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 #columnNameDropdown {
-                    position: absolute;
+                    position: relative;
                     top: 100%;         
-                    left: 0;           
+                    left: -45%;           
                     right: auto;
 
                     background: #ffffff;
-                    border: 1px solid #e5e7eb;
+                    border: 0px;
                     border-radius: 8px;
                     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
                     z-index: 1000;      
