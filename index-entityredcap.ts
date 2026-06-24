@@ -360,6 +360,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
+                    left: 30%;
                 }
                 .dropdown-toggle {
                     display: inline-flex;
