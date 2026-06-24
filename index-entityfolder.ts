@@ -1062,32 +1062,55 @@ class CustomEmbed extends LibraryBase {
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                // 💎 Helper function to calculate and update position in real-time
+                const repositionDropdown = () => {
+                    const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                    if (thCell && dropdownMenu.classList.contains('show')) {
+                        const rect = thCell.getBoundingClientRect();
+                        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+                        dropdownMenu.style.position = 'absolute';
+                        dropdownMenu.style.top = `${rect.bottom + scrollTop}px`;
+                        dropdownMenu.style.left = `${rect.left + scrollLeft}px`;
+                        dropdownMenu.style.right = 'auto';
+                        dropdownMenu.style.minWidth = '250px';
+                        dropdownMenu.style.zIndex = '2000001';
+                    }
+                };
+
                 const toggleFn = (event: Event) => {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
 
-                    // 💎 FIX: Check if the menu is visible, then calculate coordinates immediately
                     if (isVisible) {
-                        // 1. Move the dropdown element directly to the body layer to bypass table width constraints
+                        // Move to body to bypass layout clipping rules
                         document.body.appendChild(dropdownMenu);
+                        
+                        // Calculate position immediately upon opening
+                        repositionDropdown();
 
-                        // 2. Find the parent table header cell wrapper
-                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
-                        if (thCell) {
-                            // 3. Compute live pixel screen bounding dimensions
-                            const rect = thCell.getBoundingClientRect();
-                            const scrollTop = window.scrollY || document.documentElement.scrollTop;
-                            const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-
-                            // 4. Force dropdown card alignment precisely to the lower-left corner of the th
-                            dropdownMenu.style.position = 'absolute';
-                            dropdownMenu.style.top = `${rect.bottom + scrollTop}px`; // Anchors right below th lower line
-                            dropdownMenu.style.left = `${rect.left + scrollLeft}px`; // Anchors strictly to left boundary line
-                            dropdownMenu.style.right = 'auto';                       // Erases right alignment
-                            dropdownMenu.style.minWidth = '250px';                    // Dictates desired minimum display size
-                            dropdownMenu.style.zIndex = '2000001';                    // Floats directly above full-screen table modules
+                        // 💎 Start listening to scroll events so it sticky-tracks the header
+                        window.addEventListener('scroll', repositionDropdown, { passive: true });
+                        
+                        // If your table is inside a custom scrollable div container, listen to it too:
+                        const scrollableTableContainer = document.getElementById('tableWorkspaceWrapper'); // or your table's parent div
+                        if (scrollableTableContainer) {
+                            scrollableTableContainer.addEventListener('scroll', repositionDropdown, { passive: true });
                         }
+                    } else {
+                        // Remove event listeners when closed to save browser memory
+                        cleanupScrollListeners();
+                    }
+                };
+
+                // Helper to detach scroll trackers cleanly
+                const cleanupScrollListeners = () => {
+                    window.removeEventListener('scroll', repositionDropdown);
+                    const scrollableTableContainer = document.getElementById('tableWorkspaceWrapper');
+                    if (scrollableTableContainer) {
+                        scrollableTableContainer.removeEventListener('scroll', repositionDropdown);
                     }
                 };
 
@@ -1136,11 +1159,14 @@ class CustomEmbed extends LibraryBase {
                 }
                 setSortButtonsState();
 
+                // Ensure we close and cleanup if the user clicks away
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
                 });
             }
+
 
 
         
