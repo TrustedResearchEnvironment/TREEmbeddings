@@ -255,18 +255,20 @@ class CustomEmbed extends LibraryBase {
                                                     <span class="material-icons dropdown-icon">filter_alt</span>
                                                 </span>
                                             </span>
-                                            <div class="dropdown" id="columnNameDropdown">
-                                                <div class="dropdown-menu" id="columnNameDropdownMenu">
-                                                    <div class="dropdown-search">
-                                                        <input type="text" id="columnNameSearchInput" placeholder="Search folders" autocomplete="off">
+                                            <div class="dropdown-bridge">
+                                                <div class="dropdown" id="columnNameDropdown">
+                                                    <div class="dropdown-menu" id="columnNameDropdownMenu">
+                                                        <div class="dropdown-search">
+                                                            <input type="text" id="columnNameSearchInput" placeholder="Search folders" autocomplete="off">
+                                                        </div>
+                                                        <div class="column-name-sort-row">
+                                                            <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
+                                                            <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
+                                                            <span style="flex:1"></span>
+                                                        </div>
+                                                        <div id="columnNameSelectAllContainer"></div>
+                                                        <div class="dropdown-list" id="columnNameCheckboxList"></div>
                                                     </div>
-                                                    <div class="column-name-sort-row">
-                                                        <button type="button" data-action="sort-asc" title="Sort A-Z">A-Z</button>
-                                                        <button type="button" data-action="sort-desc" title="Sort Z-A">Z-A</button>
-                                                        <span style="flex:1"></span>
-                                                    </div>
-                                                    <div id="columnNameSelectAllContainer"></div>
-                                                    <div class="dropdown-list" id="columnNameCheckboxList"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -793,22 +795,34 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 th.column-name-header-cell {
-                    position: relative; 
+                    position: relative;
+                    overflow: visible !important;
+                }
+
+                .dropdown-bridge {
+                    position: absolute;
+                    bottom: 0;         
+                    left: 0;           
+                    width: 0;         
+                    height: 0;
+                    overflow: visible; 
                 }
 
                 #columnNameDropdown {
-                    position: relative;
-                    top: 100%;         
-                    left: -35%;           
-                    right: auto;
+                    position: absolute;
+                    top: 4px;          
+                    left: 0;
 
+                    min-width: 250px;  
+                    width: max-content; 
+                    
                     background: #ffffff;
-                    border: 0px;
+                    border: 1px solid #dee2e6;
                     border-radius: 8px;
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-                    z-index: 1000;      
-                    min-width: 200px;   
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    z-index: 99999;     
                 }
+
             </style>
         `;
     }
