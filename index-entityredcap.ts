@@ -338,6 +338,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 #dataTable {
                     width: 100%;
+                    min-height: 500px;
                     border-collapse: collapse;
                 }
                 #dataTable th {
