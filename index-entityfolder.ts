@@ -1067,7 +1067,8 @@ class CustomEmbed extends LibraryBase {
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
 
-                    if (isFullscreen) {
+                    // 💎 FIX: Check if the menu is visible, then calculate coordinates immediately
+                    if (isVisible) {
                         // 1. Move the dropdown element directly to the body layer to bypass table width constraints
                         document.body.appendChild(dropdownMenu);
 
@@ -1142,7 +1143,7 @@ class CustomEmbed extends LibraryBase {
             }
 
 
-
+        
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
