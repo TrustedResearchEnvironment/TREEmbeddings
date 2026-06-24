@@ -404,7 +404,6 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
-                    left: 30%;
                 }
                 .dropdown-toggle {
                     display: inline-flex;
@@ -791,6 +790,24 @@ class CustomEmbed extends LibraryBase {
                     display: block;
                     color: #d32f2f;
                     font-weight: 600;
+                }
+
+                th.column-name-header-cell {
+                    position: relative; 
+                }
+
+                #columnNameDropdown {
+                    position: absolute;
+                    top: 100%;         
+                    left: 0;           
+                    right: auto;
+
+                    background: #ffffff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                    z-index: 1000;      
+                    min-width: 200px;   
                 }
             </style>
         `;
