@@ -371,6 +371,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 #dataTable {
                     width: 100%;
+                    min-height: 500px;
                     border-collapse: collapse;
                 }
                 #dataTable th {
@@ -392,6 +393,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
+                    left: 30%;
                 }
 
                 .dropdown-toggle {
