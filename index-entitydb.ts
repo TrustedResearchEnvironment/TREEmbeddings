@@ -783,21 +783,32 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 th.column-name-header-cell {
-                    position: relative; 
+                    position: relative;
+                    overflow: visible !important;
+                }
+
+                .dropdown-bridge {
+                    position: absolute;
+                    bottom: 0;         
+                    left: 0;           
+                    width: 0;         
+                    height: 0;
+                    overflow: visible; 
                 }
 
                 #columnNameDropdown {
-                    position: relative;
-                    top: 100%;         
-                    left: -45%;           
-                    right: auto;
+                    position: absolute;
+                    top: 4px;          
+                    left: 0;
 
+                    min-width: 250px;  
+                    width: max-content; 
+                    
                     background: #ffffff;
-                    border: 0px;
+                    border: 1px solid #dee2e6;
                     border-radius: 8px;
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-                    z-index: 1000;      
-                    min-width: 200px;   
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    z-index: 99999;     
                 }
             </style>
         `;
@@ -1061,15 +1072,68 @@ class CustomEmbed extends LibraryBase {
                     });
                 }
 
-            const columnDropdown = document.getElementById('columnNameDropdown');
+            const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                let activeScrollAncestors: HTMLElement[] = [];
+
+                const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
+                    const ancestors: HTMLElement[] = [];
+                    let current = el.parentElement;
+                    while (current && current !== document.body) {
+                        const style = window.getComputedStyle(current);
+                        if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+                            ancestors.push(current);
+                        }
+                        current = current.parentElement;
+                    }
+                    return ancestors;
+                };
+
+                // Helper function to calculate and update position in real-time
+                const repositionDropdown = () => {
+                    const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                    if (thCell && dropdownMenu.classList.contains('show')) {
+                        const rect = thCell.getBoundingClientRect();
+                        dropdownMenu.style.position = 'fixed';
+                        dropdownMenu.style.top = `${rect.bottom}px`;
+                        dropdownMenu.style.left = `${rect.left}px`;
+                        dropdownMenu.style.right = 'auto';
+                        dropdownMenu.style.minWidth = '250px';
+                        dropdownMenu.style.zIndex = '2000001';
+                    }
+                };
+
+                const cleanupScrollListeners = () => {
+                    window.removeEventListener('scroll', repositionDropdown);
+                    activeScrollAncestors.forEach(el => el.removeEventListener('scroll', repositionDropdown));
+                    activeScrollAncestors = [];
+                };
+
                 const toggleFn = (event: Event) => {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
+
+                    if (isVisible) {
+                        // Move to body to bypass layout clipping rules
+                        document.body.appendChild(dropdownMenu);
+                        
+                        // Calculate position immediately upon opening
+                        repositionDropdown();
+
+                        // Listen to window scroll and all scrollable ancestors
+                        window.addEventListener('scroll', repositionDropdown, { passive: true });
+                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                        if (thCell) {
+                            activeScrollAncestors = getScrollableAncestors(thCell);
+                            activeScrollAncestors.forEach(el => el.addEventListener('scroll', repositionDropdown, { passive: true }));
+                        }
+                    } else {
+                        cleanupScrollListeners();
+                    }
                 };
 
                 headerToggle.addEventListener('click', toggleFn);
@@ -1080,10 +1144,8 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
 
-                // Prevent clicks inside the dropdown from closing it
                 dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
 
-                // Wire sort buttons inside dropdown
                 const sortAscBtn = dropdownMenu.querySelector('button[data-action="sort-asc"]') as HTMLButtonElement | null;
                 const sortDescBtn = dropdownMenu.querySelector('button[data-action="sort-desc"]') as HTMLButtonElement | null;
                 const setSortButtonsState = () => {
@@ -1099,7 +1161,7 @@ class CustomEmbed extends LibraryBase {
                         this.renderColumnNameCheckboxes();
 
                         this.currentPage = 1;
-                        this.currentSortColumn = 'ColumnName';
+                        this.currentSortColumn = 'FolderName';
                         this.currentSortDirection = 'asc';
                         this.updateTable();
                     });
@@ -1112,17 +1174,18 @@ class CustomEmbed extends LibraryBase {
                         this.renderColumnNameCheckboxes();
 
                         this.currentPage = 1;
-                        this.currentSortColumn = 'ColumnName';
+                        this.currentSortColumn = 'FolderName';
                         this.currentSortDirection = 'desc';
                         this.updateTable();
                     });
                 }
                 setSortButtonsState();
 
-                // Close when clicking outside
+                // Ensure we close and cleanup if the user clicks away
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
                 });
             }
 
