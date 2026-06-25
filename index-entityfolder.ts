@@ -794,7 +794,7 @@ class CustomEmbed extends LibraryBase {
 
                 .column-name-header {
                     position: relative; 
-                    }
+                }
 
                 #columnNameDropdown {
                     position: absolute;
@@ -1067,14 +1067,26 @@ class CustomEmbed extends LibraryBase {
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
-                // 💎 Helper function to calculate and update position in real-time
+                let activeScrollAncestors: HTMLElement[] = [];
+
+                const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
+                    const ancestors: HTMLElement[] = [];
+                    let current = el.parentElement;
+                    while (current && current !== document.body) {
+                        const style = window.getComputedStyle(current);
+                        if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+                            ancestors.push(current);
+                        }
+                        current = current.parentElement;
+                    }
+                    return ancestors;
+                };
+
+                // Helper function to calculate and update position in real-time
                 const repositionDropdown = () => {
                     const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
                     if (thCell && dropdownMenu.classList.contains('show')) {
                         const rect = thCell.getBoundingClientRect();
-                        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-                        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-
                         dropdownMenu.style.position = 'fixed';
                         dropdownMenu.style.top = `${rect.bottom}px`;
                         dropdownMenu.style.left = `${rect.left}px`;
@@ -1082,6 +1094,12 @@ class CustomEmbed extends LibraryBase {
                         dropdownMenu.style.minWidth = '250px';
                         dropdownMenu.style.zIndex = '2000001';
                     }
+                };
+
+                const cleanupScrollListeners = () => {
+                    window.removeEventListener('scroll', repositionDropdown);
+                    activeScrollAncestors.forEach(el => el.removeEventListener('scroll', repositionDropdown));
+                    activeScrollAncestors = [];
                 };
 
                 const toggleFn = (event: Event) => {
@@ -1096,26 +1114,15 @@ class CustomEmbed extends LibraryBase {
                         // Calculate position immediately upon opening
                         repositionDropdown();
 
-                        // 💎 Start listening to scroll events so it sticky-tracks the header
+                        // Listen to window scroll and all scrollable ancestors
                         window.addEventListener('scroll', repositionDropdown, { passive: true });
-                        
-                        // If your table is inside a custom scrollable div container, listen to it too:
-                        const scrollableTableContainer = document.getElementById('tableWorkspaceWrapper'); // or your table's parent div
-                        if (scrollableTableContainer) {
-                            scrollableTableContainer.addEventListener('scroll', repositionDropdown, { passive: true });
+                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                        if (thCell) {
+                            activeScrollAncestors = getScrollableAncestors(thCell);
+                            activeScrollAncestors.forEach(el => el.addEventListener('scroll', repositionDropdown, { passive: true }));
                         }
                     } else {
-                        // Remove event listeners when closed to save browser memory
                         cleanupScrollListeners();
-                    }
-                };
-
-                // Helper to detach scroll trackers cleanly
-                const cleanupScrollListeners = () => {
-                    window.removeEventListener('scroll', repositionDropdown);
-                    const scrollableTableContainer = document.getElementById('tableWorkspaceWrapper');
-                    if (scrollableTableContainer) {
-                        scrollableTableContainer.removeEventListener('scroll', repositionDropdown);
                     }
                 };
 
