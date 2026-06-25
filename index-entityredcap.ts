@@ -776,7 +776,18 @@ class CustomEmbed extends LibraryBase {
                     border-radius: 8px;
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
                     z-index: 99999;     
-                }                   
+                }
+                    
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;  
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;     
+                    text-overflow: ellipsis; 
+                    white-space: pre-wrap;
+                    word-break: break-word; 
+                    line-height: 1.4;
+                }
             </style>
         `;
     }
@@ -1020,7 +1031,11 @@ class CustomEmbed extends LibraryBase {
                 if (searchInput) {
                     searchInput.addEventListener('input', () => {
                         this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
                         this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
                     });
                 }
 
@@ -1186,9 +1201,9 @@ class CustomEmbed extends LibraryBase {
                     <tr>
                         <td>${columnName}</td>
                         <td><span class="mui-chip">${columnType || ''}</span></td>
-                        <td>${logicalColumnName}</td>
-                        <td>${businessDescription}</td>
-                        <td><span class="code-cell">${exampleValue}</span></td>
+                        <td><div class="cell-text-wrap">${logicalColumnName}</div></td>
+                        <td><div class="cell-text-wrap">${businessDescription}</div></td>
+                        <td><span class="code-cell"><div class="cell-text-wrap">${exampleValue}</div></span></td>
                         <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                         <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>

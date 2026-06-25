@@ -810,6 +810,17 @@ class CustomEmbed extends LibraryBase {
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
                     z-index: 99999;     
                 }
+
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;  
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;     
+                    text-overflow: ellipsis; 
+                    white-space: pre-wrap;
+                    word-break: break-word; 
+                    line-height: 1.4;
+                }
             </style>
         `;
     }
@@ -1073,7 +1084,11 @@ class CustomEmbed extends LibraryBase {
                 if (searchInput) {
                     searchInput.addEventListener('input', () => {
                         this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
                         this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
                     });
                 }
                 let activeScrollAncestors: HTMLElement[] = [];
@@ -1221,9 +1236,9 @@ class CustomEmbed extends LibraryBase {
                 <tr>
                     <td>${column.ColumnName || ''}</td>
                     <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                    <td><div class="cell-text-wrap">${column.LogicalColumnName || ''}</div></td>
+                    <td><div class="cell-text-wrap">${column.BusinessDescription || 'N/A'}</div></td>
+                    <td><span class="code-cell"><div class="cell-text-wrap">${column.ExampleValue || 'N/A'}</div></span></td>
                     <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
