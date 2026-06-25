@@ -1069,14 +1069,13 @@ class CustomEmbed extends LibraryBase {
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
-                // Use event delegation so the listener travels with dropdownMenu when it's moved to document.body
-                dropdownMenu.addEventListener('input', (event) => {
-                    const target = event.target as HTMLInputElement;
-                    if (target && target.id === 'columnNameSearchInput') {
-                        this.columnNameSearchTerm = target.value.trim().toLowerCase();
+                const searchInput = dropdownMenu.querySelector<HTMLInputElement>('#columnNameSearchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
                         this.renderColumnNameCheckboxes();
-                    }
-                });
+                    });
+                }
                 let activeScrollAncestors: HTMLElement[] = [];
 
                 const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
@@ -1316,13 +1315,18 @@ class CustomEmbed extends LibraryBase {
         selectAllContainer.appendChild(selectAllWrapper);
 
         selectAllCheckbox.addEventListener('change', (e) => {
-            const checked = (e.target as HTMLInputElement).checked;
+            const isChecked = (e.target as HTMLInputElement).checked;
             options.forEach(opt => {
-                if (checked) this.selectedColumnNames.add(opt);
+                if (isChecked) this.selectedColumnNames.add(opt);
                 else this.selectedColumnNames.delete(opt);
             });
-            // keep dropdown open; just re-render
-            this.renderColumnNameCheckboxes();
+            // Directly update individual checkbox states without rebuilding DOM
+            const checkboxInputs = listContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not(#columnNameSelectAll)');
+            checkboxInputs.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            selectAllCheckbox.indeterminate = false;
+            this.updateColumnFilterCount();
             this.updateTable();
         });
 
