@@ -128,6 +128,10 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
+            // Clean up any orphaned dropdown menu left in document.body from a previous session
+            const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+            if (orphanedMenu) orphanedMenu.remove();
+
             this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
