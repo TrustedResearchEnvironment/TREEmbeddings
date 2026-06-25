@@ -1203,7 +1203,7 @@ class CustomEmbed extends LibraryBase {
                         <td><span class="mui-chip">${columnType || ''}</span></td>
                         <td><div class="cell-text-wrap">${logicalColumnName}</div></td>
                         <td><div class="cell-text-wrap">${businessDescription}</div></td>
-                        <td><span class="code-cell"><div class="cell-text-wrap">${exampleValue}</div></span></td>
+                        <td><div class="cell-text-wrap"><span class="code-cell">${exampleValue}</span></div></td>
                         <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                         <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>
