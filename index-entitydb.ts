@@ -1064,19 +1064,19 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
-            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-                if (searchInput) {
-                    searchInput.addEventListener('input', () => {
-                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
-                        this.renderColumnNameCheckboxes();
-                    });
-                }
-
             const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                // Use event delegation so the listener travels with dropdownMenu when it's moved to document.body
+                dropdownMenu.addEventListener('input', (event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (target && target.id === 'columnNameSearchInput') {
+                        this.columnNameSearchTerm = target.value.trim().toLowerCase();
+                        this.renderColumnNameCheckboxes();
+                    }
+                });
                 let activeScrollAncestors: HTMLElement[] = [];
 
                 const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
