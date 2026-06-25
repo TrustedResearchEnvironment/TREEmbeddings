@@ -787,6 +787,20 @@ class CustomEmbed extends LibraryBase {
                     white-space: pre-wrap;
                     word-break: break-word; 
                     line-height: 1.4;
+                    cursor: default;
+                    transition: all 0.2s ease;
+                }
+                .cell-text-wrap:hover {
+                    display: block;
+                    overflow: visible;
+                    -webkit-line-clamp: unset;
+                    background: #fff;
+                    position: relative;
+                    z-index: 10;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                    border-radius: 4px;
+                    padding: 4px 6px;
+                    margin: -4px -6px;
                 }
             </style>
         `;
