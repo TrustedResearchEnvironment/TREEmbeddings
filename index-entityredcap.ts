@@ -606,8 +606,38 @@ class CustomEmbed extends LibraryBase {
                     padding: 2px 6px;
                     border-radius: 4px;
                 }
-
-                /* Modal styles */
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
                 .modal {
                     display: none;
                     position: fixed;
@@ -966,7 +996,11 @@ class CustomEmbed extends LibraryBase {
                 if (searchInput) {
                     searchInput.addEventListener('input', () => {
                         this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
                         this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
                     });
                 }
 
@@ -1139,9 +1173,9 @@ class CustomEmbed extends LibraryBase {
                     <tr>
                         <td>${columnName}</td>
                         <td><span class="mui-chip">${columnType || ''}</span></td>
-                        <td>${logicalColumnName}</td>
-                        <td>${businessDescription}</td>
-                        <td><span class="code-cell">${exampleValue}</span></td>
+                        <td><div class="cell-text-wrap" title="${logicalColumnName}">${logicalColumnName}</div></td>
+                        <td><div class="cell-text-wrap" title="${businessDescription}">${businessDescription}</div></td>
+                        <td><div class="cell-text-wrap" title="${exampleValue}"><span class="code-cell">${exampleValue}</span></div></td>
                         <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                         <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     </tr>
@@ -1262,13 +1296,20 @@ class CustomEmbed extends LibraryBase {
         selectAllContainer.appendChild(selectAllLabel);
 
         selectAllCheckbox.addEventListener('change', () => {
-            if (selectAllCheckbox.checked) {
+            const isChecked = selectAllCheckbox.checked;
+            if (isChecked) {
                 visibleOptions.forEach(name => this.selectedColumnNames.add(name));
             } else {
                 visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
             }
+            // Directly update individual checkbox states without rebuilding DOM
+            const checkboxInputs = listContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-column-name]');
+            checkboxInputs.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            selectAllCheckbox.indeterminate = false;
             this.currentPage = 1;
-            this.renderColumnNameCheckboxes();
+            this.updateColumnFilterCount();
             this.updateTable();
         });
 
