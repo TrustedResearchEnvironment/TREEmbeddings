@@ -1135,6 +1135,13 @@ class CustomEmbed extends LibraryBase {
                     headerToggle.setAttribute('aria-expanded', 'false');
                     cleanupScrollListeners();
                 });
+
+                // Close dropdown on browser back/forward navigation
+                window.addEventListener('popstate', () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
+                });
             }
 
 
