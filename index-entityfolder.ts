@@ -1059,14 +1059,13 @@ class CustomEmbed extends LibraryBase {
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
-                // Use event delegation so the listener travels with dropdownMenu when it's moved to document.body
-                dropdownMenu.addEventListener('input', (event) => {
-                    const target = event.target as HTMLInputElement;
-                    if (target && target.id === 'columnNameSearchInput') {
-                        this.columnNameSearchTerm = target.value.trim().toLowerCase();
+                const searchInput = dropdownMenu.querySelector<HTMLInputElement>('#columnNameSearchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
                         this.renderColumnNameCheckboxes();
-                    }
-                });
+                    });
+                }
                 let activeScrollAncestors: HTMLElement[] = [];
 
                 const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
@@ -1341,13 +1340,20 @@ class CustomEmbed extends LibraryBase {
         selectAllContainer.appendChild(selectAllLabel);
 
         selectAllCheckbox.addEventListener('change', () => {
-            if (selectAllCheckbox.checked) {
+            const isChecked = selectAllCheckbox.checked;
+            if (isChecked) {
                 visibleOptions.forEach(name => this.selectedColumnNames.add(name));
             } else {
                 visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
             }
+            // Directly update individual checkbox states without rebuilding DOM
+            const checkboxInputs = listContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-column-name]');
+            checkboxInputs.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            selectAllCheckbox.indeterminate = false;
             this.currentPage = 1;
-            this.renderColumnNameCheckboxes();
+            this.updateColumnFilterCount();
             this.updateTable();
         });
 
