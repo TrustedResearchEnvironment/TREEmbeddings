@@ -829,19 +829,27 @@ class CustomEmbed extends LibraryBase {
                     word-break: break-word; 
                     line-height: 1.4;
                     cursor: default;
-                    transition: all 0.2s ease;
-                }
-                .cell-text-wrap:hover {
-                    display: block;
-                    overflow: visible;
-                    -webkit-line-clamp: unset;
-                    background: #fff;
                     position: relative;
-                    z-index: 10;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                    border-radius: 4px;
-                    padding: 4px 6px;
-                    margin: -4px -6px;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
                 }
 
             </style>
