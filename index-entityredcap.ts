@@ -1551,6 +1551,15 @@ class CustomEmbed extends LibraryBase {
         });
     }
 
+    public dispose = (): void => {
+        if (this._listenerController) {
+            this._listenerController.abort();
+            this._listenerController = null;
+        }
+        const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+        if (orphanedMenu) orphanedMenu.remove();
+    }
+
     private async loadResources(): Promise<void> {
         return Promise.resolve();
     }
