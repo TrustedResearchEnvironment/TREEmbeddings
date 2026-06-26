@@ -94,6 +94,7 @@ class CustomEmbed extends LibraryBase {
     private columnNameSortDirection: "asc" | "desc" = "asc";
     private redactedFilter: 'all' | 'yes' | 'no' = 'all';
     private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
+    private _listenerController: AbortController | null = null;
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -123,6 +124,14 @@ class CustomEmbed extends LibraryBase {
     
     public buildPage = async (): Promise<void> => {
         try {
+            // Abort any stale document/window listeners from a previous session
+            if (this._listenerController) this._listenerController.abort();
+            this._listenerController = new AbortController();
+
+            // Clean up any orphaned dropdown menu left in document.body from a previous session
+            const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+            if (orphanedMenu) orphanedMenu.remove();
+
             this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
@@ -157,7 +166,7 @@ class CustomEmbed extends LibraryBase {
                 alert("This dataset is currently inactive and cannot be requested. Please contact your platform administrator for more information.");
             }
 
-            this.setupEventListeners();
+            this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
         } catch (ex: unknown) {
@@ -847,7 +856,7 @@ class CustomEmbed extends LibraryBase {
         `;
     }
 
-    public setupEventListeners = (): void => {
+    public setupEventListeners = (signal?: AbortSignal): void => {
         try {
             
             // Sort headers
@@ -1095,7 +1104,7 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
                 }
-            });
+            }, { signal });
 
             const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
@@ -1222,14 +1231,14 @@ class CustomEmbed extends LibraryBase {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
                     cleanupScrollListeners();
-                });
+                }, { signal });
 
                 // Close dropdown on browser back/forward navigation
                 window.addEventListener('popstate', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
                     cleanupScrollListeners();
-                });
+                }, { signal });
             }
 
 
@@ -1523,6 +1532,15 @@ class CustomEmbed extends LibraryBase {
                 head.appendChild(meta);
             }
         });
+    }
+
+    public dispose = (): void => {
+        if (this._listenerController) {
+            this._listenerController.abort();
+            this._listenerController = null;
+        }
+        const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+        if (orphanedMenu) orphanedMenu.remove();
     }
 
     private async loadResources(): Promise<void> {
