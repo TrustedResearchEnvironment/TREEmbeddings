@@ -1,23 +1,5 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableContainer, 
-    TableHead, 
-    TableRow,
-    Paper,
-    TablePagination,
-    TableSortLabel,
-    Chip,
-    Card,
-    CardHeader,
-    CardContent,
-    Button,
-    Box,
-    Typography
-} from '@mui/material';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -79,10 +61,12 @@ interface ProjectResponse {
 const API_GET_DATASET_METADATA = 'GetDataSetID';
 const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
 const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
+const API_GET_DATASET_DATETIME_COLS = 'GetDatasetDateTimeColumns';
 const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 
 class CustomEmbed extends LibraryBase {
     public token: string = "";
+    private dataSetID: string = "";
     private allColumns: DataSetColumn[] = [];
     private currentSortColumn: string = "ColumnName";
     private currentSortDirection: "asc" | "desc" = "asc";
@@ -132,12 +116,14 @@ class CustomEmbed extends LibraryBase {
             const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
             if (orphanedMenu) orphanedMenu.remove();
 
+            this.dataSetID = this.getParamValue('DataSetID')?.value || '';
+
             this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
+                DataSetID: this.dataSetID,
             });
 
             const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
-                DataSetID: this.getParamValue('DataSetID')?.value || '',
+                DataSetID: this.dataSetID,
             });
 
             this.allColumns = columnsResponse.Results ?
@@ -166,7 +152,7 @@ class CustomEmbed extends LibraryBase {
                 alert("This dataset is currently inactive and cannot be requested. Please contact your platform administrator for more information.");
             }
 
-            this.setupEventListeners(this._listenerController.signal);
+            await this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
         } catch (ex: unknown) {
@@ -220,9 +206,6 @@ class CustomEmbed extends LibraryBase {
                                     <div id="filterRowsContainer" class="filter-rows-container"></div>
                                 </div>
 
-                                <div class="form-actions">
-                                    <button type="submit" class="button button-primary">Submit Request</button>
-                                </div>
                                 <div class="form-actions">
                                     <button type="submit" class="button button-primary">Submit Request</button>
                                 </div>
@@ -870,51 +853,30 @@ class CustomEmbed extends LibraryBase {
         `;
     }
 
-    public setupEventListeners = (signal?: AbortSignal): void => {
+    public setupEventListeners = async (signal?: AbortSignal): Promise<void> => {
         try {
-            
-            // Sort headers
-            // const headers = document.querySelectorAll('#dataTable th[data-sort]');
-            // headers.forEach(header => {
-            //     header.addEventListener('click', () => {
-            //         const sortType = header.getAttribute('data-sort');
-            //         if (sortType) {
-            //             if (this.currentSortColumn === sortType) {
-            //                 this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
-            //             } else {
-            //                 this.currentSortColumn = sortType;
-            //                 this.currentSortDirection = 'asc';
-            //             }
-            //             this.currentPage = 1;
-            //             this.updateTable();
-            //         }
-            //     });
-            // });
+        
+            // Date Filters logic
+            const addFilterBtn = document.getElementById("addFilterBtn");
+            const filterContainer = document.getElementById("filterRowsContainer");
+            if (addFilterBtn && filterContainer) {
+                // API Call to get the dataset's datetime columns
+                const payload = {
+                    dataSetID: this.dataSetID
+                }
+                const response = await window.loomeApi.runApiRequest(API_GET_DATASET_DATETIME_COLS, payload)
+                const dateOptions = response.Results.map((col: { ColumnName: string }) => ({ value: col.ColumnName, label: col.ColumnName }));
+                
 
-            document.addEventListener("DOMContentLoaded", () => {
-                const addFilterBtn = document.getElementById("addFilterBtn");
-                const container = document.getElementById("filterRowsContainer");
-                const form = document.getElementById("requestForm");
-
-                // Define the available date fields in your data structure
-                const dateOptions = [
-                    { value: "created_at", label: "Created Date" },
-                    { value: "updated_at", label: "Updated Date" },
-                    { value: "shipped_at", label: "Shipping Date" }
-                ];
-
-                // Function to add a new clean row
                 addFilterBtn.addEventListener("click", () => {
                     const row = document.createElement("div");
                     row.className = "filter-row";
-                    // Simple inline styling to make it sit clean side-by-side
                     row.style.display = "flex";
                     row.style.gap = "10px";
                     row.style.alignItems = "center";
                     row.style.marginBottom = "10px";
 
-                    // Generate options markup
-                    const optionsHtml = dateOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+                    const optionsHtml = dateOptions.map((opt: { value: string; label: string }) => `<option value="${opt.value}">${opt.label}</option>`).join('');
 
                     row.innerHTML = `
                         <select class="form-select filter-field" required style="flex: 1;">
@@ -927,44 +889,13 @@ class CustomEmbed extends LibraryBase {
                         <button type="button" class="remove-filter-btn" style="background:none; border:none; color:#ff4d4f; font-size:18px; cursor:pointer; padding:0 5px;">&times;</button>
                     `;
 
-                    // Event listener to remove this specific row
-                    row.querySelector(".remove-filter-btn").addEventListener("click", () => {
+                    row.querySelector(".remove-filter-btn")?.addEventListener("click", () => {
                         row.remove();
                     });
 
-                    container.appendChild(row);
+                    filterContainer.appendChild(row);
                 });
-
-                // Handle Form Submission and capture the filter data
-                form.addEventListener("submit", (e) => {
-                    e.preventDefault();
-
-                    // Gather all applied filters
-                    const activeFilters = [];
-                    const rows = container.querySelectorAll(".filter-row");
-
-                    rows.forEach(row => {
-                        const field = row.querySelector(".filter-field").value;
-                        const start = row.querySelector(".filter-start").value;
-                        const end = row.querySelector(".filter-end").value;
-
-                        if (field && start && end) {
-                            activeFilters.push({ field, start, end });
-                        }
-                    });
-
-                    // Construct payload
-                    const payload = {
-                        requestName: document.getElementById("RequestName").value,
-                        purpose: document.getElementById("RequestPurpose").value,
-                        projectId: document.getElementById("ProjectID").value,
-                        dateFilters: activeFilters // This will contain an array of your ranges
-                    };
-
-                    console.log("Submitting Payload:", payload);
-                    // Execute your fetch/XHR call here...
-                });
-            });
+            }
 
             // Page size selector
             const pageSize = document.getElementById('pageSize');
@@ -1072,6 +1003,19 @@ class CustomEmbed extends LibraryBase {
                             alert(`The following field(s) contain invalid special characters: ${invalidFields.join(', ')}. Please remove them and try again.`);
                             return;
                         }
+
+                        const filterRows = document.querySelectorAll('.filter-row');
+                        let dateFiltersPurpose = '';
+                        filterRows.forEach((row, index) => {
+                            const field = (row.querySelector('.filter-field') as HTMLSelectElement).value;
+                            const start = (row.querySelector('.filter-start') as HTMLInputElement).value;
+                            const end = (row.querySelector('.filter-end') as HTMLInputElement).value;
+                            if (field && start && end) {
+                                if (index === 0) dateFiltersPurpose += '\n\nDate Filters:';
+                                dateFiltersPurpose += `\n- ${field}: ${start} to ${end}`;
+                            }
+                        });
+
 
                         const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
                             DataSetID: formData.datasetId,
