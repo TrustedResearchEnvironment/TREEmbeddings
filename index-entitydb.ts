@@ -209,6 +209,20 @@ class CustomEmbed extends LibraryBase {
                                         <option value="85">Project 3</option>
                                     </select>
                                 </div>
+                                <!-- Insert this inside your form, right before the .form-actions div -->
+                                <div class="form-group filters-section">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Date Filters (Optional)</span>
+                                        <button type="button" id="addFilterBtn" class="button button-secondary" style="font-size: 12px; padding: 4px 8px;">+ Add Filter</button>
+                                    </label>
+                                    
+                                    <!-- This container holds our dynamic date rows -->
+                                    <div id="filterRowsContainer" class="filter-rows-container"></div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="button button-primary">Submit Request</button>
+                                </div>
                                 <div class="form-actions">
                                     <button type="submit" class="button button-primary">Submit Request</button>
                                 </div>
@@ -876,6 +890,81 @@ class CustomEmbed extends LibraryBase {
             //         }
             //     });
             // });
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const addFilterBtn = document.getElementById("addFilterBtn");
+                const container = document.getElementById("filterRowsContainer");
+                const form = document.getElementById("requestForm");
+
+                // Define the available date fields in your data structure
+                const dateOptions = [
+                    { value: "created_at", label: "Created Date" },
+                    { value: "updated_at", label: "Updated Date" },
+                    { value: "shipped_at", label: "Shipping Date" }
+                ];
+
+                // Function to add a new clean row
+                addFilterBtn.addEventListener("click", () => {
+                    const row = document.createElement("div");
+                    row.className = "filter-row";
+                    // Simple inline styling to make it sit clean side-by-side
+                    row.style.display = "flex";
+                    row.style.gap = "10px";
+                    row.style.alignItems = "center";
+                    row.style.marginBottom = "10px";
+
+                    // Generate options markup
+                    const optionsHtml = dateOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+
+                    row.innerHTML = `
+                        <select class="form-select filter-field" required style="flex: 1;">
+                            <option value="">Select Field</option>
+                            ${optionsHtml}
+                        </select>
+                        <input type="date" class="form-input filter-start" required style="flex: 1;">
+                        <span style="color: #666;">to</span>
+                        <input type="date" class="form-input filter-end" required style="flex: 1;">
+                        <button type="button" class="remove-filter-btn" style="background:none; border:none; color:#ff4d4f; font-size:18px; cursor:pointer; padding:0 5px;">&times;</button>
+                    `;
+
+                    // Event listener to remove this specific row
+                    row.querySelector(".remove-filter-btn").addEventListener("click", () => {
+                        row.remove();
+                    });
+
+                    container.appendChild(row);
+                });
+
+                // Handle Form Submission and capture the filter data
+                form.addEventListener("submit", (e) => {
+                    e.preventDefault();
+
+                    // Gather all applied filters
+                    const activeFilters = [];
+                    const rows = container.querySelectorAll(".filter-row");
+
+                    rows.forEach(row => {
+                        const field = row.querySelector(".filter-field").value;
+                        const start = row.querySelector(".filter-start").value;
+                        const end = row.querySelector(".filter-end").value;
+
+                        if (field && start && end) {
+                            activeFilters.push({ field, start, end });
+                        }
+                    });
+
+                    // Construct payload
+                    const payload = {
+                        requestName: document.getElementById("RequestName").value,
+                        purpose: document.getElementById("RequestPurpose").value,
+                        projectId: document.getElementById("ProjectID").value,
+                        dateFilters: activeFilters // This will contain an array of your ranges
+                    };
+
+                    console.log("Submitting Payload:", payload);
+                    // Execute your fetch/XHR call here...
+                });
+            });
 
             // Page size selector
             const pageSize = document.getElementById('pageSize');
