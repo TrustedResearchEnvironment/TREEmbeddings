@@ -3,7 +3,6 @@ name: Deakin Deploy
 on:
   push:
     branches:
-      - main
       - DeakinDeploy
   workflow_dispatch:
 
