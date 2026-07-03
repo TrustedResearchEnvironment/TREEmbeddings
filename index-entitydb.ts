@@ -77,15 +77,15 @@ interface ProjectResponse {
 }
 
 interface DateTimeFilterField {
-    name: string;
-    label: string;
+    DataSetColumnID: number;
+    ColumnName: string;
 }
 
 interface DateTimeFilter {
     id: number;
     field: string;
-    operator: '>' | '<' | '>=' | '<=';
-    value: string;
+    from: string;
+    to: string;
 }
 
 const API_GET_DATASET_METADATA = 'GetDataSetID';
@@ -1020,14 +1020,17 @@ class CustomEmbed extends LibraryBase {
             setupCharCounter('RequestPurpose', 'RequestPurposeCounter', 500);
 
             // Add DateTime Filter listeners
-            const addFilterBtn = document.getElementById('addDateTimeFilterBtn');
+            const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
             if (addFilterBtn) {
                 addFilterBtn.addEventListener('click', () => {
+                    const usedFields = new Set(this.dateTimeFilters.map(f => f.field));
+                    const nextField = this.datetimeFields.find(f => !usedFields.has(f.ColumnName))?.ColumnName ?? '';
+                    
                     this.dateTimeFilters.push({
                         id: ++this._filterIdCounter,
-                        field: this.datetimeFields[0]?.name ?? '',
-                        operator: '>',
-                        value: ''
+                        field: nextField,
+                        from: '',
+                        to: ''
                     });
                     this.renderDateTimeFilters();
                 });
@@ -1050,7 +1053,12 @@ class CustomEmbed extends LibraryBase {
                     const value = (el as HTMLInputElement | HTMLSelectElement).value;
                     if (!isNaN(id) && prop) {
                         const filter = this.dateTimeFilters.find(f => f.id === id);
-                        if (filter) (filter as any)[prop] = value;
+                        if (filter) {
+                            (filter as any)[prop] = value;
+                            if (prop === 'field') {
+                                this.renderDateTimeFilters();
+                            }
+                        }
                     }
                 });
             }
@@ -1066,9 +1074,9 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         // Validate filters
-                        const invalidFilters = this.dateTimeFilters.filter(f => !f.field || !f.value);
+                        const invalidFilters = this.dateTimeFilters.filter(f => !f.field || (!f.from && !f.to));
                         if (invalidFilters.length > 0) {
-                            alert('All date/time filters must have a field and a value selected.');
+                            alert('Each date/time filter must have a field selected and at least one date (From or To).');
                             return;
                         }
 
@@ -1105,8 +1113,8 @@ class CustomEmbed extends LibraryBase {
                             requestName: formData.requestName,
                             dateTimeFilters: this.dateTimeFilters.map(f => ({
                                 field: f.field,
-                                operator: f.operator,
-                                value: f.value
+                                from: f.from || null,
+                                to: f.to || null
                             }))
                         });
 
@@ -1578,9 +1586,10 @@ class CustomEmbed extends LibraryBase {
             if (!dataSetID) return;
             const result = await window.loomeApi.runApiRequest(API_GET_DATETIME_FIELDS, { data_set_id: dataSetID });
             this.datetimeFields = Array.isArray(result)
-                ? result.map((f: any) => typeof f === 'string'
-                    ? { name: f, label: f }
-                    : { name: f.name ?? f.field, label: f.label ?? f.name ?? f.field })
+                ? result.map((f: any) => ({
+                    DataSetColumnID: f.DataSetColumnID,
+                    ColumnName: f.ColumnName
+                }))
                 : [];
         } catch (e) {
             console.warn('Could not load datetime fields:', e);
@@ -1589,26 +1598,29 @@ class CustomEmbed extends LibraryBase {
     };
 
     private generateFilterRowHtml = (filter: DateTimeFilter): string => {
-        const fieldOptions = this.datetimeFields.map(f =>
-            `<option value="${f.name}" ${filter.field === f.name ? 'selected' : ''}>${f.label}</option>`
-        ).join('');
-        const operators = ['>', '<', '>=', '<='];
-        const opOptions = operators.map(op =>
-            `<option value="${op}" ${filter.operator === op ? 'selected' : ''}>${op}</option>`
-        ).join('');
+        const usedFields = new Set(this.dateTimeFilters.filter(f => f.id !== filter.id).map(f => f.field));
+        const fieldOptions = this.datetimeFields
+            .filter(f => !usedFields.has(f.ColumnName) || f.ColumnName === filter.field)
+            .map(f => `<option value="${f.ColumnName}" ${filter.field === f.ColumnName ? 'selected' : ''}>${f.ColumnName}</option>`)
+            .join('');
+
         return `
             <div class="filter-row" data-filter-id="${filter.id}">
                 <div class="filter-row-fields">
-                    <select class="form-input filter-field-select" data-filter-id="${filter.id}" data-prop="field">
+                    <select class="form-input filter-field-select" data-filter-id="${filter.id}" data-prop="field" style="flex: 0 0 150px;">
                         <option value="">-- Select Field --</option>
                         ${fieldOptions}
                     </select>
-                    <select class="form-input filter-op-select" data-filter-id="${filter.id}" data-prop="operator">
-                        ${opOptions}
-                    </select>
-                    <input type="datetime-local" class="form-input filter-value-input"
-                           data-filter-id="${filter.id}" data-prop="value"
-                           value="${filter.value}">
+                    <div class="filter-date-range" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                        <label style="font-size: 0.8rem; color: #666;">From</label>
+                        <input type="date" class="form-input filter-value-input"
+                               data-filter-id="${filter.id}" data-prop="from"
+                               value="${filter.from}" style="flex: 1;">
+                        <label style="font-size: 0.8rem; color: #666;">To</label>
+                        <input type="date" class="form-input filter-value-input"
+                               data-filter-id="${filter.id}" data-prop="to"
+                               value="${filter.to}" style="flex: 1;">
+                    </div>
                 </div>
                 <button type="button" class="remove-filter-btn" data-filter-id="${filter.id}" title="Remove filter">
                     <span class="material-icons" style="font-size:18px">delete</span>
@@ -1622,9 +1634,14 @@ class CustomEmbed extends LibraryBase {
         if (!container) return;
         if (this.dateTimeFilters.length === 0) {
             container.innerHTML = '<p class="filter-empty-hint">No filters added.</p>';
-            return;
+        } else {
+            container.innerHTML = this.dateTimeFilters.map(f => this.generateFilterRowHtml(f)).join('');
         }
-        container.innerHTML = this.dateTimeFilters.map(f => this.generateFilterRowHtml(f)).join('');
+
+        const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
+        if (addFilterBtn && this.datetimeFields.length > 0) {
+            addFilterBtn.disabled = this.dateTimeFilters.length >= this.datetimeFields.length;
+        }
     };
 
     private createRequestModal = async (): Promise<void> => {
