@@ -383,7 +383,9 @@ class RangeDatePicker {
             cell.className = 'range-picker-day';
             cell.textContent = d.toString();
 
-            const currentTime = date.setHours(0, 0, 0, 0);
+            const cellDate = new Date(year, month, d);
+            cellDate.setHours(0, 0, 0, 0);
+            const currentTime = cellDate.getTime();
 
             // Visual Disabled State: Disable if date is before Temp Start Date (only if picking End Date)
             const shouldDisable = this.tempStartDate && !this.tempEndDate && currentTime < tempStartDateTime!;
@@ -396,7 +398,11 @@ class RangeDatePicker {
                 if (startDateTime && endDateTime && currentTime > startDateTime && currentTime < endDateTime) {
                     cell.classList.add('in-range');
                 }
-                cell.addEventListener('click', () => this.handleDayClick(new Date(date)));
+                cell.addEventListener('click', () => {
+                    const clickDate = new Date(year, month, d);
+                    clickDate.setHours(0, 0, 0, 0);
+                    this.handleDayClick(clickDate);
+                });
             }
 
             grid.appendChild(cell);
