@@ -220,8 +220,11 @@ class RangeDatePicker {
             this.cancelSelection();
         });
 
-        [this.fromMonthSel, this.fromYearSel, this.toMonthSel, this.toYearSel].forEach(sel => {
-            sel.addEventListener('change', () => this.updateView());
+        [this.fromMonthSel, this.fromYearSel].forEach(sel => {
+            sel.addEventListener('change', () => this.updateView('from'));
+        });
+        [this.toMonthSel, this.toYearSel].forEach(sel => {
+            sel.addEventListener('change', () => this.updateView('to'));
         });
 
         document.addEventListener('click', (e) => {
@@ -262,11 +265,14 @@ class RangeDatePicker {
 
     private hideDropdown() {
         // If hidden without completing second click, revert to confirmed state
-        if (!this.tempStartDate || !this.tempEndDate) {
+        if (this.tempStartDate && !this.tempEndDate) {
             this.startDate = this.confirmedStartDate;
             this.endDate = this.confirmedEndDate;
+            this.tempStartDate = this.confirmedStartDate;
+            this.tempEndDate = this.confirmedEndDate;
         }
         this.dropdown.classList.remove('show');
+        this.updateView();
     }
 
     private cancelSelection() {
@@ -369,6 +375,7 @@ class RangeDatePicker {
 
         const startDateTime = this.startDate ? new Date(this.startDate).setHours(0, 0, 0, 0) : null;
         const endDateTime = this.endDate ? new Date(this.endDate).setHours(0, 0, 0, 0) : null;
+        const tempStartDateTime = this.tempStartDate ? new Date(this.tempStartDate).setHours(0, 0, 0, 0) : null;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
@@ -376,11 +383,10 @@ class RangeDatePicker {
             cell.className = 'range-picker-day';
             cell.textContent = d.toString();
 
-            const currentTime = date.getTime();
+            const currentTime = date.setHours(0, 0, 0, 0);
 
-            // Visual Disabled State: Disable if date is before Start Date (only if Start Date is set and we're picking End Date)
-            // Any day cell representing an invalid historical date must be visually grayed out.
-            const shouldDisable = this.startDate && !this.endDate && currentTime < startDateTime!;
+            // Visual Disabled State: Disable if date is before Temp Start Date (only if picking End Date)
+            const shouldDisable = this.tempStartDate && !this.tempEndDate && currentTime < tempStartDateTime!;
 
             if (shouldDisable) {
                 cell.classList.add('disabled');
@@ -390,28 +396,43 @@ class RangeDatePicker {
                 if (startDateTime && endDateTime && currentTime > startDateTime && currentTime < endDateTime) {
                     cell.classList.add('in-range');
                 }
-                cell.addEventListener('click', () => this.handleDayClick(date));
+                cell.addEventListener('click', () => this.handleDayClick(new Date(date)));
             }
 
             grid.appendChild(cell);
         }
     }
 
-    private updateView() {
+    private updateView(trigger?: 'from' | 'to') {
         let fm = parseInt(this.fromMonthSel.value);
         let fy = parseInt(this.fromYearSel.value);
         let tm = parseInt(this.toMonthSel.value);
         let ty = parseInt(this.toYearSel.value);
 
-        // Dropdown Bounds Synchronization
+        // Dropdown Bounds Synchronization logic
         const fromVal = fy * 12 + fm;
         const toVal = ty * 12 + tm;
 
         if (fromVal > toVal) {
-            this.toMonthSel.value = this.fromMonthSel.value;
-            this.toYearSel.value = this.fromYearSel.value;
-            tm = fm;
-            ty = fy;
+            if (trigger === 'from') {
+                // If "From" moved ahead of "To", force "To" forward
+                this.toMonthSel.value = this.fromMonthSel.value;
+                this.toYearSel.value = this.fromYearSel.value;
+                tm = fm;
+                ty = fy;
+            } else if (trigger === 'to') {
+                // If "To" moved behind "From", force "From" backward
+                this.fromMonthSel.value = this.toMonthSel.value;
+                this.fromYearSel.value = this.toYearSel.value;
+                fm = tm;
+                fy = ty;
+            } else {
+                // Default sync (fallback)
+                this.toMonthSel.value = this.fromMonthSel.value;
+                this.toYearSel.value = this.fromYearSel.value;
+                tm = fm;
+                ty = fy;
+            }
         }
 
         this.renderGrid(this.fromGrid, fm, fy, false);
