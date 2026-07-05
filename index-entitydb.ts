@@ -118,7 +118,7 @@ class RangeDatePicker {
                 <span class="range-picker-preview">Select dates...</span>
                 <div class="range-picker-actions">
                     <button type="button" class="range-picker-btn range-picker-btn-cancel">Cancel</button>
-                    <button type="button" class="range-picker-btn range-picker-btn-apply">Apply</button>
+                    <!-- Apply button removed for auto-apply logic -->
                 </div>
             </div>
             <div class="range-picker-calendars">
@@ -156,7 +156,6 @@ class RangeDatePicker {
         this.fromGrid = this.dropdown.querySelector('.from-grid') as HTMLElement;
         this.toGrid = this.dropdown.querySelector('.to-grid') as HTMLElement;
         this.preview = this.dropdown.querySelector('.range-picker-preview') as HTMLElement;
-        this.applyBtn = this.dropdown.querySelector('.range-picker-btn-apply') as HTMLButtonElement;
         this.cancelBtn = this.dropdown.querySelector('.range-picker-btn-cancel') as HTMLButtonElement;
 
         this.init(initialFrom, initialTo);
@@ -208,15 +207,6 @@ class RangeDatePicker {
         this.cancelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.hideDropdown();
-        });
-
-        this.applyBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (this.startDate && this.endDate) {
-                this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
-                this.onApply(this.startDate, this.endDate);
-                this.hideDropdown();
-            }
         });
 
         [this.fromMonthSel, this.fromYearSel, this.toMonthSel, this.toYearSel].forEach(sel => {
@@ -287,17 +277,24 @@ class RangeDatePicker {
             // First click OR Third click (reset)
             this.startDate = date;
             this.endDate = null;
+            this.updateView();
         } else {
             // Second click
             if (date < this.startDate) {
                 // If clicked date is before start date, treat it as new start
                 this.startDate = date;
                 this.endDate = null;
+                this.updateView();
             } else {
                 this.endDate = date;
+                this.updateView();
+                
+                // Auto-Apply Logic: Update input and close dropdown immediately
+                this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+                this.onApply(this.startDate, this.endDate);
+                this.hideDropdown();
             }
         }
-        this.updateView();
     }
 
     private renderGrid(grid: HTMLElement, month: number, year: number, isToCalendar: boolean) {
@@ -363,13 +360,10 @@ class RangeDatePicker {
 
         if (this.startDate && this.endDate) {
             this.preview.textContent = `${this.formatDate(this.startDate)} — ${this.formatDate(this.endDate)}`;
-            this.applyBtn.classList.add('active');
         } else if (this.startDate) {
             this.preview.textContent = `${this.formatDate(this.startDate)} — ...`;
-            this.applyBtn.classList.remove('active');
         } else {
             this.preview.textContent = 'Select dates...';
-            this.applyBtn.classList.remove('active');
         }
     }
 
@@ -1283,20 +1277,6 @@ class CustomEmbed extends LibraryBase {
                 .range-picker-btn-cancel {
                     background: transparent;
                     color: #666;
-                }
-
-                .range-picker-btn-apply {
-                    background: #e0e7ff;
-                    color: #4f46e5;
-                    opacity: 0.6;
-                    pointer-events: none;
-                }
-
-                .range-picker-btn-apply.active {
-                    background: #4f46e5;
-                    color: white;
-                    opacity: 1;
-                    pointer-events: auto;
                 }
 
                 .range-picker-calendars {
