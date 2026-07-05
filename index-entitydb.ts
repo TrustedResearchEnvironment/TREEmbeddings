@@ -1258,6 +1258,10 @@ class CustomEmbed extends LibraryBase {
                     display: none;
                 }
 
+                .range-picker-dropdown.show {
+                    display: block;
+                }
+
                 .range-picker-dropdown.drop-up {
                     margin-bottom: 8px;
                 }
@@ -2111,7 +2115,11 @@ class CustomEmbed extends LibraryBase {
 
         const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
         if (addFilterBtn && this.datetimeFields.length > 0) {
-            addFilterBtn.disabled = this.dateTimeFilters.length >= this.datetimeFields.length;
+            if (this.dateTimeFilters.length >= this.datetimeFields.length) {
+                addFilterBtn.style.display = 'none';
+            } else {
+                addFilterBtn.style.display = 'inline-flex';
+            }
         }
     };
 
