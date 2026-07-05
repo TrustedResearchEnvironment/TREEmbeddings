@@ -88,6 +88,264 @@ interface DateTimeFilter {
     to: string;
 }
 
+class RangeDatePicker {
+    private months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    private years: number[] = Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i);
+    private startDate: Date | null = null;
+    private endDate: Date | null = null;
+    private dropdown: HTMLElement;
+    private input: HTMLInputElement;
+    private onApply: (start: Date | null, end: Date | null) => void;
+    private fromMonthSel!: HTMLSelectElement;
+    private fromYearSel!: HTMLSelectElement;
+    private toMonthSel!: HTMLSelectElement;
+    private toYearSel!: HTMLSelectElement;
+    private fromGrid!: HTMLElement;
+    private toGrid!: HTMLElement;
+    private preview!: HTMLElement;
+    private applyBtn!: HTMLButtonElement;
+    private cancelBtn!: HTMLButtonElement;
+
+    constructor(container: HTMLElement, initialFrom: string, initialTo: string, onApply: (start: Date | null, end: Date | null) => void) {
+        this.input = container.querySelector('.range-picker-input') as HTMLInputElement;
+        this.onApply = onApply;
+
+        // Create Dropdown
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'range-picker-dropdown';
+        this.dropdown.innerHTML = `
+            <div class="range-picker-header">
+                <span class="range-picker-preview">Select dates...</span>
+                <div class="range-picker-actions">
+                    <button type="button" class="range-picker-btn range-picker-btn-cancel">Cancel</button>
+                    <button type="button" class="range-picker-btn range-picker-btn-apply">Apply</button>
+                </div>
+            </div>
+            <div class="range-picker-calendars">
+                <div class="range-picker-calendar-box">
+                    <div class="range-picker-calendar-title">From</div>
+                    <div class="range-picker-selects">
+                        <select class="range-picker-select from-month"></select>
+                        <select class="range-picker-select from-year"></select>
+                    </div>
+                    <div class="range-picker-weekdays">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div class="range-picker-days from-grid"></div>
+                </div>
+                <div class="range-picker-calendar-box">
+                    <div class="range-picker-calendar-title">To</div>
+                    <div class="range-picker-selects">
+                        <select class="range-picker-select to-month"></select>
+                        <select class="range-picker-select to-year"></select>
+                    </div>
+                    <div class="range-picker-weekdays">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div class="range-picker-days to-grid"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(this.dropdown);
+
+        // Bind Elements
+        this.fromMonthSel = this.dropdown.querySelector('.from-month') as HTMLSelectElement;
+        this.fromYearSel = this.dropdown.querySelector('.from-year') as HTMLSelectElement;
+        this.toMonthSel = this.dropdown.querySelector('.to-month') as HTMLSelectElement;
+        this.toYearSel = this.dropdown.querySelector('.to-year') as HTMLSelectElement;
+        this.fromGrid = this.dropdown.querySelector('.from-grid') as HTMLElement;
+        this.toGrid = this.dropdown.querySelector('.to-grid') as HTMLElement;
+        this.preview = this.dropdown.querySelector('.range-picker-preview') as HTMLElement;
+        this.applyBtn = this.dropdown.querySelector('.range-picker-btn-apply') as HTMLButtonElement;
+        this.cancelBtn = this.dropdown.querySelector('.range-picker-btn-cancel') as HTMLButtonElement;
+
+        this.init(initialFrom, initialTo);
+    }
+
+    private init(isoFrom: string, isoTo: string) {
+        this.months.forEach((m, i) => {
+            this.fromMonthSel.add(new Option(m, i.toString()));
+            this.toMonthSel.add(new Option(m, i.toString()));
+        });
+        this.years.forEach(y => {
+            this.fromYearSel.add(new Option(y.toString(), y.toString()));
+            this.toYearSel.add(new Option(y.toString(), y.toString()));
+        });
+
+        if (isoFrom) {
+            this.startDate = new Date(isoFrom);
+            if (isNaN(this.startDate.getTime())) this.startDate = null;
+        }
+        if (isoTo) {
+            this.endDate = new Date(isoTo);
+            if (isNaN(this.endDate.getTime())) this.endDate = null;
+        }
+
+        const now = new Date();
+        const displayStart = this.startDate || now;
+        const displayEnd = this.endDate || new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+        this.fromMonthSel.value = displayStart.getMonth().toString();
+        this.fromYearSel.value = displayStart.getFullYear().toString();
+        this.toMonthSel.value = displayEnd.getMonth().toString();
+        this.toYearSel.value = displayEnd.getFullYear().toString();
+
+        if (this.startDate && this.endDate) {
+            this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+        }
+
+        this.bindEvents();
+        this.updateView();
+    }
+
+    private bindEvents() {
+        this.input.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown();
+        });
+
+        this.cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hideDropdown();
+        });
+
+        this.applyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.startDate && this.endDate) {
+                this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+                this.onApply(this.startDate, this.endDate);
+                this.hideDropdown();
+            }
+        });
+
+        [this.fromMonthSel, this.fromYearSel, this.toMonthSel, this.toYearSel].forEach(sel => {
+            sel.addEventListener('change', () => this.updateView());
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!this.dropdown.contains(e.target as Node) && e.target !== this.input) {
+                this.hideDropdown();
+            }
+        });
+
+        window.addEventListener('scroll', () => this.reposition(), { passive: true });
+        window.addEventListener('resize', () => this.reposition());
+    }
+
+    private toggleDropdown() {
+        const isShown = this.dropdown.classList.contains('show');
+        if (isShown) {
+            this.hideDropdown();
+        } else {
+            this.showDropdown();
+        }
+    }
+
+    private showDropdown() {
+        // Hide other range picker dropdowns if any
+        document.querySelectorAll('.range-picker-dropdown').forEach(d => d.classList.remove('show'));
+        
+        this.dropdown.classList.add('show');
+        this.reposition();
+    }
+
+    private hideDropdown() {
+        this.dropdown.classList.remove('show');
+    }
+
+    private reposition() {
+        if (!this.dropdown.classList.contains('show')) return;
+        const rect = this.input.getBoundingClientRect();
+        this.dropdown.style.top = `${rect.bottom + 5}px`;
+        this.dropdown.style.left = `${rect.left}px`;
+
+        // Check if it goes off screen
+        const dropdownRect = this.dropdown.getBoundingClientRect();
+        if (dropdownRect.right > window.innerWidth) {
+            this.dropdown.style.left = `${window.innerWidth - dropdownRect.width - 20}px`;
+        }
+    }
+
+    private formatDate(date: Date): string {
+        return `${date.getDate()} ${this.months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    private handleDayClick(date: Date) {
+        if (!this.startDate || (this.startDate && this.endDate)) {
+            this.startDate = date;
+            this.endDate = null;
+        } else {
+            if (date < this.startDate) {
+                this.endDate = this.startDate;
+                this.startDate = date;
+            } else {
+                this.endDate = date;
+            }
+        }
+        this.updateView();
+    }
+
+    private renderGrid(grid: HTMLElement, month: number, year: number) {
+        grid.innerHTML = '';
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'range-picker-day empty';
+            grid.appendChild(empty);
+        }
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(year, month, d);
+            const cell = document.createElement('div');
+            cell.className = 'range-picker-day';
+            cell.textContent = d.toString();
+
+            const time = date.getTime();
+            const startTime = this.startDate ? new Date(this.startDate).setHours(0,0,0,0) : null;
+            const endTime = this.endDate ? new Date(this.endDate).setHours(0,0,0,0) : null;
+
+            if (startTime && time === startTime) cell.classList.add('selected-edge');
+            if (endTime && time === endTime) cell.classList.add('selected-edge');
+            if (startTime && endTime && time > startTime && time < endTime) cell.classList.add('in-range');
+
+            cell.addEventListener('click', () => this.handleDayClick(date));
+            grid.appendChild(cell);
+        }
+    }
+
+    private updateView() {
+        const fm = parseInt(this.fromMonthSel.value);
+        const fy = parseInt(this.fromYearSel.value);
+        const tm = parseInt(this.toMonthSel.value);
+        const ty = parseInt(this.toYearSel.value);
+
+        this.renderGrid(this.fromGrid, fm, fy);
+        this.renderGrid(this.toGrid, tm, ty);
+
+        if (this.startDate && this.endDate) {
+            this.preview.textContent = `${this.formatDate(this.startDate)} — ${this.formatDate(this.endDate)}`;
+            this.applyBtn.classList.add('active');
+        } else if (this.startDate) {
+            this.preview.textContent = `${this.formatDate(this.startDate)} — ...`;
+            this.applyBtn.classList.remove('active');
+        } else {
+            this.preview.textContent = 'Select dates...';
+            this.applyBtn.classList.remove('active');
+        }
+    }
+
+    public destroy() {
+        if (this.dropdown && this.dropdown.parentNode) {
+            this.dropdown.parentNode.removeChild(this.dropdown);
+        }
+    }
+}
+
 const API_GET_DATASET_METADATA = 'GetDataSetID';
 const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
 const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
@@ -110,6 +368,7 @@ class CustomEmbed extends LibraryBase {
     private _listenerController: AbortController | null = null;
     private datetimeFields: DateTimeFilterField[] = [];
     private dateTimeFilters: DateTimeFilter[] = [];
+    private rangePickers: Map<number, RangeDatePicker> = new Map();
     private _filterIdCounter: number = 0;
 
 
@@ -922,6 +1181,159 @@ class CustomEmbed extends LibraryBase {
                     color: #9e9e9e;
                     margin: 4px 0;
                 }
+
+                /* Range Date Picker Styles */
+                .range-picker-row-container {
+                    position: relative;
+                    flex: 1;
+                    min-width: 280px;
+                }
+
+                .range-picker-input {
+                    width: 100%;
+                    padding: 8px 12px;
+                    font-size: 0.9rem;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    outline: none;
+                    box-sizing: border-box;
+                    background: #fff;
+                    cursor: pointer;
+                }
+
+                .range-picker-dropdown {
+                    position: fixed;
+                    z-index: 10000;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    border: 1px solid #eee;
+                    padding: 16px;
+                    width: 580px;
+                    display: none;
+                }
+
+                .range-picker-dropdown.show {
+                    display: block;
+                }
+
+                .range-picker-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #f0f0f0;
+                    padding-bottom: 12px;
+                    margin-bottom: 12px;
+                }
+
+                .range-picker-preview {
+                    font-weight: 500;
+                    color: #333;
+                    font-size: 0.9rem;
+                }
+
+                .range-picker-actions {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .range-picker-btn {
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: none;
+                }
+
+                .range-picker-btn-cancel {
+                    background: transparent;
+                    color: #666;
+                }
+
+                .range-picker-btn-apply {
+                    background: #e0e7ff;
+                    color: #4f46e5;
+                    opacity: 0.6;
+                    pointer-events: none;
+                }
+
+                .range-picker-btn-apply.active {
+                    background: #4f46e5;
+                    color: white;
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+
+                .range-picker-calendars {
+                    display: flex;
+                    gap: 20px;
+                }
+
+                .range-picker-calendar-box {
+                    flex: 1;
+                }
+
+                .range-picker-calendar-title {
+                    font-weight: 600;
+                    font-size: 0.8rem;
+                    margin-bottom: 8px;
+                    color: #666;
+                    text-transform: uppercase;
+                }
+
+                .range-picker-selects {
+                    display: flex;
+                    gap: 4px;
+                    margin-bottom: 12px;
+                }
+
+                .range-picker-select {
+                    flex: 1;
+                    padding: 4px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 0.8rem;
+                }
+
+                .range-picker-weekdays, .range-picker-days {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    text-align: center;
+                }
+
+                .range-picker-weekdays {
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                    color: #999;
+                    margin-bottom: 4px;
+                }
+
+                .range-picker-day {
+                    padding: 6px 0;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    color: #333;
+                }
+
+                .range-picker-day:hover:not(.empty) {
+                    background-color: #f3f4f6;
+                }
+
+                .range-picker-day.selected-edge {
+                    background-color: #4f46e5 !important;
+                    color: white !important;
+                }
+
+                .range-picker-day.in-range {
+                    background-color: #eff6ff;
+                    border-radius: 0;
+                }
+
+                .range-picker-day.empty {
+                    cursor: default;
+                }
             </style>
         `;
     }
@@ -1611,15 +2023,8 @@ class CustomEmbed extends LibraryBase {
                         <option value="">-- Select Field --</option>
                         ${fieldOptions}
                     </select>
-                    <div class="filter-date-range" style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                        <label style="font-size: 0.8rem; color: #666;">From</label>
-                        <input type="date" class="form-input filter-value-input"
-                               data-filter-id="${filter.id}" data-prop="from"
-                               value="${filter.from}" style="flex: 1;">
-                        <label style="font-size: 0.8rem; color: #666;">To</label>
-                        <input type="date" class="form-input filter-value-input"
-                               data-filter-id="${filter.id}" data-prop="to"
-                               value="${filter.to}" style="flex: 1;">
+                    <div class="range-picker-row-container" data-filter-id="${filter.id}">
+                        <input type="text" class="range-picker-input" placeholder="Select date range..." readonly>
                     </div>
                 </div>
                 <button type="button" class="remove-filter-btn" data-filter-id="${filter.id}" title="Remove filter">
@@ -1632,10 +2037,32 @@ class CustomEmbed extends LibraryBase {
     private renderDateTimeFilters = (): void => {
         const container = document.getElementById('dateTimeFiltersContainer');
         if (!container) return;
+
+        // Cleanup existing range pickers
+        this.rangePickers.forEach(p => p.destroy());
+        this.rangePickers.clear();
+
         if (this.dateTimeFilters.length === 0) {
             container.innerHTML = '<p class="filter-empty-hint">No filters added.</p>';
         } else {
             container.innerHTML = this.dateTimeFilters.map(f => this.generateFilterRowHtml(f)).join('');
+
+            // Initialize new range pickers
+            this.dateTimeFilters.forEach(filter => {
+                const pickerContainer = container.querySelector(`.range-picker-row-container[data-filter-id="${filter.id}"]`) as HTMLElement;
+                if (pickerContainer) {
+                    const picker = new RangeDatePicker(
+                        pickerContainer,
+                        filter.from,
+                        filter.to,
+                        (start, end) => {
+                            filter.from = start ? start.toISOString().split('T')[0] : '';
+                            filter.to = end ? end.toISOString().split('T')[0] : '';
+                        }
+                    );
+                    this.rangePickers.set(filter.id, picker);
+                }
+            });
         }
 
         const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
@@ -1743,6 +2170,11 @@ class CustomEmbed extends LibraryBase {
             this._listenerController.abort();
             this._listenerController = null;
         }
+
+        // Clean up range pickers
+        this.rangePickers.forEach(p => p.destroy());
+        this.rangePickers.clear();
+
         const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
         if (orphanedMenu) orphanedMenu.remove();
     }
