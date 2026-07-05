@@ -246,14 +246,29 @@ class RangeDatePicker {
 
     private reposition() {
         if (!this.dropdown.classList.contains('show')) return;
+        
         const rect = this.input.getBoundingClientRect();
-        this.dropdown.style.top = `${rect.bottom + 5}px`;
+        const dropdownHeight = this.dropdown.offsetHeight || 320; // fallback if hidden
+        const spaceBelow = window.innerHeight - rect.bottom;
+        
+        const shouldDropUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+        
+        if (shouldDropUp) {
+            this.dropdown.classList.add('drop-up');
+            this.dropdown.style.top = 'auto'; // Reset top
+            this.dropdown.style.bottom = `${window.innerHeight - rect.top}px`;
+        } else {
+            this.dropdown.classList.remove('drop-up');
+            this.dropdown.style.bottom = 'auto'; // Reset bottom
+            this.dropdown.style.top = `${rect.bottom + 5}px`;
+        }
+        
         this.dropdown.style.left = `${rect.left}px`;
 
-        // Check if it goes off screen
-        const dropdownRect = this.dropdown.getBoundingClientRect();
-        if (dropdownRect.right > window.innerWidth) {
-            this.dropdown.style.left = `${window.innerWidth - dropdownRect.width - 20}px`;
+        // Check if it goes off screen (right side)
+        const dropdownWidth = this.dropdown.offsetWidth || 580;
+        if (rect.left + dropdownWidth > window.innerWidth) {
+            this.dropdown.style.left = `${window.innerWidth - dropdownWidth - 20}px`;
         }
     }
 
@@ -996,7 +1011,7 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .modal-header {
-                    padding: 20px 24px;
+                    padding: 16px 20px;
                     border-bottom: 1px solid #e0e0e0;
                     display: flex;
                     justify-content: space-between;
@@ -1005,13 +1020,13 @@ class CustomEmbed extends LibraryBase {
 
                 .modal-header h3 {
                     margin: 0;
-                    font-size: 1.25rem;
+                    font-size: 1.15rem;
                     color: #2c3e50;
                     font-weight: 600;
                 }
 
                 .modal-close {
-                    font-size: 1.5rem;
+                    font-size: 1.25rem;
                     color: #666;
                     cursor: pointer;
                     padding: 4px;
@@ -1023,31 +1038,32 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .modal-body {
-                    padding: 24px;
+                    padding: 16px 20px;
                 }
 
                 .request-form {
                     display: flex;
                     flex-direction: column;
-                    gap: 20px;
+                    gap: 14px;
                 }
 
                 .form-group {
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
                 .form-group label {
                     font-weight: 500;
                     color: #2c3e50;
+                    font-size: 0.9rem;
                 }
 
                 .form-input, .form-select {
-                    padding: 8px 12px;
+                    padding: 6px 10px;
                     border: 1px solid #e0e0e0;
                     border-radius: 4px;
-                    font-size: 1rem;
+                    font-size: 0.9rem;
                 }
 
                 .form-input:focus, .form-select:focus {
@@ -1059,16 +1075,17 @@ class CustomEmbed extends LibraryBase {
                 .form-actions {
                     display: flex;
                     justify-content: flex-end;
-                    gap: 12px;
-                    margin-top: 12px;
+                    gap: 10px;
+                    margin-top: 8px;
                 }
 
                 .button {
-                    padding: 8px 16px;
+                    padding: 6px 14px;
                     border-radius: 4px;
                     font-weight: 500;
                     cursor: pointer;
                     border: none;
+                    font-size: 0.9rem;
                 }
 
                 .button-primary {
@@ -1090,10 +1107,10 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .char-counter {
-                    font-size: 0.75rem;
+                    font-size: 0.7rem;
                     text-align: right;
                     display: none;
-                    margin-top: 4px;
+                    margin-top: 2px;
                 }
 
                 .char-counter.warning {
@@ -1236,13 +1253,13 @@ class CustomEmbed extends LibraryBase {
                     border-radius: 8px;
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
                     border: 1px solid #eee;
-                    padding: 16px;
+                    padding: 12px 16px;
                     width: 580px;
                     display: none;
                 }
 
-                .range-picker-dropdown.show {
-                    display: block;
+                .range-picker-dropdown.drop-up {
+                    margin-bottom: 8px;
                 }
 
                 .range-picker-header {
@@ -1250,25 +1267,25 @@ class CustomEmbed extends LibraryBase {
                     justify-content: space-between;
                     align-items: center;
                     border-bottom: 1px solid #f0f0f0;
-                    padding-bottom: 12px;
-                    margin-bottom: 12px;
+                    padding-bottom: 8px;
+                    margin-bottom: 8px;
                 }
 
                 .range-picker-preview {
                     font-weight: 500;
                     color: #333;
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                 }
 
                 .range-picker-actions {
                     display: flex;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
                 .range-picker-btn {
-                    padding: 6px 12px;
+                    padding: 4px 10px;
                     border-radius: 4px;
-                    font-size: 0.85rem;
+                    font-size: 0.8rem;
                     font-weight: 500;
                     cursor: pointer;
                     border: none;
@@ -1281,7 +1298,7 @@ class CustomEmbed extends LibraryBase {
 
                 .range-picker-calendars {
                     display: flex;
-                    gap: 20px;
+                    gap: 16px;
                 }
 
                 .range-picker-calendar-box {
@@ -1290,8 +1307,8 @@ class CustomEmbed extends LibraryBase {
 
                 .range-picker-calendar-title {
                     font-weight: 600;
-                    font-size: 0.8rem;
-                    margin-bottom: 8px;
+                    font-size: 0.75rem;
+                    margin-bottom: 6px;
                     color: #666;
                     text-transform: uppercase;
                 }
@@ -1299,15 +1316,15 @@ class CustomEmbed extends LibraryBase {
                 .range-picker-selects {
                     display: flex;
                     gap: 4px;
-                    margin-bottom: 12px;
+                    margin-bottom: 8px;
                 }
 
                 .range-picker-select {
                     flex: 1;
-                    padding: 4px;
+                    padding: 2px 4px;
                     border: 1px solid #ddd;
                     border-radius: 4px;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                 }
 
                 .range-picker-weekdays, .range-picker-days {
@@ -1317,15 +1334,15 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .range-picker-weekdays {
-                    font-size: 0.7rem;
+                    font-size: 0.65rem;
                     font-weight: 700;
                     color: #999;
-                    margin-bottom: 4px;
+                    margin-bottom: 2px;
                 }
 
                 .range-picker-day {
-                    padding: 6px 0;
-                    font-size: 0.85rem;
+                    padding: 4px 0;
+                    font-size: 0.8rem;
                     cursor: pointer;
                     border-radius: 4px;
                     color: #333;
@@ -1349,6 +1366,10 @@ class CustomEmbed extends LibraryBase {
                     opacity: 0.35;
                     cursor: not-allowed;
                     pointer-events: none;
+                }
+
+                .range-picker-days {
+                    row-gap: 1px;
                 }
 
                 .range-picker-day.empty {
