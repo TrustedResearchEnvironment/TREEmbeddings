@@ -93,6 +93,14 @@ class RangeDatePicker {
     private years: number[] = Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i);
     private startDate: Date | null = null;
     private endDate: Date | null = null;
+    
+    // Stable state for revert functionality
+    private confirmedStartDate: Date | null = null;
+    private confirmedEndDate: Date | null = null;
+    // Temporary state during selection process
+    private tempStartDate: Date | null = null;
+    private tempEndDate: Date | null = null;
+
     private dropdown: HTMLElement;
     private input: HTMLInputElement;
     private onApply: (start: Date | null, end: Date | null) => void;
@@ -180,6 +188,9 @@ class RangeDatePicker {
             if (isNaN(this.endDate.getTime())) this.endDate = null;
         }
 
+        this.confirmedStartDate = this.startDate;
+        this.confirmedEndDate = this.endDate;
+
         const now = new Date();
         const displayStart = this.startDate || now;
         const displayEnd = this.endDate || new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -206,7 +217,7 @@ class RangeDatePicker {
 
         this.cancelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.hideDropdown();
+            this.cancelSelection();
         });
 
         [this.fromMonthSel, this.fromYearSel, this.toMonthSel, this.toYearSel].forEach(sel => {
@@ -215,7 +226,9 @@ class RangeDatePicker {
 
         document.addEventListener('click', (e) => {
             if (!this.dropdown.contains(e.target as Node) && e.target !== this.input) {
-                this.hideDropdown();
+                if (this.dropdown.classList.contains('show')) {
+                    this.hideDropdown();
+                }
             }
         });
 
@@ -236,12 +249,32 @@ class RangeDatePicker {
         // Hide other range picker dropdowns if any
         document.querySelectorAll('.range-picker-dropdown').forEach(d => d.classList.remove('show'));
         
+        // Sync temp state with confirmed state when opening
+        this.tempStartDate = this.confirmedStartDate;
+        this.tempEndDate = this.confirmedEndDate;
+        this.startDate = this.confirmedStartDate;
+        this.endDate = this.confirmedEndDate;
+
         this.dropdown.classList.add('show');
         this.reposition();
+        this.updateView();
     }
 
     private hideDropdown() {
+        // If hidden without completing second click, revert to confirmed state
+        if (!this.tempStartDate || !this.tempEndDate) {
+            this.startDate = this.confirmedStartDate;
+            this.endDate = this.confirmedEndDate;
+        }
         this.dropdown.classList.remove('show');
+    }
+
+    private cancelSelection() {
+        this.startDate = this.confirmedStartDate;
+        this.endDate = this.confirmedEndDate;
+        this.tempStartDate = null;
+        this.tempEndDate = null;
+        this.hideDropdown();
     }
 
     private reposition() {
@@ -288,26 +321,37 @@ class RangeDatePicker {
     }
 
     private handleDayClick(date: Date) {
-        if (!this.startDate || (this.startDate && this.endDate)) {
-            // First click OR Third click (reset)
+        if (!this.tempStartDate || (this.tempStartDate && this.tempEndDate)) {
+            // First click (or reset after previous selection)
             this.startDate = date;
             this.endDate = null;
+            this.tempStartDate = date;
+            this.tempEndDate = null;
             this.updateView();
+            // Dropdown stays open for second selection
         } else {
             // Second click
-            if (date < this.startDate) {
+            if (date < this.tempStartDate) {
                 // If clicked date is before start date, treat it as new start
                 this.startDate = date;
                 this.endDate = null;
+                this.tempStartDate = date;
+                this.tempEndDate = null;
                 this.updateView();
+                // Dropdown stays open
             } else {
                 this.endDate = date;
+                this.tempEndDate = date;
                 this.updateView();
                 
-                // Auto-Apply Logic: Update input and close dropdown immediately
-                this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+                // Finalize selection
+                this.confirmedStartDate = this.startDate;
+                this.confirmedEndDate = this.endDate;
+                
+                // Update input and close dropdown immediately
+                this.input.value = `${this.formatDate(this.startDate!)} - ${this.formatDate(this.endDate)}`;
                 this.onApply(this.startDate, this.endDate);
-                this.hideDropdown();
+                this.dropdown.classList.remove('show');
             }
         }
     }
@@ -376,7 +420,7 @@ class RangeDatePicker {
         if (this.startDate && this.endDate) {
             this.preview.textContent = `${this.formatDate(this.startDate)} — ${this.formatDate(this.endDate)}`;
         } else if (this.startDate) {
-            this.preview.textContent = `${this.formatDate(this.startDate)} — ...`;
+            this.preview.textContent = `${this.formatDate(this.startDate)} — Select end date...`;
         } else {
             this.preview.textContent = 'Select dates...';
         }
