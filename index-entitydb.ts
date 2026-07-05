@@ -221,14 +221,24 @@ class RangeDatePicker {
         });
 
         [this.fromMonthSel, this.fromYearSel].forEach(sel => {
-            sel.addEventListener('change', () => this.updateView('from'));
+            sel.addEventListener('change', (e) => {
+                e.stopPropagation();
+                this.updateView('from');
+            });
         });
         [this.toMonthSel, this.toYearSel].forEach(sel => {
-            sel.addEventListener('change', () => this.updateView('to'));
+            sel.addEventListener('change', (e) => {
+                e.stopPropagation();
+                this.updateView('to');
+            });
+        });
+
+        this.dropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
 
         document.addEventListener('click', (e) => {
-            if (!this.dropdown.contains(e.target as Node) && e.target !== this.input) {
+            if (e.target !== this.input && !this.dropdown.contains(e.target as Node)) {
                 if (this.dropdown.classList.contains('show')) {
                     this.hideDropdown();
                 }
@@ -398,7 +408,9 @@ class RangeDatePicker {
                 if (startDateTime && endDateTime && currentTime > startDateTime && currentTime < endDateTime) {
                     cell.classList.add('in-range');
                 }
-                cell.addEventListener('click', () => {
+                cell.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     const clickDate = new Date(year, month, d);
                     clickDate.setHours(0, 0, 0, 0);
                     this.handleDayClick(clickDate);
