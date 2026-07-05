@@ -1455,12 +1455,9 @@ class CustomEmbed extends LibraryBase {
             const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
             if (addFilterBtn) {
                 addFilterBtn.addEventListener('click', () => {
-                    const usedFields = new Set(this.dateTimeFilters.map(f => f.field));
-                    const nextField = this.datetimeFields.find(f => !usedFields.has(f.ColumnName))?.ColumnName ?? '';
-                    
                     this.dateTimeFilters.push({
                         id: ++this._filterIdCounter,
-                        field: nextField,
+                        field: '', // Start with empty field to trigger "-- Select Field --" default
                         from: '',
                         to: ''
                     });
@@ -1505,10 +1502,16 @@ class CustomEmbed extends LibraryBase {
                             throw new Error('Dataset information not available');
                         }
 
-                        // Validate filters
-                        const invalidFilters = this.dateTimeFilters.filter(f => !f.field || (!f.from && !f.to));
-                        if (invalidFilters.length > 0) {
-                            alert('Each date/time filter must have a field selected and at least one date (From or To).');
+                        // Validate filters: Ensure field is selected and range is picked
+                        const unselectedFieldFilters = this.dateTimeFilters.filter(f => !f.field);
+                        if (unselectedFieldFilters.length > 0) {
+                            alert('Please select a field for all date/time filters.');
+                            return;
+                        }
+
+                        const incompleteRangeFilters = this.dateTimeFilters.filter(f => !f.from || !f.to);
+                        if (incompleteRangeFilters.length > 0) {
+                            alert('Please select a valid date range for all filters.');
                             return;
                         }
 
@@ -2040,7 +2043,7 @@ class CustomEmbed extends LibraryBase {
             <div class="filter-row" data-filter-id="${filter.id}">
                 <div class="filter-row-fields">
                     <select class="form-input filter-field-select" data-filter-id="${filter.id}" data-prop="field" style="flex: 0 0 150px;">
-                        <option value="">-- Select Field --</option>
+                        <option value="">Select Field</option>
                         ${fieldOptions}
                     </select>
                     <div class="range-picker-row-container" data-filter-id="${filter.id}">
