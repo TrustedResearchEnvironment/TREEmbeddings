@@ -190,6 +190,7 @@ class RangeDatePicker {
         this.toMonthSel.value = displayEnd.getMonth().toString();
         this.toYearSel.value = displayEnd.getFullYear().toString();
 
+        this.input.value = ''; // Ensure initial empty state
         if (this.startDate && this.endDate) {
             this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
         }
@@ -270,14 +271,28 @@ class RangeDatePicker {
         return `${date.getDate()} ${this.months[date.getMonth()]} ${date.getFullYear()}`;
     }
 
+    private syncDropdownsToDates() {
+        if (this.startDate) {
+            this.fromMonthSel.value = this.startDate.getMonth().toString();
+            this.fromYearSel.value = this.startDate.getFullYear().toString();
+        }
+        if (this.endDate) {
+            this.toMonthSel.value = this.endDate.getMonth().toString();
+            this.toYearSel.value = this.endDate.getFullYear().toString();
+        }
+    }
+
     private handleDayClick(date: Date) {
         if (!this.startDate || (this.startDate && this.endDate)) {
+            // First click OR Third click (reset)
             this.startDate = date;
             this.endDate = null;
         } else {
+            // Second click
             if (date < this.startDate) {
-                this.endDate = this.startDate;
+                // If clicked date is before start date, treat it as new start
                 this.startDate = date;
+                this.endDate = null;
             } else {
                 this.endDate = date;
             }
@@ -285,7 +300,7 @@ class RangeDatePicker {
         this.updateView();
     }
 
-    private renderGrid(grid: HTMLElement, month: number, year: number) {
+    private renderGrid(grid: HTMLElement, month: number, year: number, isToCalendar: boolean) {
         grid.innerHTML = '';
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -296,8 +311,8 @@ class RangeDatePicker {
             grid.appendChild(empty);
         }
 
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        const startDateTime = this.startDate ? new Date(this.startDate).setHours(0, 0, 0, 0) : null;
+        const endDateTime = this.endDate ? new Date(this.endDate).setHours(0, 0, 0, 0) : null;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
@@ -305,27 +320,46 @@ class RangeDatePicker {
             cell.className = 'range-picker-day';
             cell.textContent = d.toString();
 
-            const time = date.getTime();
-            const startTime = this.startDate ? new Date(this.startDate).setHours(0,0,0,0) : null;
-            const endTime = this.endDate ? new Date(this.endDate).setHours(0,0,0,0) : null;
+            const currentTime = date.getTime();
 
-            if (startTime && time === startTime) cell.classList.add('selected-edge');
-            if (endTime && time === endTime) cell.classList.add('selected-edge');
-            if (startTime && endTime && time > startTime && time < endTime) cell.classList.add('in-range');
+            // Visual Disabled State: Disable if date is before Start Date (only if Start Date is set and we're picking End Date)
+            // Any day cell representing an invalid historical date must be visually grayed out.
+            const shouldDisable = this.startDate && !this.endDate && currentTime < startDateTime!;
 
-            cell.addEventListener('click', () => this.handleDayClick(date));
+            if (shouldDisable) {
+                cell.classList.add('disabled');
+            } else {
+                if (startDateTime && currentTime === startDateTime) cell.classList.add('selected-edge');
+                if (endDateTime && currentTime === endDateTime) cell.classList.add('selected-edge');
+                if (startDateTime && endDateTime && currentTime > startDateTime && currentTime < endDateTime) {
+                    cell.classList.add('in-range');
+                }
+                cell.addEventListener('click', () => this.handleDayClick(date));
+            }
+
             grid.appendChild(cell);
         }
     }
 
     private updateView() {
-        const fm = parseInt(this.fromMonthSel.value);
-        const fy = parseInt(this.fromYearSel.value);
-        const tm = parseInt(this.toMonthSel.value);
-        const ty = parseInt(this.toYearSel.value);
+        let fm = parseInt(this.fromMonthSel.value);
+        let fy = parseInt(this.fromYearSel.value);
+        let tm = parseInt(this.toMonthSel.value);
+        let ty = parseInt(this.toYearSel.value);
 
-        this.renderGrid(this.fromGrid, fm, fy);
-        this.renderGrid(this.toGrid, tm, ty);
+        // Dropdown Bounds Synchronization
+        const fromVal = fy * 12 + fm;
+        const toVal = ty * 12 + tm;
+
+        if (fromVal > toVal) {
+            this.toMonthSel.value = this.fromMonthSel.value;
+            this.toYearSel.value = this.fromYearSel.value;
+            tm = fm;
+            ty = fy;
+        }
+
+        this.renderGrid(this.fromGrid, fm, fy, false);
+        this.renderGrid(this.toGrid, tm, ty, true);
 
         if (this.startDate && this.endDate) {
             this.preview.textContent = `${this.formatDate(this.startDate)} — ${this.formatDate(this.endDate)}`;
@@ -1145,7 +1179,7 @@ class CustomEmbed extends LibraryBase {
                     display: flex;
                     flex: 1;
                     gap: 8px;
-                    flex-wrap: wrap;
+                    flex-wrap: nowrap;
                 }
                 .filter-row-fields .form-input {
                     flex: 1;
@@ -1329,6 +1363,12 @@ class CustomEmbed extends LibraryBase {
                 .range-picker-day.in-range {
                     background-color: #eff6ff;
                     border-radius: 0;
+                }
+
+                .range-picker-day.disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                    pointer-events: none;
                 }
 
                 .range-picker-day.empty {
@@ -2024,7 +2064,7 @@ class CustomEmbed extends LibraryBase {
                         ${fieldOptions}
                     </select>
                     <div class="range-picker-row-container" data-filter-id="${filter.id}">
-                        <input type="text" class="range-picker-input" placeholder="Select date range..." readonly>
+                        <input type="text" class="range-picker-input" placeholder="Select date range..." readonly="">
                     </div>
                 </div>
                 <button type="button" class="remove-filter-btn" data-filter-id="${filter.id}" title="Remove filter">
