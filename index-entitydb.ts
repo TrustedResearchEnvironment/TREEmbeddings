@@ -325,6 +325,13 @@ class RangeDatePicker {
         return `${date.getDate()} ${this.months[date.getMonth()]} ${date.getFullYear()}`;
     }
 
+    private toLocalISO(date: Date): string {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
     private syncDropdownsToDates() {
         if (this.startDate) {
             this.fromMonthSel.value = this.startDate.getMonth().toString();
@@ -383,9 +390,9 @@ class RangeDatePicker {
             grid.appendChild(empty);
         }
 
-        const startDateTime = this.startDate ? new Date(this.startDate).setHours(0, 0, 0, 0) : null;
-        const endDateTime = this.endDate ? new Date(this.endDate).setHours(0, 0, 0, 0) : null;
-        const tempStartDateTime = this.tempStartDate ? new Date(this.tempStartDate).setHours(0, 0, 0, 0) : null;
+        const startISO = this.startDate ? this.toLocalISO(this.startDate) : null;
+        const endISO = this.endDate ? this.toLocalISO(this.endDate) : null;
+        const tempStartISO = this.tempStartDate ? this.toLocalISO(this.tempStartDate) : null;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const date = new Date(year, month, d);
@@ -393,27 +400,23 @@ class RangeDatePicker {
             cell.className = 'range-picker-day';
             cell.textContent = d.toString();
 
-            const cellDate = new Date(year, month, d);
-            cellDate.setHours(0, 0, 0, 0);
-            const currentTime = cellDate.getTime();
+            const cellISO = this.toLocalISO(date);
 
             // Visual Disabled State: Disable if date is before Temp Start Date (only if picking End Date)
-            const shouldDisable = this.tempStartDate && !this.tempEndDate && currentTime < tempStartDateTime!;
+            const shouldDisable = tempStartISO && !this.tempEndDate && cellISO < tempStartISO;
 
             if (shouldDisable) {
                 cell.classList.add('disabled');
             } else {
-                if (startDateTime && currentTime === startDateTime) cell.classList.add('selected-edge');
-                if (endDateTime && currentTime === endDateTime) cell.classList.add('selected-edge');
-                if (startDateTime && endDateTime && currentTime > startDateTime && currentTime < endDateTime) {
+                if (startISO && cellISO === startISO) cell.classList.add('selected-edge');
+                if (endISO && cellISO === endISO) cell.classList.add('selected-edge');
+                if (startISO && endISO && cellISO > startISO && cellISO < endISO) {
                     cell.classList.add('in-range');
                 }
                 cell.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const clickDate = new Date(year, month, d);
-                    clickDate.setHours(0, 0, 0, 0);
-                    this.handleDayClick(clickDate);
+                    this.handleDayClick(new Date(year, month, d));
                 });
             }
 
@@ -1566,8 +1569,8 @@ class CustomEmbed extends LibraryBase {
                     this.dateTimeFilters.push({
                         id: ++this._filterIdCounter,
                         field: '', // Start with empty field to trigger "-- Select Field --" default
-                        from: '',
-                        to: ''
+                        from_date: '',
+                        to_date: ''
                     });
                     this.renderDateTimeFilters();
                 });
@@ -1649,16 +1652,18 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            purpose: formData.purpose,
-                            requestName: formData.requestName,
-                            dateTimeFilters: this.dateTimeFilters.map(f => ({
-                                field: f.field,
-                                from: f.from || null,
-                                to: f.to || null
-                            }))
+                            "payload": {
+                                DataSetID: formData.datasetId,
+                                approvers: formData.approvers,
+                                assistProjectID: parseInt(formData.projectId),
+                                purpose: formData.purpose,
+                                requestName: formData.requestName,
+                                dateTimeFilters: this.dateTimeFilters.map(f => ({
+                                    field: f.field,
+                                    fromDate: f.from || null,
+                                    toDate: f.to || null
+                                }))
+                            }
                         });
 
                         if (response && response.status_code && response.status_code >= 400) {
@@ -2187,8 +2192,15 @@ class CustomEmbed extends LibraryBase {
                         filter.from,
                         filter.to,
                         (start, end) => {
-                            filter.from = start ? start.toISOString().split('T')[0] : '';
-                            filter.to = end ? end.toISOString().split('T')[0] : '';
+                            const fmt = (d: Date) => {
+                                const y = d.getFullYear();
+                                const m = String(d.getMonth() + 1).padStart(2, '0');
+                                const day = String(d.getDate()).padStart(2, '0');
+                                return `${y}-${m}-${day}`;
+                            };
+                            // Format: YYYY-MM-DD HH:mm:ss.SSS for SQL datetime compatibility
+                            filter.from = start ? `${fmt(start)} 00:00:00.000` : '';
+                            filter.to = end ? `${fmt(end)} 23:59:59.999` : '';
                         }
                     );
                     this.rangePickers.set(filter.id, picker);
