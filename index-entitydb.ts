@@ -1569,8 +1569,8 @@ class CustomEmbed extends LibraryBase {
                     this.dateTimeFilters.push({
                         id: ++this._filterIdCounter,
                         field: '', // Start with empty field to trigger "-- Select Field --" default
-                        from_date: '',
-                        to_date: ''
+                        from: '',
+                        to: ''
                     });
                     this.renderDateTimeFilters();
                 });
@@ -1660,8 +1660,8 @@ class CustomEmbed extends LibraryBase {
                                 requestName: formData.requestName,
                                 dateTimeFilters: this.dateTimeFilters.map(f => ({
                                     field: f.field,
-                                    fromDate: f.from || null,
-                                    toDate: f.to || null
+                                    from: f.from || null,
+                                    to: f.to || null
                                 }))
                             }
                         });
