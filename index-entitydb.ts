@@ -1652,8 +1652,8 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                            "DataSetID": formData.datasetId,
                             "payload": {
-                                DataSetID: formData.datasetId,
                                 approvers: formData.approvers,
                                 assistProjectID: parseInt(formData.projectId),
                                 purpose: formData.purpose,
