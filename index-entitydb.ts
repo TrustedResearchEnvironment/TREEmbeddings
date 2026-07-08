@@ -90,7 +90,9 @@ interface DateTimeFilter {
 
 class RangeDatePicker {
     private months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    private years: number[] = Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i);
+    private minYear = 1900;
+    private currentYear = new Date().getFullYear();
+    
     private startDate: Date | null = null;
     private endDate: Date | null = null;
     
@@ -105,13 +107,12 @@ class RangeDatePicker {
     private input: HTMLInputElement;
     private onApply: (start: Date | null, end: Date | null) => void;
     private fromMonthSel!: HTMLSelectElement;
-    private fromYearSel!: HTMLSelectElement;
+    private fromYearInp!: HTMLInputElement;
     private toMonthSel!: HTMLSelectElement;
-    private toYearSel!: HTMLSelectElement;
+    private toYearInp!: HTMLInputElement;
     private fromGrid!: HTMLElement;
     private toGrid!: HTMLElement;
     private preview!: HTMLElement;
-    private applyBtn!: HTMLButtonElement;
     private cancelBtn!: HTMLButtonElement;
 
     constructor(container: HTMLElement, initialFrom: string, initialTo: string, onApply: (start: Date | null, end: Date | null) => void) {
@@ -126,7 +127,6 @@ class RangeDatePicker {
                 <span class="range-picker-preview">Select dates...</span>
                 <div class="range-picker-actions">
                     <button type="button" class="range-picker-btn range-picker-btn-cancel">Cancel</button>
-                    <!-- Apply button removed for auto-apply logic -->
                 </div>
             </div>
             <div class="range-picker-calendars">
@@ -134,7 +134,10 @@ class RangeDatePicker {
                     <div class="range-picker-calendar-title">From</div>
                     <div class="range-picker-selects">
                         <select class="range-picker-select from-month"></select>
-                        <select class="range-picker-select from-year"></select>
+                        <div class="range-picker-year-container">
+                            <input type="number" class="range-picker-year-input from-year" min="${this.minYear}" max="${this.currentYear}" step="1" aria-label="Year">
+                            <span class="range-picker-validation"></span>
+                        </div>
                     </div>
                     <div class="range-picker-weekdays">
                         <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
@@ -145,7 +148,10 @@ class RangeDatePicker {
                     <div class="range-picker-calendar-title">To</div>
                     <div class="range-picker-selects">
                         <select class="range-picker-select to-month"></select>
-                        <select class="range-picker-select to-year"></select>
+                        <div class="range-picker-year-container">
+                            <input type="number" class="range-picker-year-input to-year" min="${this.minYear}" max="${this.currentYear}" step="1" aria-label="Year">
+                            <span class="range-picker-validation"></span>
+                        </div>
                     </div>
                     <div class="range-picker-weekdays">
                         <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
@@ -158,9 +164,9 @@ class RangeDatePicker {
 
         // Bind Elements
         this.fromMonthSel = this.dropdown.querySelector('.from-month') as HTMLSelectElement;
-        this.fromYearSel = this.dropdown.querySelector('.from-year') as HTMLSelectElement;
+        this.fromYearInp = this.dropdown.querySelector('.from-year') as HTMLInputElement;
         this.toMonthSel = this.dropdown.querySelector('.to-month') as HTMLSelectElement;
-        this.toYearSel = this.dropdown.querySelector('.to-year') as HTMLSelectElement;
+        this.toYearInp = this.dropdown.querySelector('.to-year') as HTMLInputElement;
         this.fromGrid = this.dropdown.querySelector('.from-grid') as HTMLElement;
         this.toGrid = this.dropdown.querySelector('.to-grid') as HTMLElement;
         this.preview = this.dropdown.querySelector('.range-picker-preview') as HTMLElement;
@@ -173,10 +179,6 @@ class RangeDatePicker {
         this.months.forEach((m, i) => {
             this.fromMonthSel.add(new Option(m, i.toString()));
             this.toMonthSel.add(new Option(m, i.toString()));
-        });
-        this.years.forEach(y => {
-            this.fromYearSel.add(new Option(y.toString(), y.toString()));
-            this.toYearSel.add(new Option(y.toString(), y.toString()));
         });
 
         if (isoFrom) {
@@ -196,17 +198,42 @@ class RangeDatePicker {
         const displayEnd = this.endDate || new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
         this.fromMonthSel.value = displayStart.getMonth().toString();
-        this.fromYearSel.value = displayStart.getFullYear().toString();
+        this.fromYearInp.value = displayStart.getFullYear().toString();
         this.toMonthSel.value = displayEnd.getMonth().toString();
-        this.toYearSel.value = displayEnd.getFullYear().toString();
+        this.toYearInp.value = displayEnd.getFullYear().toString();
 
-        this.input.value = ''; // Ensure initial empty state
+        this.input.value = '';
         if (this.startDate && this.endDate) {
             this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
         }
 
         this.bindEvents();
         this.updateView();
+    }
+
+    private validateAndClampYear(input: HTMLInputElement): number {
+        let val = parseInt(input.value);
+        let clamped = false;
+        const valSpan = input.nextElementSibling as HTMLElement;
+
+        if (isNaN(val)) {
+            val = this.currentYear;
+            clamped = true;
+        } else if (val < this.minYear) {
+            val = this.minYear;
+            clamped = true;
+        } else if (val > this.currentYear) {
+            val = this.currentYear;
+            clamped = true;
+        }
+
+        if (clamped) {
+            input.value = val.toString();
+            valSpan.textContent = `Clamped to ${val}`;
+            valSpan.classList.add('show');
+            setTimeout(() => valSpan.classList.remove('show'), 2000);
+        }
+        return val;
     }
 
     private bindEvents() {
@@ -220,22 +247,30 @@ class RangeDatePicker {
             this.cancelSelection();
         });
 
-        [this.fromMonthSel, this.fromYearSel].forEach(sel => {
+        [this.fromMonthSel, this.toMonthSel].forEach(sel => {
             sel.addEventListener('change', (e) => {
                 e.stopPropagation();
-                this.updateView('from');
-            });
-        });
-        [this.toMonthSel, this.toYearSel].forEach(sel => {
-            sel.addEventListener('change', (e) => {
-                e.stopPropagation();
-                this.updateView('to');
+                this.updateView(sel === this.fromMonthSel ? 'from' : 'to');
             });
         });
 
-        this.dropdown.addEventListener('click', (e) => {
-            e.stopPropagation();
+        [this.fromYearInp, this.toYearInp].forEach(inp => {
+            const triggerUpdate = (e: Event) => {
+                e.stopPropagation();
+                this.validateAndClampYear(inp);
+                this.updateView(inp === this.fromYearInp ? 'from' : 'to');
+            };
+
+            inp.addEventListener('blur', triggerUpdate);
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    triggerUpdate(e);
+                    inp.blur();
+                }
+            });
         });
+
+        this.dropdown.addEventListener('click', (e) => e.stopPropagation());
 
         document.addEventListener('click', (e) => {
             if (e.target !== this.input && !this.dropdown.contains(e.target as Node)) {
@@ -250,8 +285,7 @@ class RangeDatePicker {
     }
 
     private toggleDropdown() {
-        const isShown = this.dropdown.classList.contains('show');
-        if (isShown) {
+        if (this.dropdown.classList.contains('show')) {
             this.hideDropdown();
         } else {
             this.showDropdown();
@@ -259,27 +293,20 @@ class RangeDatePicker {
     }
 
     private showDropdown() {
-        // Hide other range picker dropdowns if any
         document.querySelectorAll('.range-picker-dropdown').forEach(d => d.classList.remove('show'));
-        
-        // Sync temp state with confirmed state when opening
         this.tempStartDate = this.confirmedStartDate;
         this.tempEndDate = this.confirmedEndDate;
         this.startDate = this.confirmedStartDate;
         this.endDate = this.confirmedEndDate;
-
         this.dropdown.classList.add('show');
         this.reposition();
         this.updateView();
     }
 
     private hideDropdown() {
-        // If hidden without completing second click, revert to confirmed state
         if (this.tempStartDate && !this.tempEndDate) {
             this.startDate = this.confirmedStartDate;
             this.endDate = this.confirmedEndDate;
-            this.tempStartDate = this.confirmedStartDate;
-            this.tempEndDate = this.confirmedEndDate;
         }
         this.dropdown.classList.remove('show');
         this.updateView();
@@ -295,26 +322,22 @@ class RangeDatePicker {
 
     private reposition() {
         if (!this.dropdown.classList.contains('show')) return;
-        
         const rect = this.input.getBoundingClientRect();
-        const dropdownHeight = this.dropdown.offsetHeight || 320; // fallback if hidden
+        const dropdownHeight = this.dropdown.offsetHeight || 320;
         const spaceBelow = window.innerHeight - rect.bottom;
-        
         const shouldDropUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
         
         if (shouldDropUp) {
             this.dropdown.classList.add('drop-up');
-            this.dropdown.style.top = 'auto'; // Reset top
+            this.dropdown.style.top = 'auto';
             this.dropdown.style.bottom = `${window.innerHeight - rect.top}px`;
         } else {
             this.dropdown.classList.remove('drop-up');
-            this.dropdown.style.bottom = 'auto'; // Reset bottom
+            this.dropdown.style.bottom = 'auto';
             this.dropdown.style.top = `${rect.bottom + 5}px`;
         }
-        
         this.dropdown.style.left = `${rect.left}px`;
 
-        // Check if it goes off screen (right side)
         const dropdownWidth = this.dropdown.offsetWidth || 580;
         if (rect.left + dropdownWidth > window.innerWidth) {
             this.dropdown.style.left = `${window.innerWidth - dropdownWidth - 20}px`;
@@ -327,51 +350,31 @@ class RangeDatePicker {
 
     private toLocalISO(date: Date): string {
         const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    private syncDropdownsToDates() {
-        if (this.startDate) {
-            this.fromMonthSel.value = this.startDate.getMonth().toString();
-            this.fromYearSel.value = this.startDate.getFullYear().toString();
-        }
-        if (this.endDate) {
-            this.toMonthSel.value = this.endDate.getMonth().toString();
-            this.toYearSel.value = this.endDate.getFullYear().toString();
-        }
+        const m = date.getMonth() + 1;
+        const d = date.getDate();
+        return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
     }
 
     private handleDayClick(date: Date) {
         if (!this.tempStartDate || (this.tempStartDate && this.tempEndDate)) {
-            // First click (or reset after previous selection)
             this.startDate = date;
             this.endDate = null;
             this.tempStartDate = date;
             this.tempEndDate = null;
             this.updateView();
-            // Dropdown stays open for second selection
         } else {
-            // Second click
             if (date < this.tempStartDate) {
-                // If clicked date is before start date, treat it as new start
                 this.startDate = date;
                 this.endDate = null;
                 this.tempStartDate = date;
                 this.tempEndDate = null;
                 this.updateView();
-                // Dropdown stays open
             } else {
                 this.endDate = date;
                 this.tempEndDate = date;
                 this.updateView();
-                
-                // Finalize selection
                 this.confirmedStartDate = this.startDate;
                 this.confirmedEndDate = this.endDate;
-                
-                // Update input and close dropdown immediately
                 this.input.value = `${this.formatDate(this.startDate!)} - ${this.formatDate(this.endDate)}`;
                 this.onApply(this.startDate, this.endDate);
                 this.dropdown.classList.remove('show');
@@ -383,7 +386,8 @@ class RangeDatePicker {
         grid.innerHTML = '';
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-
+        const now = new Date();
+        
         for (let i = 0; i < firstDay; i++) {
             const empty = document.createElement('div');
             empty.className = 'range-picker-day empty';
@@ -399,60 +403,78 @@ class RangeDatePicker {
             const cell = document.createElement('div');
             cell.className = 'range-picker-day';
             cell.textContent = d.toString();
-
             const cellISO = this.toLocalISO(date);
 
-            // Visual Disabled State: Disable if date is before Temp Start Date (only if picking End Date)
-            const shouldDisable = tempStartISO && !this.tempEndDate && cellISO < tempStartISO;
+            const isFuture = year === now.getFullYear() && month === now.getMonth() && d > now.getDate();
+            const shouldDisable = (tempStartISO && !this.tempEndDate && cellISO < tempStartISO) || isFuture;
 
             if (shouldDisable) {
                 cell.classList.add('disabled');
             } else {
                 if (startISO && cellISO === startISO) cell.classList.add('selected-edge');
                 if (endISO && cellISO === endISO) cell.classList.add('selected-edge');
-                if (startISO && endISO && cellISO > startISO && cellISO < endISO) {
-                    cell.classList.add('in-range');
-                }
+                if (startISO && endISO && cellISO > startISO && cellISO < endISO) cell.classList.add('in-range');
                 cell.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     this.handleDayClick(new Date(year, month, d));
                 });
             }
-
             grid.appendChild(cell);
         }
     }
 
+    private adjustLeapYear(date: Date | null, newYear: number): Date | null {
+        if (!date) return null;
+        const m = date.getMonth();
+        let d = date.getDate();
+        if (m === 1 && d === 29) {
+            const isLeap = (newYear % 4 === 0 && newYear % 100 !== 0) || (newYear % 400 === 0);
+            if (!isLeap) d = 28;
+        }
+        return new Date(newYear, m, d);
+    }
+
     private updateView(trigger?: 'from' | 'to') {
         let fm = parseInt(this.fromMonthSel.value);
-        let fy = parseInt(this.fromYearSel.value);
+        let fy = parseInt(this.fromYearInp.value);
         let tm = parseInt(this.toMonthSel.value);
-        let ty = parseInt(this.toYearSel.value);
+        let ty = parseInt(this.toYearInp.value);
 
-        // Dropdown Bounds Synchronization logic
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        // Restrict navigation: Future months
+        [this.fromMonthSel, this.toMonthSel].forEach((sel, idx) => {
+            const year = idx === 0 ? fy : ty;
+            Array.from(sel.options).forEach(opt => {
+                const m = parseInt(opt.value);
+                opt.disabled = year === currentYear && m > currentMonth;
+            });
+            if (year === currentYear && parseInt(sel.value) > currentMonth) {
+                sel.value = currentMonth.toString();
+                if (idx === 0) fm = currentMonth; else tm = currentMonth;
+            }
+        });
+
+        // Leap Year adjust
+        if (trigger === 'from' && this.startDate) this.startDate = this.adjustLeapYear(this.startDate, fy);
+        if (trigger === 'to' && this.endDate) this.endDate = this.adjustLeapYear(this.endDate, ty);
+
+        // Bounds Synchronization
         const fromVal = fy * 12 + fm;
         const toVal = ty * 12 + tm;
 
         if (fromVal > toVal) {
             if (trigger === 'from') {
-                // If "From" moved ahead of "To", force "To" forward
+                this.toYearInp.value = this.fromYearInp.value;
                 this.toMonthSel.value = this.fromMonthSel.value;
-                this.toYearSel.value = this.fromYearSel.value;
-                tm = fm;
-                ty = fy;
-            } else if (trigger === 'to') {
-                // If "To" moved behind "From", force "From" backward
-                this.fromMonthSel.value = this.toMonthSel.value;
-                this.fromYearSel.value = this.toYearSel.value;
-                fm = tm;
-                fy = ty;
+                tm = fm; ty = fy;
             } else {
-                // Default sync (fallback)
-                this.toMonthSel.value = this.fromMonthSel.value;
-                this.toYearSel.value = this.fromYearSel.value;
-                tm = fm;
-                ty = fy;
+                this.fromYearInp.value = this.toYearInp.value;
+                this.fromMonthSel.value = this.toMonthSel.value;
+                fm = tm; fy = ty;
             }
         }
 
@@ -469,9 +491,7 @@ class RangeDatePicker {
     }
 
     public destroy() {
-        if (this.dropdown && this.dropdown.parentNode) {
-            this.dropdown.parentNode.removeChild(this.dropdown);
-        }
+        if (this.dropdown?.parentNode) this.dropdown.parentNode.removeChild(this.dropdown);
     }
 }
 
@@ -1465,6 +1485,48 @@ class CustomEmbed extends LibraryBase {
                 .range-picker-day.empty {
                     cursor: default;
                 }
+
+                .range-picker-year-container {
+                    position: relative;
+                    flex: 1;
+                }
+
+                .range-picker-year-input {
+                    width: 100%;
+                    padding: 2px 4px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 0.75rem;
+                    box-sizing: border-box;
+                    -moz-appearance: textfield;
+                }
+
+                .range-picker-year-input::-webkit-outer-spin-button,
+                .range-picker-year-input::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+
+                .range-picker-validation {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    background: #333;
+                    color: #fff;
+                    font-size: 0.65rem;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s;
+                    z-index: 10;
+                    margin-bottom: 4px;
+                }
+
+                .range-picker-validation.show {
+                    opacity: 1;
+                }
             </style>
         `;
     }
@@ -2194,9 +2256,9 @@ class CustomEmbed extends LibraryBase {
                         (start, end) => {
                             const fmt = (d: Date) => {
                                 const y = d.getFullYear();
-                                const m = String(d.getMonth() + 1).padStart(2, '0');
-                                const day = String(d.getDate()).padStart(2, '0');
-                                return `${y}-${m}-${day}`;
+                                const m = d.getMonth() + 1;
+                                const day = d.getDate();
+                                return `${y}-${m < 10 ? '0' + m : m}-${day < 10 ? '0' + day : day}`;
                             };
                             // Format: YYYY-MM-DD HH:mm:ss.SSS for SQL datetime compatibility
                             filter.from = start ? `${fmt(start)} 00:00:00.000` : '';
