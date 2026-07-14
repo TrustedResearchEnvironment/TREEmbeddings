@@ -834,6 +834,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
+                    left: 30%;
                 }
 
                 .dropdown-toggle {
@@ -1080,8 +1081,38 @@ class CustomEmbed extends LibraryBase {
                     padding: 2px 6px;
                     border-radius: 4px;
                 }
-
-                /* Modal styles */
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
                 .modal {
                     display: none;
                     position: fixed;
@@ -1976,6 +2007,7 @@ class CustomEmbed extends LibraryBase {
                     cleanupScrollListeners();
                 }, { signal });
             }
+
 
 
         } catch (error) {
