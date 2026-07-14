@@ -170,6 +170,15 @@ class CustomEmbed extends LibraryBase {
 
             this.element.innerHTML = styles + datasetHtml;
 
+            if (this.dataSet.IsActive == false) {
+                const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
+                if (requestBtn) {
+                    requestBtn.disabled = true;
+                    requestBtn.textContent = "Data Set is Inactive";
+                }
+                alert("This dataset is currently inactive and cannot be requested. Please contact your platform administrator for more information.");
+            }
+
             this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
@@ -196,11 +205,13 @@ class CustomEmbed extends LibraryBase {
                             <form id="requestForm" class="request-form">
                                 <div class="form-group">
                                     <label for="RequestName">Request Name</label>
-                                    <input id="RequestName" class="form-input" placeholder="Name for this request" required>
+                                    <input id="RequestName" class="form-input" placeholder="Name for this request" required maxlength="100">
+                                    <span class="char-counter" id="RequestNameCounter">0/100</span>
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
-                                    <input id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="255">
+                                    <textarea id="RequestPurpose" class="form-input" placeholder="Purpose for this request" required maxlength="500" rows="3"></textarea>
+                                    <span class="char-counter" id="RequestPurposeCounter">0/500</span>
                                 </div>
                                 <div class="form-group">
                                     <label for="ProjectID">Assist Project</label>
@@ -526,7 +537,7 @@ class CustomEmbed extends LibraryBase {
                     transform-origin: top right;
                 }
                 .dropdown-menu.show {
-                    display: flex;
+                    display: block !important;
                     width: fit-content;
                 }
                 .dropdown-search input {
@@ -808,6 +819,19 @@ class CustomEmbed extends LibraryBase {
                     background: #d0d0d0;
                 }
 
+                .char-counter {
+                    font-size: 0.75rem;
+                    text-align: right;
+                    display: none;
+                    margin-top: 4px;
+                }
+
+                .char-counter.warning {
+                    display: block;
+                    color: #d32f2f;
+                    font-weight: 600;
+                }
+
                 .column-name-header {
                     position: relative; 
                 }
@@ -834,6 +858,40 @@ class CustomEmbed extends LibraryBase {
                     margin-bottom: 8px;
                     box-sizing: border-box;
                 }
+
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;  
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;     
+                    text-overflow: ellipsis; 
+                    white-space: pre-wrap;
+                    word-break: break-word; 
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
+
             </style>
         `;
     }
@@ -886,7 +944,8 @@ class CustomEmbed extends LibraryBase {
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    const totalEntries = this.getFilteredColumns().length;
+                    const totalPages = Math.max(1, Math.ceil(totalEntries / this.rowsPerPage));
                     if (this.currentPage < totalPages) {
                         this.currentPage++;
                         this.updateTable();
@@ -912,6 +971,23 @@ class CustomEmbed extends LibraryBase {
                 });
             }
 
+            // Character counter logic
+            const setupCharCounter = (inputId: string, counterId: string, maxLen: number) => {
+                const input = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null;
+                const counter = document.getElementById(counterId) as HTMLElement | null;
+                if (input && counter) {
+                    const update = () => {
+                        const len = input.value.length;
+                        counter.textContent = `${len}/${maxLen}`;
+                        counter.classList.toggle('warning', len >= maxLen * 0.8);
+                    };
+                    input.addEventListener('input', update);
+                    update();
+                }
+            };
+            setupCharCounter('RequestName', 'RequestNameCounter', 100);
+            setupCharCounter('RequestPurpose', 'RequestPurposeCounter', 500);
+
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
                 requestForm.addEventListener('submit', async (e) => {
@@ -923,12 +999,29 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         const formData = {
-                            requestName: (document.getElementById('RequestName') as HTMLInputElement)?.value,
+                            requestName: ((document.getElementById('RequestName') as HTMLInputElement)?.value ?? '').trim(),
                             projectId: (document.getElementById('ProjectID') as HTMLSelectElement)?.value,
-                            purpose: (document.getElementById('RequestPurpose') as HTMLInputElement)?.value,
+                            purpose: ((document.getElementById('RequestPurpose') as HTMLTextAreaElement)?.value ?? '').trim(),
                             datasetId: this.dataSet.DataSetID,
                             approvers: this.dataSet.Approvers,
                         };
+
+                        const emptyFields: string[] = [];
+                        if (!formData.requestName) emptyFields.push('Request Name');
+                        if (!formData.purpose) emptyFields.push('Purpose');
+                        if (emptyFields.length > 0) {
+                            alert(`The following field(s) cannot be empty or whitespace only: ${emptyFields.join(', ')}.`);
+                            return;
+                        }
+
+                        const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
+                        const invalidFields: string[] = [];
+                        if (specialCharPattern.test(formData.requestName)) invalidFields.push('Request Name');
+                        if (specialCharPattern.test(formData.purpose)) invalidFields.push('Purpose');
+                        if (invalidFields.length > 0) {
+                            alert(`The following field(s) contain invalid special characters: ${invalidFields.join(', ')}. Please remove them and try again.`);
+                            return;
+                        }
 
 
                         const response = await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
@@ -944,7 +1037,7 @@ class CustomEmbed extends LibraryBase {
                             alert(`Error ${response.status_code}: ${response.detail}`);
                             return;
                         }
-                        
+                         
                         alert('Request submitted successfully!');
                         
                         // Close the modal on success
@@ -1032,24 +1125,22 @@ class CustomEmbed extends LibraryBase {
                 }
             }, { signal });
 
-            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
-                    const selStart = searchInput.selectionStart;
-                    const selEnd = searchInput.selectionEnd;
-                    this.renderColumnNameCheckboxes();
-                    searchInput.focus();
-                    try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
-                });
-            }
-
-
             const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                const searchInput = dropdownMenu.querySelector<HTMLInputElement>('#columnNameSearchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
+                        this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
+                    });
+                }
                 let activeScrollAncestors: HTMLElement[] = [];
 
                 const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
@@ -1171,6 +1262,7 @@ class CustomEmbed extends LibraryBase {
 
 
 
+        
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
