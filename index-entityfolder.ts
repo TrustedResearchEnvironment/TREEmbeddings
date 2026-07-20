@@ -65,6 +65,13 @@ interface ProjectResponse {
     }[];
 }
 
+interface DateTimeFilter {
+    id: number;
+    field: string;
+    from: string;
+    to: string;
+}
+
 // Add new interface for folder file data
 interface DataSetFolderFile {
     FileType: string;
@@ -99,6 +106,7 @@ class CustomEmbed extends LibraryBase {
     private redactedFilter: 'all' | 'yes' | 'no' = 'all';
     private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
     private columnNameSortDirection: "asc" | "desc" = "asc";
+    private dateTimeFilters: DateTimeFilter[] = [];
     private _listenerController: AbortController | null = null;
 
 
@@ -1009,6 +1017,7 @@ class CustomEmbed extends LibraryBase {
                         const emptyFields: string[] = [];
                         if (!formData.requestName) emptyFields.push('Request Name');
                         if (!formData.purpose) emptyFields.push('Purpose');
+                        if (!formData.projectId) emptyFields.push('Assist Project');
                         if (emptyFields.length > 0) {
                             alert(`The following field(s) cannot be empty or whitespace only: ${emptyFields.join(', ')}.`);
                             return;
@@ -1025,11 +1034,18 @@ class CustomEmbed extends LibraryBase {
 
 
                         const response = await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            purpose: formData.purpose,
-                            requestName: formData.requestName,
+                            "DataSetID": formData.datasetId,
+                            "payload": {
+                                approvers: formData.approvers,
+                                assistProjectID: parseInt(formData.projectId),
+                                purpose: formData.purpose,
+                                requestName: formData.requestName,
+                                dateTimeFilters: this.dateTimeFilters.map(f => ({
+                                    field: f.field,
+                                    from: f.from || null,
+                                    to: f.to || null
+                                }))
+                            }
                         });
 
                         if (response && response.status_code && response.status_code >= 400) {
