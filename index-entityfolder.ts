@@ -1617,7 +1617,10 @@ class CustomEmbed extends LibraryBase {
             console.log('Fetching all projects from all pages...');
             
             // Use the new generic pagination function
-            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {});
+            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {
+                pages: 1,
+                page_size: 50
+            });
 
             if (!Array.isArray(allProjects) || allProjects.length === 0) {
                 throw new Error('No projects available or invalid response structure.');
