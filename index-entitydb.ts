@@ -2312,19 +2312,85 @@ class CustomEmbed extends LibraryBase {
         }
     };
 
+    private safeParseJson(response: any): any {
+        if (typeof response === 'string') {
+            try {
+                return JSON.parse(response);
+            } catch {
+                return response;
+            }
+        }
+        return response;
+    }
+
+    private getFromAPI = async (API_ID: string, initialParams: any): Promise<any[]> => {
+        let allResults: any[] = [];
+
+        try {
+            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const parsedInitial = this.safeParseJson(initialResponse);
+
+            // Early exit if the response is null, undefined, etc.
+            if (!parsedInitial) {
+                console.log("API returned no data.");
+                return [];
+            }
+
+            // --- DETECTION LOGIC ---
+            if (parsedInitial.PageCount !== undefined && Array.isArray(parsedInitial.Results)) {
+                // --- PAGINATED PATH ---
+                console.log("Detected a paginated response.");
+
+                allResults = parsedInitial.Results;
+                const totalPages = parsedInitial.PageCount;
+
+                if (totalPages > 1) {
+                    for (let page = 2; page <= totalPages; page++) {
+                        console.log(`Fetching page ${page} of ${totalPages}...`);
+
+                        // Construct params for the next page, preserving other initial params
+                        const params = { ...initialParams, "page": page };
+                        console.log(params);
+                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const parsed = this.safeParseJson(response);
+
+                        if (parsed && parsed.Results) {
+                            allResults = allResults.concat(parsed.Results);
+                        }
+                    }
+                }
+            } else {
+                // --- NON-PAGINATED PATH ---
+                console.log("Detected a non-paginated response.");
+
+                if (Array.isArray(parsedInitial)) {
+                    allResults = parsedInitial;
+                } else {
+                    allResults = [parsedInitial];
+                }
+            }
+
+            console.log(`Finished fetching for API ID ${API_ID}. Total items: ${allResults.length}`);
+            return allResults;
+
+        } catch (error) {
+            console.error(`An error occurred while fetching from ${API_ID}:`, error);
+            return [];
+        }
+    }
+
     private createRequestModal = async (): Promise<void> => {
         const modal = document.getElementById('requestDatasetModal');
         if (!modal) return;
 
         try {
-            console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
+            console.log('Fetching all projects from all pages...');
             
-            // Fetch available datetime fields for filters
-            await this.loadDatetimeFields();
+            // Use the new generic pagination function
+            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {});
 
-            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
-                throw new Error(`Invalid API response structure.`);
+            if (!Array.isArray(allProjects) || allProjects.length === 0) {
+                throw new Error('No projects available or invalid response structure.');
             }
 
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
@@ -2336,7 +2402,8 @@ class CustomEmbed extends LibraryBase {
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
+            // Populate with all active projects from all pages
+            allProjects.forEach((project: ProjectResponse['Results'][0]) => {
                 if (project.IsActive) {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();
@@ -2346,20 +2413,9 @@ class CustomEmbed extends LibraryBase {
                 }
             });
 
-            // Reset filters on open
-            this.dateTimeFilters = [];
-            this._filterIdCounter = 0;
-            this.renderDateTimeFilters();
-
             modal.classList.add('show');
             
-            const closeModal = () => {
-                modal.classList.remove('show');
-                // Cleanup filter state on close
-                this.dateTimeFilters = [];
-                this._filterIdCounter = 0;
-                this.renderDateTimeFilters();
-            };
+            const closeModal = () => modal.classList.remove('show');
 
             const closeButtons = modal.querySelectorAll('.modal-close');
             closeButtons.forEach(button => button.addEventListener('click', closeModal));
