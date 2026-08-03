@@ -1578,7 +1578,7 @@ class CustomEmbed extends LibraryBase {
                         console.log(`Fetching page ${page} of ${totalPages}...`);
 
                         // Construct params for the next page, preserving other initial params
-                        const params = { ...initialParams, "page": page };
+                        const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
                         console.log(params);
                         const response = await window.loomeApi.runApiRequest(API_ID, params);
                         const parsed = this.safeParseJson(response);
@@ -1616,7 +1616,10 @@ class CustomEmbed extends LibraryBase {
             console.log('Fetching all projects from all pages...');
             
             // Use the new generic pagination function
-            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {});
+            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {
+                "page": 1,
+                "page_size": 50
+            });
 
             if (!Array.isArray(allProjects) || allProjects.length === 0) {
                 throw new Error('No projects available or invalid response structure.');
