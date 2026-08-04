@@ -1623,10 +1623,6 @@ class CustomEmbed extends LibraryBase {
                 "page_size": 50
             });
 
-            if (!Array.isArray(allProjects) || allProjects.length === 0) {
-                throw new Error('No projects available or invalid response structure.');
-            }
-
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
             if (!projectSelect) {
                 throw new Error('Project select element not found');
@@ -1636,16 +1632,31 @@ class CustomEmbed extends LibraryBase {
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            // Populate with all active projects from all pages
-            allProjects.forEach((project: ProjectResponse['Results'][0]) => {
-                if (project.IsActive) {
+            // Check if there are any active projects
+            const activeProjects = Array.isArray(allProjects) 
+                ? allProjects.filter((p: ProjectResponse['Results'][0]) => p.IsActive)
+                : [];
+
+            if (activeProjects.length === 0) {
+                // No projects available - add a disabled option with message
+                const noProjectsOption = document.createElement('option');
+                noProjectsOption.value = '';
+                noProjectsOption.textContent = 'No Assist Projects found for the current user';
+                noProjectsOption.disabled = true;
+                projectSelect.appendChild(noProjectsOption);
+                projectSelect.disabled = true;
+                console.log('No active projects found for the current user.');
+            } else {
+                // Populate with all active projects from all pages
+                activeProjects.forEach((project: ProjectResponse['Results'][0]) => {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();
                     option.textContent = project.Name;
                     option.title = project.Description || '';
                     projectSelect.appendChild(option);
-                }
-            });
+                });
+                projectSelect.disabled = false;
+            }
 
             modal.classList.add('show');
             
