@@ -756,14 +756,8 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        if (!document.querySelector('#material-icons-font')) {
-            const link = document.createElement('link');
-            link.id = 'material-icons-font';
-            link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-            document.head.appendChild(link);
-        }
         return `
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
             <style>
                 #datasetRoot {
                     padding: 24px;
