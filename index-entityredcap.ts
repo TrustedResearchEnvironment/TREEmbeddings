@@ -1572,6 +1572,9 @@ class CustomEmbed extends LibraryBase {
                 throw new Error('Project select element not found');
             }
 
+            const requestForm = document.getElementById('requestForm');
+            const submitBtn = requestForm?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
 
@@ -1581,7 +1584,7 @@ class CustomEmbed extends LibraryBase {
                 : [];
 
             if (activeProjects.length === 0) {
-                // No projects available - add a disabled option with message
+                // No projects available - disable dropdown AND submit button
                 const noProjectsOption = document.createElement('option');
                 noProjectsOption.value = '';
                 noProjectsOption.textContent = 'No Assist Projects found for the current user';
@@ -1589,6 +1592,7 @@ class CustomEmbed extends LibraryBase {
                 noProjectsOption.selected = true;
                 projectSelect.appendChild(noProjectsOption);
                 projectSelect.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;  // Disable submit
                 console.log('No active projects found for the current user.');
             } else {
                 // Add back default option only when we have projects
@@ -1603,8 +1607,9 @@ class CustomEmbed extends LibraryBase {
                     projectSelect.appendChild(option);
                 });
                 projectSelect.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;  // Re-enable submit
             }
-
+            
             modal.classList.add('show');
             
             const closeModal = () => modal.classList.remove('show');
