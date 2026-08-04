@@ -1,12 +1,21 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import webpack from "webpack";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Generate build date and time
 const buildDate = new Date().toISOString();
+
+// Get git short hash for version footer
+let gitHash = 'unknown';
+try {
+  gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+} catch (error) {
+  console.warn('Warning: Could not retrieve git hash');
+}
 
 // Shared configuration
 const commonConfig = {
@@ -31,6 +40,10 @@ const commonConfig = {
     new webpack.BannerPlugin({
       banner: `Build Date: ${buildDate}`,
       entryOnly: true,
+    }),
+    // Inject git commit hash for version footer
+    new webpack.DefinePlugin({
+      __GIT_COMMIT_HASH__: JSON.stringify(gitHash),
     }),
   ],
 };

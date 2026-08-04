@@ -1,5 +1,7 @@
 import { Customization } from "./customization";
 
+declare const __GIT_COMMIT_HASH__: string;
+
 export abstract class LibraryBase {
     protected element: HTMLElement;
     protected entityUrl: string;
@@ -73,4 +75,25 @@ export abstract class LibraryBase {
     dispose = (): void => {
 
     }
+
+    protected renderVersionFooter = (): void => {
+        // Guard against duplicate insertion
+        if (document.getElementById('embed-version-footer')) {
+            return;
+        }
+
+        const footer = document.createElement('div');
+        footer.id = 'embed-version-footer';
+        footer.textContent = `v${__GIT_COMMIT_HASH__}`;
+        footer.style.cssText = `
+            position: absolute;
+            bottom: 4px;
+            right: 8px;
+            color: gray;
+            opacity: 0.5;
+            font-size: 10px;
+            pointer-events: none;
+        `;
+        this.element.appendChild(footer);
+    };
 }
