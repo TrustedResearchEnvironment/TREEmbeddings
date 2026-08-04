@@ -343,19 +343,13 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        if (!document.querySelector('#material-icons-font')) {
-            const link = document.createElement('link');
-            link.id = 'material-icons-font';
-            link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-            document.head.appendChild(link);
-        }
         return `
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
             <style>
                 #datasetRoot {
-                    position: relative;
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
+                    position: relative;
                 }
                 #entity-page-embed {
                     overflow:scroll;
@@ -1543,7 +1537,6 @@ class CustomEmbed extends LibraryBase {
         return results;
     }
 
-
     private safeParseJson(response: any): any {
         if (typeof response === 'string') {
             try {
@@ -1581,7 +1574,7 @@ class CustomEmbed extends LibraryBase {
                         console.log(`Fetching page ${page} of ${totalPages}...`);
 
                         // Construct params for the next page, preserving other initial params
-                        const params = { ...initialParams, "pages": page, "page_size": initialParams["page_size"] };
+                        const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
                         console.log(params);
                         const response = await window.loomeApi.runApiRequest(API_ID, params);
                         const parsed = this.safeParseJson(response);
@@ -1610,7 +1603,7 @@ class CustomEmbed extends LibraryBase {
             return [];
         }
     }
-    
+
     private createRequestModal = async (): Promise<void> => {
         const modal = document.getElementById('requestDatasetModal');
         if (!modal) return;
@@ -1666,7 +1659,7 @@ class CustomEmbed extends LibraryBase {
                 projectSelect.disabled = false;
                 if (submitBtn) submitBtn.disabled = false;  // Re-enable submit
             }
-            
+
             modal.classList.add('show');
             
             const closeModal = () => modal.classList.remove('show');
@@ -1696,6 +1689,7 @@ class CustomEmbed extends LibraryBase {
             }
         }
     }
+
 
     private disableBrowserCache(): void {
         const head = document.head;
