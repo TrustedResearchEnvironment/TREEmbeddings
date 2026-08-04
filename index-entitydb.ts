@@ -2401,7 +2401,6 @@ class CustomEmbed extends LibraryBase {
 
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
-            projectSelect.appendChild(defaultOption);
 
             // Check if there are any active projects
             const activeProjects = Array.isArray(allProjects) 
@@ -2414,10 +2413,14 @@ class CustomEmbed extends LibraryBase {
                 noProjectsOption.value = '';
                 noProjectsOption.textContent = 'No Assist Projects found for the current user';
                 noProjectsOption.disabled = true;
+                noProjectsOption.selected = true;
                 projectSelect.appendChild(noProjectsOption);
                 projectSelect.disabled = true;
                 console.log('No active projects found for the current user.');
             } else {
+                // Add back default option only when we have projects
+                projectSelect.appendChild(defaultOption);
+                
                 // Populate with all active projects from all pages
                 activeProjects.forEach((project: ProjectResponse['Results'][0]) => {
                     const option = document.createElement('option');
@@ -2428,7 +2431,7 @@ class CustomEmbed extends LibraryBase {
                 });
                 projectSelect.disabled = false;
             }
-
+            
             modal.classList.add('show');
             
             const closeModal = () => modal.classList.remove('show');
