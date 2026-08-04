@@ -1,12 +1,21 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import webpack from "webpack";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Generate build date and time
 const buildDate = new Date().toISOString();
+
+// Get current git commit hash (short form)
+let gitCommitHash = "unknown";
+try {
+  gitCommitHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+} catch (error) {
+  console.warn("Warning: Could not retrieve git commit hash. Using 'unknown'.");
+}
 
 // Shared configuration
 const commonConfig = {
@@ -27,7 +36,9 @@ const commonConfig = {
     outputModule: true, // Added back from original config
   },
   plugins: [
-    // Add build date and time as a banner to the output file
+    new webpack.DefinePlugin({
+      __GIT_COMMIT_HASH__: JSON.stringify(gitCommitHash),
+    }),
     new webpack.BannerPlugin({
       banner: `Build Date: ${buildDate}`,
       entryOnly: true,

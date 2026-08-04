@@ -593,6 +593,7 @@ class CustomEmbed extends LibraryBase {
             this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
+            this.renderVersionFooter();
         } catch (ex: unknown) {
             console.error("Error:", ex);
             const error = ex as Error;
@@ -767,6 +768,7 @@ class CustomEmbed extends LibraryBase {
                 #datasetRoot {
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
+                    position: relative;
                 }
                 #entity-page-embed {
                     overflow:scroll;
