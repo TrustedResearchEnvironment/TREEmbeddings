@@ -762,6 +762,36 @@ class CustomEmbed extends LibraryBase {
                     color: #d32f2f;
                     font-weight: 600;
                 }
+
+                .no-projects-alert {
+                    padding: 16px;
+                    background: #fef3f3;
+                    border: 1px solid #f5a9a9;
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+
+                .no-projects-alert .alert-icon {
+                    font-size: 1.5rem;
+                    flex-shrink: 0;
+                }
+
+                .no-projects-alert .alert-content h4 {
+                    margin: 0 0 8px 0;
+                    font-size: 1rem;
+                    color: #c41c3b;
+                    font-weight: 600;
+                }
+
+                .no-projects-alert .alert-content p {
+                    margin: 0;
+                    font-size: 0.95rem;
+                    color: #5a2e2e;
+                    line-height: 1.5;
+                }
+
                 th.column-name-header-cell {
                     position: relative;
                     overflow: visible !important;
@@ -1578,14 +1608,17 @@ class CustomEmbed extends LibraryBase {
                 : [];
 
             if (activeProjects.length === 0) {
-                // No projects available - disable dropdown AND submit button
-                const noProjectsOption = document.createElement('option');
-                noProjectsOption.value = '';
-                noProjectsOption.textContent = 'No Assist Projects found for the current user';
-                noProjectsOption.disabled = true;
-                noProjectsOption.selected = true;
-                projectSelect.appendChild(noProjectsOption);
-                projectSelect.disabled = true;
+                // No projects available - show alert message instead of dropdown
+                const alertBox = document.createElement('div');
+                alertBox.className = 'no-projects-alert';
+                alertBox.innerHTML = `
+                  <div class="alert-icon">⚠️</div>
+                  <div class="alert-content">
+                    <h4>No Workspace Projects Available</h4>
+                    <p>You do not currently have access to any workspace projects. Please contact your data administrator to request project access.</p>
+                  </div>
+                `;
+                projectSelect.parentElement?.replaceChild(alertBox, projectSelect);
                 if (submitBtn) submitBtn.disabled = true;  // Disable submit
                 console.log('No active projects found for the current user.');
             } else {
