@@ -1026,8 +1026,6 @@ class CustomEmbed extends LibraryBase {
                         if (requestForm) requestForm.reset();
                         const errorElement = document.getElementById('requestFormError');
                         if (errorElement) errorElement.textContent = '';
-                        this.dateTimeFilters = [];
-                        this.renderDateTimeFilters();
                         
                         // Close the modal on success
                         const modal = document.getElementById('requestDatasetModal');
