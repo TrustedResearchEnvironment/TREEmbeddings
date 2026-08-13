@@ -1087,7 +1087,17 @@ class CustomEmbed extends LibraryBase {
 
                     } catch (error) {
                         console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
+                        
+                        // Extract error message from exception
+                        let errorMessage = 'Failed to submit request. Please try again.';
+                        if (error instanceof Error) {
+                            errorMessage = error.message;
+                        } else if (typeof error === 'object' && error !== null) {
+                            const errObj = error as any;
+                            errorMessage = errObj.detail || errObj.message || JSON.stringify(error);
+                        }
+                        
+                        alert(errorMessage);
                     }
                 });
             }
