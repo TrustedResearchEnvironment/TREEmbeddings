@@ -999,9 +999,17 @@ class CustomEmbed extends LibraryBase {
                             }
                         });
 
-                        if (response && response.status_code && response.status_code >= 400) {
-                            console.error(`Error ${response.status_code}: ${response.detail}`);
-                            alert(`Error ${response.status_code}: ${response.detail}`);
+                        console.log('API Response:', response);
+                        
+                        // Check for error response (multiple possible structures)
+                        const hasError = (response && response.status_code && response.status_code >= 400) ||
+                                        (response && response.error) ||
+                                        (response && response.status && response.status >= 400);
+                        
+                        if (hasError) {
+                            const errorMsg = response.detail || response.error || response.message || 'Unknown error occurred';
+                            console.error(`Error: ${errorMsg}`);
+                            alert(`Error: ${errorMsg}`);
                             return;
                         }
                          
