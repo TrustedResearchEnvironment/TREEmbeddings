@@ -619,6 +619,7 @@ class CustomEmbed extends LibraryBase {
                                     <label for="RequestName">Request Name</label>
                                     <input id="RequestName" class="form-input" placeholder="Name for this request" required maxlength="100">
                                     <span class="char-counter" id="RequestNameCounter">0/100</span>
+                                    <span class="form-error" id="requestFormError"></span>
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
@@ -1583,6 +1584,13 @@ class CustomEmbed extends LibraryBase {
                 .range-picker-validation.show {
                     opacity: 1;
                 }
+                .form-error {
+                    display: block;
+                    color: #d32f2f;
+                    font-size: 0.85rem;
+                    margin-top: 4px;
+                    font-weight: 500;
+                }
             </style>
         `;
     }
@@ -1789,7 +1797,10 @@ class CustomEmbed extends LibraryBase {
                         // Check for error response - API returns {detail: "error message"} on errors
                         if (response && response.detail) {
                             console.error(`Error: ${response.detail}`);
-                            alert(`Error: ${response.detail}`);
+                            const errorElement = document.getElementById('requestFormError');
+                            if (errorElement) {
+                                errorElement.textContent = response.detail;
+                            }
                             return;
                         }
                         
@@ -1811,7 +1822,10 @@ class CustomEmbed extends LibraryBase {
                             errorMessage = errObj.detail || errObj.message || JSON.stringify(error);
                         }
                         
-                        alert(errorMessage);
+                        const errorElement = document.getElementById('requestFormError');
+                        if (errorElement) {
+                            errorElement.textContent = errorMessage;
+                        }
                     }
                 });
             }
