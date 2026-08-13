@@ -1786,15 +1786,10 @@ class CustomEmbed extends LibraryBase {
 
                         console.log('API Response:', response);
                         
-                        // Check for error response (multiple possible structures)
-                        const hasError = (response && response.status_code && response.status_code >= 400) ||
-                                        (response && response.error) ||
-                                        (response && response.status && response.status >= 400);
-                        
-                        if (hasError) {
-                            const errorMsg = response.detail || response.error || response.message || 'Unknown error occurred';
-                            console.error(`Error: ${errorMsg}`);
-                            alert(`Error: ${errorMsg}`);
+                        // Check for error response - API returns {detail: "error message"} on errors
+                        if (response && response.detail) {
+                            console.error(`Error: ${response.detail}`);
+                            alert(`Error: ${response.detail}`);
                             return;
                         }
                         
