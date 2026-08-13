@@ -1625,8 +1625,8 @@ class CustomEmbed extends LibraryBase {
                 ? allProjects.filter((p: ProjectResponse['Results'][0]) => p.IsActive)
                 : [];
 
-            if (activeProjects.length === 0) {
-                // No projects available - disable dropdown AND submit button
+            
+            // No projects available - disable dropdown AND submit button
             if (activeProjects.length === 0) {
                 // No projects available - show alert message instead of dropdown
                 const alertBox = document.createElement('div');
