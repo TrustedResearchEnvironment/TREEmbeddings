@@ -114,6 +114,7 @@ class RangeDatePicker {
     private toGrid!: HTMLElement;
     private preview!: HTMLElement;
     private cancelBtn!: HTMLButtonElement;
+    private controller: AbortController;
 
     constructor(container: HTMLElement, initialFrom: string, initialTo: string, onApply: (start: Date | null, end: Date | null) => void) {
         this.input = container.querySelector('.range-picker-input') as HTMLInputElement;
@@ -171,6 +172,8 @@ class RangeDatePicker {
         this.toGrid = this.dropdown.querySelector('.to-grid') as HTMLElement;
         this.preview = this.dropdown.querySelector('.range-picker-preview') as HTMLElement;
         this.cancelBtn = this.dropdown.querySelector('.range-picker-btn-cancel') as HTMLButtonElement;
+
+        this.controller = new AbortController();
 
         this.init(initialFrom, initialTo);
     }
@@ -240,18 +243,18 @@ class RangeDatePicker {
         this.input.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggleDropdown();
-        });
+        }, { signal: this.controller.signal });
 
         this.cancelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.cancelSelection();
-        });
+        }, { signal: this.controller.signal });
 
         [this.fromMonthSel, this.toMonthSel].forEach(sel => {
             sel.addEventListener('change', (e) => {
                 e.stopPropagation();
                 this.updateView(sel === this.fromMonthSel ? 'from' : 'to');
-            });
+            }, { signal: this.controller.signal });
         });
 
         [this.fromYearInp, this.toYearInp].forEach(inp => {
@@ -261,16 +264,16 @@ class RangeDatePicker {
                 this.updateView(inp === this.fromYearInp ? 'from' : 'to');
             };
 
-            inp.addEventListener('blur', triggerUpdate);
+            inp.addEventListener('blur', triggerUpdate, { signal: this.controller.signal });
             inp.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     triggerUpdate(e);
                     inp.blur();
                 }
-            });
+            }, { signal: this.controller.signal });
         });
 
-        this.dropdown.addEventListener('click', (e) => e.stopPropagation());
+        this.dropdown.addEventListener('click', (e) => e.stopPropagation(), { signal: this.controller.signal });
 
         document.addEventListener('click', (e) => {
             if (e.target !== this.input && !this.dropdown.contains(e.target as Node)) {
@@ -278,10 +281,10 @@ class RangeDatePicker {
                     this.hideDropdown();
                 }
             }
-        });
+        }, { signal: this.controller.signal });
 
-        window.addEventListener('scroll', () => this.reposition(), { passive: true });
-        window.addEventListener('resize', () => this.reposition());
+        window.addEventListener('scroll', () => this.reposition(), { passive: true, signal: this.controller.signal });
+        window.addEventListener('resize', () => this.reposition(), { signal: this.controller.signal });
     }
 
     private toggleDropdown() {
@@ -491,6 +494,9 @@ class RangeDatePicker {
     }
 
     public destroy() {
+        // Abort all event listeners registered with this controller's signal
+        this.controller.abort();
+        
         if (this.dropdown?.parentNode) this.dropdown.parentNode.removeChild(this.dropdown);
     }
 }
