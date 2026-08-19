@@ -2093,11 +2093,11 @@ class CustomEmbed extends LibraryBase {
         paginatedColumns.forEach((column: DataSetColumn) => {
             columnsHtml += `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td><div class="cell-text-wrap" title="${column.LogicalColumnName || ''}">${column.LogicalColumnName || ''}</div></td>
-                    <td><div class="cell-text-wrap" title="${column.BusinessDescription || 'N/A'}">${column.BusinessDescription || 'N/A'}</div></td>
-                    <td><div class="cell-text-wrap" title="${column.ExampleValue || 'N/A'}"><span class="code-cell">${column.ExampleValue || 'N/A'}</span></div></td>
+                    <td>${this.escapeHtml(column.ColumnName || '')}</td>
+                    <td><span class="mui-chip">${this.escapeHtml(column.ColumnType || '')}</span></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.LogicalColumnName || '')}">${this.escapeHtml(column.LogicalColumnName || '')}</div></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.BusinessDescription || 'N/A')}">${this.escapeHtml(column.BusinessDescription || 'N/A')}</div></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.ExampleValue || 'N/A')}"><span class="code-cell">${this.escapeHtml(column.ExampleValue || 'N/A')}</span></div></td>
                     <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
@@ -2303,7 +2303,7 @@ class CustomEmbed extends LibraryBase {
         const usedFields = new Set(this.dateTimeFilters.filter(f => f.id !== filter.id).map(f => f.field));
         const fieldOptions = this.datetimeFields
             .filter(f => !usedFields.has(f.ColumnName) || f.ColumnName === filter.field)
-            .map(f => `<option value="${f.ColumnName}" ${filter.field === f.ColumnName ? 'selected' : ''}>${f.ColumnName}</option>`)
+            .map(f => `<option value="${this.escapeHtml(f.ColumnName)}" ${filter.field === f.ColumnName ? 'selected' : ''}>${this.escapeHtml(f.ColumnName)}</option>`)
             .join('');
 
         return `
@@ -2371,6 +2371,13 @@ class CustomEmbed extends LibraryBase {
             }
         }
     };
+
+    private escapeHtml = (value: unknown): string => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
     private safeParseJson(response: any): any {
         if (typeof response === 'string') {
