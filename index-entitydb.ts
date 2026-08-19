@@ -2033,7 +2033,7 @@ class CustomEmbed extends LibraryBase {
                         this.renderColumnNameCheckboxes();
 
                         this.currentPage = 1;
-                        this.currentSortColumn = 'FolderName';
+                        this.currentSortColumn = 'ColumnName';
                         this.currentSortDirection = 'asc';
                         this.updateTable();
                     });
@@ -2046,7 +2046,7 @@ class CustomEmbed extends LibraryBase {
                         this.renderColumnNameCheckboxes();
 
                         this.currentPage = 1;
-                        this.currentSortColumn = 'FolderName';
+                        this.currentSortColumn = 'ColumnName';
                         this.currentSortDirection = 'desc';
                         this.updateTable();
                     });
