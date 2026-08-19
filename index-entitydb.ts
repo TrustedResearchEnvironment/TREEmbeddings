@@ -1705,7 +1705,7 @@ class CustomEmbed extends LibraryBase {
                         to: ''
                     });
                     this.renderDateTimeFilters();
-                });
+                }, { signal });
             }
 
             const filtersContainer = document.getElementById('dateTimeFiltersContainer');
@@ -1717,7 +1717,7 @@ class CustomEmbed extends LibraryBase {
                         this.dateTimeFilters = this.dateTimeFilters.filter(f => f.id !== id);
                         this.renderDateTimeFilters();
                     }
-                });
+                }, { signal });
                 filtersContainer.addEventListener('change', (e) => {
                     const el = e.target as HTMLElement;
                     const id = parseInt((el as any).dataset.filterId ?? '');
@@ -1732,7 +1732,7 @@ class CustomEmbed extends LibraryBase {
                             }
                         }
                     }
-                });
+                }, { signal });
             }
 
             const requestForm = document.getElementById('requestForm');
@@ -1841,7 +1841,7 @@ class CustomEmbed extends LibraryBase {
                             errorElement.textContent = errorMessage;
                         }
                     }
-                });
+                }, { signal });
             }
 
             // Redacted popover toggle
@@ -1867,7 +1867,7 @@ class CustomEmbed extends LibraryBase {
 
                 // Attach redacted popover option click listeners once
                 redactedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleRedactedOptionClick);
+                    option.addEventListener('click', handleRedactedOptionClick, { signal });
                 });
 
                 redactedToggle.addEventListener('click', (event) => {
@@ -1880,7 +1880,7 @@ class CustomEmbed extends LibraryBase {
                     redactedPopover.classList.remove('show');
                     redactedToggle.setAttribute('aria-expanded', 'false');
                     }
-                });
+                }, { signal });
             }
             // Deidentified popover toggle
             const deidentifiedToggle = document.getElementById('deidentifiedToggle');
@@ -1907,7 +1907,7 @@ class CustomEmbed extends LibraryBase {
 
                 // Attach deidentified popover option click listeners once
                 deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleDeidentifiedOptionClick);
+                    option.addEventListener('click', handleDeidentifiedOptionClick, { signal });
                 });
 
                 deidentifiedToggle.addEventListener('click', (event) => {
@@ -1920,7 +1920,7 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
-                });
+                }, { signal });
             }
             // Close popovers when clicking outside
             document.addEventListener('click', (event) => {
