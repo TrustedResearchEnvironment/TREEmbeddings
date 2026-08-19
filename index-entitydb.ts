@@ -2457,6 +2457,12 @@ class CustomEmbed extends LibraryBase {
         if (!modal) return;
 
         try {
+            // Load available datetime fields for filters
+            await this.loadDatetimeFields();
+            
+            // Render initial (empty) filter UI
+            this.renderDateTimeFilters();
+            
             console.log('Fetching all projects from all pages...');
             
             // Use the new generic pagination function
