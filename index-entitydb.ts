@@ -76,10 +76,436 @@ interface ProjectResponse {
     }[];
 }
 
+interface DateTimeFilterField {
+    DataSetColumnID: number;
+    ColumnName: string;
+}
+
+interface DateTimeFilter {
+    id: number;
+    field: string;
+    from: string;
+    to: string;
+}
+
+class RangeDatePicker {
+    private months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    private minYear = 1900;
+    private currentYear = new Date().getFullYear();
+    
+    private startDate: Date | null = null;
+    private endDate: Date | null = null;
+    
+    // Stable state for revert functionality
+    private confirmedStartDate: Date | null = null;
+    private confirmedEndDate: Date | null = null;
+    // Temporary state during selection process
+    private tempStartDate: Date | null = null;
+    private tempEndDate: Date | null = null;
+
+    private dropdown: HTMLElement;
+    private input: HTMLInputElement;
+    private onApply: (start: Date | null, end: Date | null) => void;
+    private fromMonthSel!: HTMLSelectElement;
+    private fromYearInp!: HTMLInputElement;
+    private toMonthSel!: HTMLSelectElement;
+    private toYearInp!: HTMLInputElement;
+    private fromGrid!: HTMLElement;
+    private toGrid!: HTMLElement;
+    private preview!: HTMLElement;
+    private cancelBtn!: HTMLButtonElement;
+    private controller: AbortController;
+
+    constructor(container: HTMLElement, initialFrom: string, initialTo: string, onApply: (start: Date | null, end: Date | null) => void) {
+        this.input = container.querySelector('.range-picker-input') as HTMLInputElement;
+        this.onApply = onApply;
+
+        // Create Dropdown
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'range-picker-dropdown';
+        this.dropdown.innerHTML = `
+            <div class="range-picker-header">
+                <span class="range-picker-preview">Select dates...</span>
+                <div class="range-picker-actions">
+                    <button type="button" class="range-picker-btn range-picker-btn-cancel">Cancel</button>
+                </div>
+            </div>
+            <div class="range-picker-calendars">
+                <div class="range-picker-calendar-box">
+                    <div class="range-picker-calendar-title">From</div>
+                    <div class="range-picker-selects">
+                        <select class="range-picker-select from-month"></select>
+                        <div class="range-picker-year-container">
+                            <input type="number" class="range-picker-year-input from-year" min="${this.minYear}" max="${this.currentYear}" step="1" aria-label="Year">
+                            <span class="range-picker-validation"></span>
+                        </div>
+                    </div>
+                    <div class="range-picker-weekdays">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div class="range-picker-days from-grid"></div>
+                </div>
+                <div class="range-picker-calendar-box">
+                    <div class="range-picker-calendar-title">To</div>
+                    <div class="range-picker-selects">
+                        <select class="range-picker-select to-month"></select>
+                        <div class="range-picker-year-container">
+                            <input type="number" class="range-picker-year-input to-year" min="${this.minYear}" max="${this.currentYear}" step="1" aria-label="Year">
+                            <span class="range-picker-validation"></span>
+                        </div>
+                    </div>
+                    <div class="range-picker-weekdays">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div class="range-picker-days to-grid"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(this.dropdown);
+
+        // Bind Elements
+        this.fromMonthSel = this.dropdown.querySelector('.from-month') as HTMLSelectElement;
+        this.fromYearInp = this.dropdown.querySelector('.from-year') as HTMLInputElement;
+        this.toMonthSel = this.dropdown.querySelector('.to-month') as HTMLSelectElement;
+        this.toYearInp = this.dropdown.querySelector('.to-year') as HTMLInputElement;
+        this.fromGrid = this.dropdown.querySelector('.from-grid') as HTMLElement;
+        this.toGrid = this.dropdown.querySelector('.to-grid') as HTMLElement;
+        this.preview = this.dropdown.querySelector('.range-picker-preview') as HTMLElement;
+        this.cancelBtn = this.dropdown.querySelector('.range-picker-btn-cancel') as HTMLButtonElement;
+
+        this.controller = new AbortController();
+
+        this.init(initialFrom, initialTo);
+    }
+
+    private init(isoFrom: string, isoTo: string) {
+        this.months.forEach((m, i) => {
+            this.fromMonthSel.add(new Option(m, i.toString()));
+            this.toMonthSel.add(new Option(m, i.toString()));
+        });
+
+        if (isoFrom) {
+            this.startDate = new Date(isoFrom);
+            if (isNaN(this.startDate.getTime())) this.startDate = null;
+        }
+        if (isoTo) {
+            this.endDate = new Date(isoTo);
+            if (isNaN(this.endDate.getTime())) this.endDate = null;
+        }
+
+        this.confirmedStartDate = this.startDate;
+        this.confirmedEndDate = this.endDate;
+
+        const now = new Date();
+        const displayStart = this.startDate || now;
+        const displayEnd = this.endDate || new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+        this.fromMonthSel.value = displayStart.getMonth().toString();
+        this.fromYearInp.value = displayStart.getFullYear().toString();
+        this.toMonthSel.value = displayEnd.getMonth().toString();
+        this.toYearInp.value = displayEnd.getFullYear().toString();
+
+        this.input.value = '';
+        if (this.startDate && this.endDate) {
+            this.input.value = `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+        }
+
+        this.bindEvents();
+        this.updateView();
+    }
+
+    private validateAndClampYear(input: HTMLInputElement): number {
+        let val = parseInt(input.value);
+        let clamped = false;
+        const valSpan = input.nextElementSibling as HTMLElement;
+
+        if (isNaN(val)) {
+            val = this.currentYear;
+            clamped = true;
+        } else if (val < this.minYear) {
+            val = this.minYear;
+            clamped = true;
+        } else if (val > this.currentYear) {
+            val = this.currentYear;
+            clamped = true;
+        }
+
+        if (clamped) {
+            input.value = val.toString();
+            valSpan.textContent = `Clamped to ${val}`;
+            valSpan.classList.add('show');
+            setTimeout(() => valSpan.classList.remove('show'), 2000);
+        }
+        return val;
+    }
+
+    private bindEvents() {
+        this.input.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown();
+        }, { signal: this.controller.signal });
+
+        this.cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.cancelSelection();
+        }, { signal: this.controller.signal });
+
+        [this.fromMonthSel, this.toMonthSel].forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                e.stopPropagation();
+                this.updateView(sel === this.fromMonthSel ? 'from' : 'to');
+            }, { signal: this.controller.signal });
+        });
+
+        [this.fromYearInp, this.toYearInp].forEach(inp => {
+            const triggerUpdate = (e: Event) => {
+                e.stopPropagation();
+                this.validateAndClampYear(inp);
+                this.updateView(inp === this.fromYearInp ? 'from' : 'to');
+            };
+
+            inp.addEventListener('blur', triggerUpdate, { signal: this.controller.signal });
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    triggerUpdate(e);
+                    inp.blur();
+                }
+            }, { signal: this.controller.signal });
+        });
+
+        this.dropdown.addEventListener('click', (e) => e.stopPropagation(), { signal: this.controller.signal });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== this.input && !this.dropdown.contains(e.target as Node)) {
+                if (this.dropdown.classList.contains('show')) {
+                    this.hideDropdown();
+                }
+            }
+        }, { signal: this.controller.signal });
+
+        window.addEventListener('scroll', () => this.reposition(), { passive: true, signal: this.controller.signal });
+        window.addEventListener('resize', () => this.reposition(), { signal: this.controller.signal });
+    }
+
+    private toggleDropdown() {
+        if (this.dropdown.classList.contains('show')) {
+            this.hideDropdown();
+        } else {
+            this.showDropdown();
+        }
+    }
+
+    private showDropdown() {
+        document.querySelectorAll('.range-picker-dropdown').forEach(d => d.classList.remove('show'));
+        this.tempStartDate = this.confirmedStartDate;
+        this.tempEndDate = this.confirmedEndDate;
+        this.startDate = this.confirmedStartDate;
+        this.endDate = this.confirmedEndDate;
+        this.dropdown.classList.add('show');
+        this.reposition();
+        this.updateView();
+    }
+
+    private hideDropdown() {
+        if (this.tempStartDate && !this.tempEndDate) {
+            this.startDate = this.confirmedStartDate;
+            this.endDate = this.confirmedEndDate;
+        }
+        this.dropdown.classList.remove('show');
+        this.updateView();
+    }
+
+    private cancelSelection() {
+        this.startDate = this.confirmedStartDate;
+        this.endDate = this.confirmedEndDate;
+        this.tempStartDate = null;
+        this.tempEndDate = null;
+        this.hideDropdown();
+    }
+
+    private reposition() {
+        if (!this.dropdown.classList.contains('show')) return;
+        const rect = this.input.getBoundingClientRect();
+        const dropdownHeight = this.dropdown.offsetHeight || 320;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const shouldDropUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+        
+        if (shouldDropUp) {
+            this.dropdown.classList.add('drop-up');
+            this.dropdown.style.top = 'auto';
+            this.dropdown.style.bottom = `${window.innerHeight - rect.top}px`;
+        } else {
+            this.dropdown.classList.remove('drop-up');
+            this.dropdown.style.bottom = 'auto';
+            this.dropdown.style.top = `${rect.bottom + 5}px`;
+        }
+        this.dropdown.style.left = `${rect.left}px`;
+
+        const dropdownWidth = this.dropdown.offsetWidth || 580;
+        if (rect.left + dropdownWidth > window.innerWidth) {
+            this.dropdown.style.left = `${window.innerWidth - dropdownWidth - 20}px`;
+        }
+    }
+
+    private formatDate(date: Date): string {
+        return `${date.getDate()} ${this.months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    private toLocalISO(date: Date): string {
+        const y = date.getFullYear();
+        const m = date.getMonth() + 1;
+        const d = date.getDate();
+        return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
+    }
+
+    private handleDayClick(date: Date) {
+        if (!this.tempStartDate || (this.tempStartDate && this.tempEndDate)) {
+            this.startDate = date;
+            this.endDate = null;
+            this.tempStartDate = date;
+            this.tempEndDate = null;
+            this.updateView();
+        } else {
+            if (date < this.tempStartDate) {
+                this.startDate = date;
+                this.endDate = null;
+                this.tempStartDate = date;
+                this.tempEndDate = null;
+                this.updateView();
+            } else {
+                this.endDate = date;
+                this.tempEndDate = date;
+                this.updateView();
+                this.confirmedStartDate = this.startDate;
+                this.confirmedEndDate = this.endDate;
+                this.input.value = `${this.formatDate(this.startDate!)} - ${this.formatDate(this.endDate)}`;
+                this.onApply(this.startDate, this.endDate);
+                this.dropdown.classList.remove('show');
+            }
+        }
+    }
+
+    private renderGrid(grid: HTMLElement, month: number, year: number, isToCalendar: boolean) {
+        grid.innerHTML = '';
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const now = new Date();
+        
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'range-picker-day empty';
+            grid.appendChild(empty);
+        }
+
+        const startISO = this.startDate ? this.toLocalISO(this.startDate) : null;
+        const endISO = this.endDate ? this.toLocalISO(this.endDate) : null;
+        const tempStartISO = this.tempStartDate ? this.toLocalISO(this.tempStartDate) : null;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(year, month, d);
+            const cell = document.createElement('div');
+            cell.className = 'range-picker-day';
+            cell.textContent = d.toString();
+            const cellISO = this.toLocalISO(date);
+
+            const isFuture = year === now.getFullYear() && month === now.getMonth() && d > now.getDate();
+            const shouldDisable = (tempStartISO && !this.tempEndDate && cellISO < tempStartISO) || isFuture;
+
+            if (shouldDisable) {
+                cell.classList.add('disabled');
+            } else {
+                if (startISO && cellISO === startISO) cell.classList.add('selected-edge');
+                if (endISO && cellISO === endISO) cell.classList.add('selected-edge');
+                if (startISO && endISO && cellISO > startISO && cellISO < endISO) cell.classList.add('in-range');
+                cell.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleDayClick(new Date(year, month, d));
+                });
+            }
+            grid.appendChild(cell);
+        }
+    }
+
+    private adjustLeapYear(date: Date | null, newYear: number): Date | null {
+        if (!date) return null;
+        const m = date.getMonth();
+        let d = date.getDate();
+        if (m === 1 && d === 29) {
+            const isLeap = (newYear % 4 === 0 && newYear % 100 !== 0) || (newYear % 400 === 0);
+            if (!isLeap) d = 28;
+        }
+        return new Date(newYear, m, d);
+    }
+
+    private updateView(trigger?: 'from' | 'to') {
+        let fm = parseInt(this.fromMonthSel.value);
+        let fy = parseInt(this.fromYearInp.value);
+        let tm = parseInt(this.toMonthSel.value);
+        let ty = parseInt(this.toYearInp.value);
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        // Restrict navigation: Future months
+        [this.fromMonthSel, this.toMonthSel].forEach((sel, idx) => {
+            const year = idx === 0 ? fy : ty;
+            Array.from(sel.options).forEach(opt => {
+                const m = parseInt(opt.value);
+                opt.disabled = year === currentYear && m > currentMonth;
+            });
+            if (year === currentYear && parseInt(sel.value) > currentMonth) {
+                sel.value = currentMonth.toString();
+                if (idx === 0) fm = currentMonth; else tm = currentMonth;
+            }
+        });
+
+        // Leap Year adjust
+        if (trigger === 'from' && this.startDate) this.startDate = this.adjustLeapYear(this.startDate, fy);
+        if (trigger === 'to' && this.endDate) this.endDate = this.adjustLeapYear(this.endDate, ty);
+
+        // Bounds Synchronization
+        const fromVal = fy * 12 + fm;
+        const toVal = ty * 12 + tm;
+
+        if (fromVal > toVal) {
+            if (trigger === 'from') {
+                this.toYearInp.value = this.fromYearInp.value;
+                this.toMonthSel.value = this.fromMonthSel.value;
+                tm = fm; ty = fy;
+            } else {
+                this.fromYearInp.value = this.toYearInp.value;
+                this.fromMonthSel.value = this.toMonthSel.value;
+                fm = tm; fy = ty;
+            }
+        }
+
+        this.renderGrid(this.fromGrid, fm, fy, false);
+        this.renderGrid(this.toGrid, tm, ty, true);
+
+        if (this.startDate && this.endDate) {
+            this.preview.textContent = `${this.formatDate(this.startDate)} — ${this.formatDate(this.endDate)}`;
+        } else if (this.startDate) {
+            this.preview.textContent = `${this.formatDate(this.startDate)} — Select end date...`;
+        } else {
+            this.preview.textContent = 'Select dates...';
+        }
+    }
+
+    public destroy() {
+        // Abort all event listeners registered with this controller's signal
+        this.controller.abort();
+        
+        if (this.dropdown?.parentNode) this.dropdown.parentNode.removeChild(this.dropdown);
+    }
+}
+
 const API_GET_DATASET_METADATA = 'GetDataSetID';
 const API_GET_DATASET_COLUMNS = 'GetDatasetIDColumns';
 const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
 const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
+const API_GET_DATETIME_FIELDS = 'GetDataSetDateTimeFields';
 
 class CustomEmbed extends LibraryBase {
     public token: string = "";
@@ -94,6 +520,11 @@ class CustomEmbed extends LibraryBase {
     private columnNameSortDirection: "asc" | "desc" = "asc";
     private redactedFilter: 'all' | 'yes' | 'no' = 'all';
     private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
+    private _listenerController: AbortController | null = null;
+    private datetimeFields: DateTimeFilterField[] = [];
+    private dateTimeFilters: DateTimeFilter[] = [];
+    private rangePickers: Map<number, RangeDatePicker> = new Map();
+    private _filterIdCounter: number = 0;
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -123,6 +554,14 @@ class CustomEmbed extends LibraryBase {
     
     public buildPage = async (): Promise<void> => {
         try {
+            // Abort any stale document/window listeners from a previous session
+            if (this._listenerController) this._listenerController.abort();
+            this._listenerController = new AbortController();
+
+            // Clean up any orphaned dropdown menu left in document.body from a previous session
+            const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+            if (orphanedMenu) orphanedMenu.remove();
+
             this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
@@ -157,9 +596,10 @@ class CustomEmbed extends LibraryBase {
                 alert("This dataset is currently inactive and cannot be requested. Please contact your platform administrator for more information.");
             }
 
-            this.setupEventListeners();
+            this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
+            this.renderVersionFooter();
         } catch (ex: unknown) {
             console.error("Error:", ex);
             const error = ex as Error;
@@ -185,6 +625,7 @@ class CustomEmbed extends LibraryBase {
                                     <label for="RequestName">Request Name</label>
                                     <input id="RequestName" class="form-input" placeholder="Name for this request" required maxlength="100">
                                     <span class="char-counter" id="RequestNameCounter">0/100</span>
+                                    <span class="form-error" id="requestFormError"></span>
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
@@ -199,6 +640,14 @@ class CustomEmbed extends LibraryBase {
                                         <option value="84">Project 2</option>
                                         <option value="85">Project 3</option>
                                     </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date/Time Filters</label>
+                                    <div id="dateTimeFiltersContainer"></div>
+                                    <button type="button" id="addDateTimeFilterBtn" class="add-filter-btn">
+                                        <span class="material-icons" style="font-size:16px;vertical-align:middle">add</span>
+                                        Add Filter
+                                    </button>
                                 </div>
                                 <div class="form-actions">
                                     <button type="submit" class="button button-primary">Submit Request</button>
@@ -314,16 +763,11 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        if (!document.querySelector('#material-icons-font')) {
-            const link = document.createElement('link');
-            link.id = 'material-icons-font';
-            link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-            document.head.appendChild(link);
-        }
         return `
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
             <style>
                 #datasetRoot {
+                    position: relative;
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
                 }
@@ -371,6 +815,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 #dataTable {
                     width: 100%;
+                    min-height: 500px;
                     border-collapse: collapse;
                 }
                 #dataTable th {
@@ -392,6 +837,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
+                    left: 30%;
                 }
 
                 .dropdown-toggle {
@@ -638,8 +1084,38 @@ class CustomEmbed extends LibraryBase {
                     padding: 2px 6px;
                     border-radius: 4px;
                 }
-
-                /* Modal styles */
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
                 .modal {
                     display: none;
                     position: fixed;
@@ -675,7 +1151,7 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .modal-header {
-                    padding: 20px 24px;
+                    padding: 16px 20px;
                     border-bottom: 1px solid #e0e0e0;
                     display: flex;
                     justify-content: space-between;
@@ -684,13 +1160,13 @@ class CustomEmbed extends LibraryBase {
 
                 .modal-header h3 {
                     margin: 0;
-                    font-size: 1.25rem;
+                    font-size: 1.15rem;
                     color: #2c3e50;
                     font-weight: 600;
                 }
 
                 .modal-close {
-                    font-size: 1.5rem;
+                    font-size: 1.25rem;
                     color: #666;
                     cursor: pointer;
                     padding: 4px;
@@ -702,31 +1178,32 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .modal-body {
-                    padding: 24px;
+                    padding: 16px 20px;
                 }
 
                 .request-form {
                     display: flex;
                     flex-direction: column;
-                    gap: 20px;
+                    gap: 14px;
                 }
 
                 .form-group {
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 }
 
                 .form-group label {
                     font-weight: 500;
                     color: #2c3e50;
+                    font-size: 0.9rem;
                 }
 
                 .form-input, .form-select {
-                    padding: 8px 12px;
+                    padding: 6px 10px;
                     border: 1px solid #e0e0e0;
                     border-radius: 4px;
-                    font-size: 1rem;
+                    font-size: 0.9rem;
                 }
 
                 .form-input:focus, .form-select:focus {
@@ -738,16 +1215,17 @@ class CustomEmbed extends LibraryBase {
                 .form-actions {
                     display: flex;
                     justify-content: flex-end;
-                    gap: 12px;
-                    margin-top: 12px;
+                    gap: 10px;
+                    margin-top: 8px;
                 }
 
                 .button {
-                    padding: 8px 16px;
+                    padding: 6px 14px;
                     border-radius: 4px;
                     font-weight: 500;
                     cursor: pointer;
                     border: none;
+                    font-size: 0.9rem;
                 }
 
                 .button-primary {
@@ -769,10 +1247,10 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 .char-counter {
-                    font-size: 0.75rem;
+                    font-size: 0.7rem;
                     text-align: right;
                     display: none;
-                    margin-top: 4px;
+                    margin-top: 2px;
                 }
 
                 .char-counter.warning {
@@ -780,11 +1258,350 @@ class CustomEmbed extends LibraryBase {
                     color: #d32f2f;
                     font-weight: 600;
                 }
+
+                .no-projects-alert {
+                    padding: 16px;
+                    background: #fef3f3;
+                    border: 1px solid #f5a9a9;
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+
+                .no-projects-alert .alert-icon {
+                    font-size: 1.5rem;
+                    flex-shrink: 0;
+                }
+
+                .no-projects-alert .alert-content h4 {
+                    margin: 0 0 8px 0;
+                    font-size: 1rem;
+                    color: #c41c3b;
+                    font-weight: 600;
+                }
+
+                .no-projects-alert .alert-content p {
+                    margin: 0;
+                    font-size: 0.95rem;
+                    color: #5a2e2e;
+                    line-height: 1.5;
+                }
+
+                th.column-name-header-cell {
+                    position: relative;
+                    overflow: visible !important;
+                }
+
+                .dropdown-bridge {
+                    position: absolute;
+                    bottom: 0;         
+                    left: 0;           
+                    width: 0;         
+                    height: 0;
+                    overflow: visible; 
+                }
+
+                #columnNameDropdown {
+                    position: absolute;
+                    top: 4px;          
+                    left: 0;
+
+                    min-width: 250px;  
+                    width: max-content; 
+                    
+                    background: #ffffff;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    z-index: 99999;     
+                }
+
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;  
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;     
+                    text-overflow: ellipsis; 
+                    white-space: pre-wrap;
+                    word-break: break-word; 
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
+                .filter-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                }
+                .filter-row-fields {
+                    display: flex;
+                    flex: 1;
+                    gap: 8px;
+                    flex-wrap: nowrap;
+                }
+                .filter-row-fields .form-input {
+                    flex: 1;
+                    min-width: 120px;
+                }
+                .remove-filter-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: #d32f2f;
+                    display: flex;
+                    align-items: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                }
+                .remove-filter-btn:hover { background: #fdecea; }
+                .add-filter-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    margin-top: 8px;
+                    padding: 6px 14px;
+                    background: #f3f6f7;
+                    border: 1px dashed #4EC4BC;
+                    border-radius: 4px;
+                    color: #4EC4BC;
+                    font-size: 0.875rem;
+                    cursor: pointer;
+                }
+                .add-filter-btn:hover { background: #e6f7f6; }
+                .filter-empty-hint {
+                    font-size: 0.8rem;
+                    color: #9e9e9e;
+                    margin: 4px 0;
+                }
+
+                /* Range Date Picker Styles */
+                .range-picker-row-container {
+                    position: relative;
+                    flex: 1;
+                    min-width: 280px;
+                }
+
+                .range-picker-input {
+                    width: 100%;
+                    padding: 8px 12px;
+                    font-size: 0.9rem;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    outline: none;
+                    box-sizing: border-box;
+                    background: #fff;
+                    cursor: pointer;
+                }
+
+                .range-picker-dropdown {
+                    position: fixed;
+                    z-index: 10000;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    border: 1px solid #eee;
+                    padding: 12px 16px;
+                    width: 580px;
+                    display: none;
+                }
+
+                .range-picker-dropdown.show {
+                    display: block;
+                }
+
+                .range-picker-dropdown.drop-up {
+                    margin-bottom: 8px;
+                }
+
+                .range-picker-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #f0f0f0;
+                    padding-bottom: 8px;
+                    margin-bottom: 8px;
+                }
+
+                .range-picker-preview {
+                    font-weight: 500;
+                    color: #333;
+                    font-size: 0.85rem;
+                }
+
+                .range-picker-actions {
+                    display: flex;
+                    gap: 6px;
+                }
+
+                .range-picker-btn {
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: none;
+                }
+
+                .range-picker-btn-cancel {
+                    background: transparent;
+                    color: #666;
+                }
+
+                .range-picker-calendars {
+                    display: flex;
+                    gap: 16px;
+                }
+
+                .range-picker-calendar-box {
+                    flex: 1;
+                }
+
+                .range-picker-calendar-title {
+                    font-weight: 600;
+                    font-size: 0.75rem;
+                    margin-bottom: 6px;
+                    color: #666;
+                    text-transform: uppercase;
+                }
+
+                .range-picker-selects {
+                    display: flex;
+                    gap: 4px;
+                    margin-bottom: 8px;
+                }
+
+                .range-picker-select {
+                    flex: 1;
+                    padding: 2px 4px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 0.75rem;
+                }
+
+                .range-picker-weekdays, .range-picker-days {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    text-align: center;
+                }
+
+                .range-picker-weekdays {
+                    font-size: 0.65rem;
+                    font-weight: 700;
+                    color: #999;
+                    margin-bottom: 2px;
+                }
+
+                .range-picker-day {
+                    padding: 4px 0;
+                    font-size: 0.8rem;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    color: #333;
+                }
+
+                .range-picker-day:hover:not(.empty) {
+                    background-color: #f3f4f6;
+                }
+
+                .range-picker-day.selected-edge {
+                    background-color: #4f46e5 !important;
+                    color: white !important;
+                }
+
+                .range-picker-day.in-range {
+                    background-color: #eff6ff;
+                    border-radius: 0;
+                }
+
+                .range-picker-day.disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                    pointer-events: none;
+                }
+
+                .range-picker-days {
+                    row-gap: 1px;
+                }
+
+                .range-picker-day.empty {
+                    cursor: default;
+                }
+
+                .range-picker-year-container {
+                    position: relative;
+                    flex: 1;
+                }
+
+                .range-picker-year-input {
+                    width: 100%;
+                    padding: 2px 4px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 0.75rem;
+                    box-sizing: border-box;
+                    -moz-appearance: textfield;
+                }
+
+                .range-picker-year-input::-webkit-outer-spin-button,
+                .range-picker-year-input::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+
+                .range-picker-validation {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    background: #333;
+                    color: #fff;
+                    font-size: 0.65rem;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s;
+                    z-index: 10;
+                    margin-bottom: 4px;
+                }
+
+                .range-picker-validation.show {
+                    opacity: 1;
+                }
+                .form-error {
+                    display: block;
+                    color: #d32f2f;
+                    font-size: 0.85rem;
+                    margin-top: 4px;
+                    font-weight: 500;
+                }
             </style>
         `;
     }
 
-    public setupEventListeners = (): void => {
+    public setupEventListeners = (signal?: AbortSignal): void => {
         try {
             
             // Sort headers
@@ -877,6 +1694,47 @@ class CustomEmbed extends LibraryBase {
             setupCharCounter('RequestName', 'RequestNameCounter', 100);
             setupCharCounter('RequestPurpose', 'RequestPurposeCounter', 500);
 
+            // Add DateTime Filter listeners
+            const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
+            if (addFilterBtn) {
+                addFilterBtn.addEventListener('click', () => {
+                    this.dateTimeFilters.push({
+                        id: ++this._filterIdCounter,
+                        field: '', // Start with empty field to trigger "-- Select Field --" default
+                        from: '',
+                        to: ''
+                    });
+                    this.renderDateTimeFilters();
+                }, { signal });
+            }
+
+            const filtersContainer = document.getElementById('dateTimeFiltersContainer');
+            if (filtersContainer) {
+                filtersContainer.addEventListener('click', (e) => {
+                    const btn = (e.target as HTMLElement).closest('.remove-filter-btn') as HTMLElement | null;
+                    if (btn) {
+                        const id = parseInt(btn.dataset.filterId ?? '');
+                        this.dateTimeFilters = this.dateTimeFilters.filter(f => f.id !== id);
+                        this.renderDateTimeFilters();
+                    }
+                }, { signal });
+                filtersContainer.addEventListener('change', (e) => {
+                    const el = e.target as HTMLElement;
+                    const id = parseInt((el as any).dataset.filterId ?? '');
+                    const prop = (el as any).dataset.prop as keyof DateTimeFilter | undefined;
+                    const value = (el as HTMLInputElement | HTMLSelectElement).value;
+                    if (!isNaN(id) && prop) {
+                        const filter = this.dateTimeFilters.find(f => f.id === id);
+                        if (filter) {
+                            (filter as any)[prop] = value;
+                            if (prop === 'field') {
+                                this.renderDateTimeFilters();
+                            }
+                        }
+                    }
+                }, { signal });
+            }
+
             const requestForm = document.getElementById('requestForm');
             if (requestForm) {
                 requestForm.addEventListener('submit', async (e) => {
@@ -885,6 +1743,19 @@ class CustomEmbed extends LibraryBase {
                     try {
                         if (!this.dataSet) {
                             throw new Error('Dataset information not available');
+                        }
+
+                        // Validate filters: Ensure field is selected and range is picked
+                        const unselectedFieldFilters = this.dateTimeFilters.filter(f => !f.field);
+                        if (unselectedFieldFilters.length > 0) {
+                            alert('Please select a field for all date/time filters.');
+                            return;
+                        }
+
+                        const incompleteRangeFilters = this.dateTimeFilters.filter(f => !f.from || !f.to);
+                        if (incompleteRangeFilters.length > 0) {
+                            alert('Please select a valid date range for all filters.');
+                            return;
                         }
 
                         const formData = {
@@ -903,7 +1774,7 @@ class CustomEmbed extends LibraryBase {
                             return;
                         }
 
-                        const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
+                        const specialCharPattern = /[<>"`;\\{}|^~\[\]]/;
                         const invalidFields: string[] = [];
                         if (specialCharPattern.test(formData.requestName)) invalidFields.push('Request Name');
                         if (specialCharPattern.test(formData.purpose)) invalidFields.push('Purpose');
@@ -913,20 +1784,41 @@ class CustomEmbed extends LibraryBase {
                         }
 
                         const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            purpose: formData.purpose,
-                            requestName: formData.requestName,
+                            "DataSetID": formData.datasetId,
+                            "payload": {
+                                approvers: formData.approvers,
+                                assistProjectID: parseInt(formData.projectId),
+                                purpose: formData.purpose,
+                                requestName: formData.requestName,
+                                dateTimeFilters: this.dateTimeFilters.map(f => ({
+                                    field: f.field,
+                                    from: f.from || null,
+                                    to: f.to || null
+                                }))
+                            }
                         });
 
-                        if (response && response.status_code && response.status_code >= 400) {
-                            console.error(`Error ${response.status_code}: ${response.detail}`);
-                            alert(`Error ${response.status_code}: ${response.detail}`);
+                        console.log('API Response:', response);
+                        
+                        // Check for error response - API returns {detail: "error message"} on errors
+                        if (response && response.detail) {
+                            console.error(`Error: ${response.detail}`);
+                            const errorElement = document.getElementById('requestFormError');
+                            if (errorElement) {
+                                errorElement.textContent = response.detail;
+                            }
                             return;
                         }
                         
                         alert('Request submitted successfully!');
+                        
+                        // Clear the form for next submission
+                        const requestForm = document.getElementById('requestForm') as HTMLFormElement;
+                        if (requestForm) requestForm.reset();
+                        const errorElement = document.getElementById('requestFormError');
+                        if (errorElement) errorElement.textContent = '';
+                        this.dateTimeFilters = [];
+                        this.renderDateTimeFilters();
                         
                         // Close the modal on success
                         const modal = document.getElementById('requestDatasetModal');
@@ -934,9 +1826,22 @@ class CustomEmbed extends LibraryBase {
 
                     } catch (error) {
                         console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
+                        
+                        // Extract error message from exception
+                        let errorMessage = 'Failed to submit request. Please try again.';
+                        if (error instanceof Error) {
+                            errorMessage = error.message;
+                        } else if (typeof error === 'object' && error !== null) {
+                            const errObj = error as any;
+                            errorMessage = errObj.detail || errObj.message || JSON.stringify(error);
+                        }
+                        
+                        const errorElement = document.getElementById('requestFormError');
+                        if (errorElement) {
+                            errorElement.textContent = errorMessage;
+                        }
                     }
-                });
+                }, { signal });
             }
 
             // Redacted popover toggle
@@ -962,7 +1867,7 @@ class CustomEmbed extends LibraryBase {
 
                 // Attach redacted popover option click listeners once
                 redactedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleRedactedOptionClick);
+                    option.addEventListener('click', handleRedactedOptionClick, { signal });
                 });
 
                 redactedToggle.addEventListener('click', (event) => {
@@ -975,7 +1880,7 @@ class CustomEmbed extends LibraryBase {
                     redactedPopover.classList.remove('show');
                     redactedToggle.setAttribute('aria-expanded', 'false');
                     }
-                });
+                }, { signal });
             }
             // Deidentified popover toggle
             const deidentifiedToggle = document.getElementById('deidentifiedToggle');
@@ -1002,7 +1907,7 @@ class CustomEmbed extends LibraryBase {
 
                 // Attach deidentified popover option click listeners once
                 deidentifiedPopover.querySelectorAll('.popover-option').forEach(option => {
-                    option.addEventListener('click', handleDeidentifiedOptionClick);
+                    option.addEventListener('click', handleDeidentifiedOptionClick, { signal });
                 });
 
                 deidentifiedToggle.addEventListener('click', (event) => {
@@ -1015,7 +1920,7 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
                     }
-                });
+                }, { signal });
             }
             // Close popovers when clicking outside
             document.addEventListener('click', (event) => {
@@ -1032,25 +1937,81 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
                 }
-            });
+            }, { signal });
 
-            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-                if (searchInput) {
-                    searchInput.addEventListener('input', () => {
-                        this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
-                        this.renderColumnNameCheckboxes();
-                    });
-                }
-
-            const columnDropdown = document.getElementById('columnNameDropdown');
+            const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                const searchInput = dropdownMenu.querySelector<HTMLInputElement>('#columnNameSearchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
+                        this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
+                    });
+                }
+                let activeScrollAncestors: HTMLElement[] = [];
+
+                const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
+                    const ancestors: HTMLElement[] = [];
+                    let current = el.parentElement;
+                    while (current && current !== document.body) {
+                        const style = window.getComputedStyle(current);
+                        if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+                            ancestors.push(current);
+                        }
+                        current = current.parentElement;
+                    }
+                    return ancestors;
+                };
+
+                // Helper function to calculate and update position in real-time
+                const repositionDropdown = () => {
+                    const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                    if (thCell && dropdownMenu.classList.contains('show')) {
+                        const rect = thCell.getBoundingClientRect();
+                        dropdownMenu.style.position = 'fixed';
+                        dropdownMenu.style.top = `${rect.bottom}px`;
+                        dropdownMenu.style.left = `${rect.left}px`;
+                        dropdownMenu.style.right = 'auto';
+                        dropdownMenu.style.minWidth = '250px';
+                        dropdownMenu.style.zIndex = '2000001';
+                    }
+                };
+
+                const cleanupScrollListeners = () => {
+                    window.removeEventListener('scroll', repositionDropdown);
+                    activeScrollAncestors.forEach(el => el.removeEventListener('scroll', repositionDropdown));
+                    activeScrollAncestors = [];
+                };
+
                 const toggleFn = (event: Event) => {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
+
+                    if (isVisible) {
+                        // Move to body to bypass layout clipping rules
+                        document.body.appendChild(dropdownMenu);
+                        
+                        // Calculate position immediately upon opening
+                        repositionDropdown();
+
+                        // Listen to window scroll and all scrollable ancestors
+                        window.addEventListener('scroll', repositionDropdown, { passive: true });
+                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                        if (thCell) {
+                            activeScrollAncestors = getScrollableAncestors(thCell);
+                            activeScrollAncestors.forEach(el => el.addEventListener('scroll', repositionDropdown, { passive: true }));
+                        }
+                    } else {
+                        cleanupScrollListeners();
+                    }
                 };
 
                 headerToggle.addEventListener('click', toggleFn);
@@ -1061,10 +2022,8 @@ class CustomEmbed extends LibraryBase {
                     }
                 });
 
-                // Prevent clicks inside the dropdown from closing it
                 dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
 
-                // Wire sort buttons inside dropdown
                 const sortAscBtn = dropdownMenu.querySelector('button[data-action="sort-asc"]') as HTMLButtonElement | null;
                 const sortDescBtn = dropdownMenu.querySelector('button[data-action="sort-desc"]') as HTMLButtonElement | null;
                 const setSortButtonsState = () => {
@@ -1100,12 +2059,21 @@ class CustomEmbed extends LibraryBase {
                 }
                 setSortButtonsState();
 
-                // Close when clicking outside
+                // Ensure we close and cleanup if the user clicks away
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
-                });
+                    cleanupScrollListeners();
+                }, { signal });
+
+                // Close dropdown on browser back/forward navigation
+                window.addEventListener('popstate', () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
+                }, { signal });
             }
+
 
 
         } catch (error) {
@@ -1131,11 +2099,11 @@ class CustomEmbed extends LibraryBase {
         paginatedColumns.forEach((column: DataSetColumn) => {
             columnsHtml += `
                 <tr>
-                    <td>${column.ColumnName || ''}</td>
-                    <td><span class="mui-chip">${column.ColumnType || ''}</span></td>
-                    <td>${column.LogicalColumnName || ''}</td>
-                    <td>${column.BusinessDescription || 'N/A'}</td>
-                    <td><span class="code-cell">${column.ExampleValue || 'N/A'}</span></td>
+                    <td>${this.escapeHtml(column.ColumnName || '')}</td>
+                    <td><span class="mui-chip">${this.escapeHtml(column.ColumnType || '')}</span></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.LogicalColumnName || '')}">${this.escapeHtml(column.LogicalColumnName || '')}</div></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.BusinessDescription || 'N/A')}">${this.escapeHtml(column.BusinessDescription || 'N/A')}</div></td>
+                    <td><div class="cell-text-wrap" title="${this.escapeHtml(column.ExampleValue || 'N/A')}"><span class="code-cell">${this.escapeHtml(column.ExampleValue || 'N/A')}</span></div></td>
                     <td>${column.Redact ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                     <td>${column.Deidentify ? '<span class="mui-chip success">Yes</span>' : '<span class="mui-chip">No</span>'}</td>
                 </tr>
@@ -1227,13 +2195,18 @@ class CustomEmbed extends LibraryBase {
         selectAllContainer.appendChild(selectAllWrapper);
 
         selectAllCheckbox.addEventListener('change', (e) => {
-            const checked = (e.target as HTMLInputElement).checked;
+            const isChecked = (e.target as HTMLInputElement).checked;
             options.forEach(opt => {
-                if (checked) this.selectedColumnNames.add(opt);
+                if (isChecked) this.selectedColumnNames.add(opt);
                 else this.selectedColumnNames.delete(opt);
             });
-            // keep dropdown open; just re-render
-            this.renderColumnNameCheckboxes();
+            // Directly update individual checkbox states without rebuilding DOM
+            const checkboxInputs = listContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not(#columnNameSelectAll)');
+            checkboxInputs.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            selectAllCheckbox.indeterminate = false;
+            this.updateColumnFilterCount();
             this.updateTable();
         });
 
@@ -1315,36 +2288,234 @@ class CustomEmbed extends LibraryBase {
 
 
 
+    private loadDatetimeFields = async (): Promise<void> => {
+        try {
+            const dataSetID = this.dataSet?.DataSetID;
+            if (!dataSetID) return;
+            const result = await window.loomeApi.runApiRequest(API_GET_DATETIME_FIELDS, { data_set_id: dataSetID });
+            this.datetimeFields = Array.isArray(result)
+                ? result.map((f: any) => ({
+                    DataSetColumnID: f.DataSetColumnID,
+                    ColumnName: f.ColumnName
+                }))
+                : [];
+        } catch (e) {
+            console.warn('Could not load datetime fields:', e);
+            this.datetimeFields = [];
+        }
+    };
+
+    private generateFilterRowHtml = (filter: DateTimeFilter): string => {
+        const usedFields = new Set(this.dateTimeFilters.filter(f => f.id !== filter.id).map(f => f.field));
+        const fieldOptions = this.datetimeFields
+            .filter(f => !usedFields.has(f.ColumnName) || f.ColumnName === filter.field)
+            .map(f => `<option value="${this.escapeHtml(f.ColumnName)}" ${filter.field === f.ColumnName ? 'selected' : ''}>${this.escapeHtml(f.ColumnName)}</option>`)
+            .join('');
+
+        return `
+            <div class="filter-row" data-filter-id="${filter.id}">
+                <div class="filter-row-fields">
+                    <select class="form-input filter-field-select" data-filter-id="${filter.id}" data-prop="field" style="flex: 0 0 150px;">
+                        <option value="">Select Field</option>
+                        ${fieldOptions}
+                    </select>
+                    <div class="range-picker-row-container" data-filter-id="${filter.id}">
+                        <input type="text" class="range-picker-input" placeholder="Select date range..." readonly="">
+                    </div>
+                </div>
+                <button type="button" class="remove-filter-btn" data-filter-id="${filter.id}" title="Remove filter">
+                    <span class="material-icons" style="font-size:18px">delete</span>
+                </button>
+            </div>
+        `;
+    };
+
+    private renderDateTimeFilters = (): void => {
+        const container = document.getElementById('dateTimeFiltersContainer');
+        if (!container) return;
+
+        // Cleanup existing range pickers
+        this.rangePickers.forEach(p => p.destroy());
+        this.rangePickers.clear();
+
+        if (this.dateTimeFilters.length === 0) {
+            container.innerHTML = '<p class="filter-empty-hint">No filters added.</p>';
+        } else {
+            container.innerHTML = this.dateTimeFilters.map(f => this.generateFilterRowHtml(f)).join('');
+
+            // Initialize new range pickers
+            this.dateTimeFilters.forEach(filter => {
+                const pickerContainer = container.querySelector(`.range-picker-row-container[data-filter-id="${filter.id}"]`) as HTMLElement;
+                if (pickerContainer) {
+                    const picker = new RangeDatePicker(
+                        pickerContainer,
+                        filter.from,
+                        filter.to,
+                        (start, end) => {
+                            const fmt = (d: Date) => {
+                                const y = d.getFullYear();
+                                const m = d.getMonth() + 1;
+                                const day = d.getDate();
+                                return `${y}-${m < 10 ? '0' + m : m}-${day < 10 ? '0' + day : day}`;
+                            };
+                            // Format: YYYY-MM-DD HH:mm:ss.SSS for SQL datetime compatibility
+                            filter.from = start ? `${fmt(start)} 00:00:00.000` : '';
+                            filter.to = end ? `${fmt(end)} 23:59:59.999` : '';
+                        }
+                    );
+                    this.rangePickers.set(filter.id, picker);
+                }
+            });
+        }
+
+        const addFilterBtn = document.getElementById('addDateTimeFilterBtn') as HTMLButtonElement | null;
+        if (addFilterBtn && this.datetimeFields.length > 0) {
+            if (this.dateTimeFilters.length >= this.datetimeFields.length) {
+                addFilterBtn.style.display = 'none';
+            } else {
+                addFilterBtn.style.display = 'inline-flex';
+            }
+        }
+    };
+
+    private escapeHtml = (value: unknown): string => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    private safeParseJson(response: any): any {
+        if (typeof response === 'string') {
+            try {
+                return JSON.parse(response);
+            } catch {
+                return response;
+            }
+        }
+        return response;
+    }
+
+    private getFromAPI = async (API_ID: string, initialParams: any): Promise<any[]> => {
+        let allResults: any[] = [];
+
+        try {
+            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const parsedInitial = this.safeParseJson(initialResponse);
+
+            // Early exit if the response is null, undefined, etc.
+            if (!parsedInitial) {
+                console.log("API returned no data.");
+                return [];
+            }
+
+            // --- DETECTION LOGIC ---
+            if (parsedInitial.PageCount !== undefined && Array.isArray(parsedInitial.Results)) {
+                // --- PAGINATED PATH ---
+                console.log("Detected a paginated response.");
+
+                allResults = parsedInitial.Results;
+                const totalPages = parsedInitial.PageCount;
+
+                if (totalPages > 1) {
+                    for (let page = 2; page <= totalPages; page++) {
+                        console.log(`Fetching page ${page} of ${totalPages}...`);
+
+                        // Construct params for the next page, preserving other initial params
+                        const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
+                        console.log(params);
+                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const parsed = this.safeParseJson(response);
+
+                        if (parsed && parsed.Results) {
+                            allResults = allResults.concat(parsed.Results);
+                        }
+                    }
+                }
+            } else {
+                // --- NON-PAGINATED PATH ---
+                console.log("Detected a non-paginated response.");
+
+                if (Array.isArray(parsedInitial)) {
+                    allResults = parsedInitial;
+                } else {
+                    allResults = [parsedInitial];
+                }
+            }
+
+            console.log(`Finished fetching for API ID ${API_ID}. Total items: ${allResults.length}`);
+            return allResults;
+
+        } catch (error) {
+            console.error(`An error occurred while fetching from ${API_ID}:`, error);
+            return [];
+        }
+    }
+
     private createRequestModal = async (): Promise<void> => {
         const modal = document.getElementById('requestDatasetModal');
         if (!modal) return;
 
         try {
-            console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
-
-            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
-                throw new Error(`Invalid API response structure.`);
-            }
+            // Load available datetime fields for filters
+            await this.loadDatetimeFields();
+            
+            // Render initial (empty) filter UI
+            this.renderDateTimeFilters();
+            
+            console.log('Fetching all projects from all pages...');
+            
+            // Use the new generic pagination function
+            const allProjects = await this.getFromAPI(API_GET_PROJECTS, {
+                "page": 1,
+                "page_size": 50
+            });
 
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
             if (!projectSelect) {
                 throw new Error('Project select element not found');
             }
 
+            const requestForm = document.getElementById('requestForm');
+            const submitBtn = requestForm?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
-            projectSelect.appendChild(defaultOption);
 
-            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
-                if (project.IsActive) {
+            // Check if there are any active projects
+            const activeProjects = Array.isArray(allProjects) 
+                ? allProjects.filter((p: ProjectResponse['Results'][0]) => p.IsActive)
+                : [];
+
+            if (activeProjects.length === 0) {
+                // No projects available - show alert message instead of dropdown
+                const alertBox = document.createElement('div');
+                alertBox.className = 'no-projects-alert';
+                alertBox.innerHTML = `
+                  <div class="alert-icon">⚠️</div>
+                  <div class="alert-content">
+                    <h4>No Workspace Projects Available</h4>
+                    <p>You do not currently have access to any workspace projects. Please contact your data administrator to request project access.</p>
+                  </div>
+                `;
+                projectSelect.parentElement?.replaceChild(alertBox, projectSelect);
+                if (submitBtn) submitBtn.disabled = true;  // Disable submit
+                console.log('No active projects found for the current user.');
+            } else {
+                // Add back default option only when we have projects
+                projectSelect.appendChild(defaultOption);
+                
+                // Populate with all active projects from all pages
+                activeProjects.forEach((project: ProjectResponse['Results'][0]) => {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();
                     option.textContent = project.Name;
                     option.title = project.Description || '';
                     projectSelect.appendChild(option);
-                }
-            });
+                });
+                projectSelect.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;  // Re-enable submit
+            }
 
             modal.classList.add('show');
             
@@ -1375,7 +2546,7 @@ class CustomEmbed extends LibraryBase {
             }
         }
     }
-
+    
     private disableBrowserCache(): void {
         const head = document.head;
         const metaTags = [
@@ -1393,6 +2564,20 @@ class CustomEmbed extends LibraryBase {
                 head.appendChild(meta);
             }
         });
+    }
+
+    public dispose = (): void => {
+        if (this._listenerController) {
+            this._listenerController.abort();
+            this._listenerController = null;
+        }
+
+        // Clean up range pickers
+        this.rangePickers.forEach(p => p.destroy());
+        this.rangePickers.clear();
+
+        const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+        if (orphanedMenu) orphanedMenu.remove();
     }
 
     private async loadResources(): Promise<void> {

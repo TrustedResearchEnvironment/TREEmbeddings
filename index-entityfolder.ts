@@ -65,6 +65,13 @@ interface ProjectResponse {
     }[];
 }
 
+interface DateTimeFilter {
+    id: number;
+    field: string;
+    from: string;
+    to: string;
+}
+
 // Add new interface for folder file data
 interface DataSetFolderFile {
     FileType: string;
@@ -99,6 +106,8 @@ class CustomEmbed extends LibraryBase {
     private redactedFilter: 'all' | 'yes' | 'no' = 'all';
     private deidentifiedFilter: 'all' | 'yes' | 'no' = 'all';
     private columnNameSortDirection: "asc" | "desc" = "asc";
+    private dateTimeFilters: DateTimeFilter[] = [];
+    private _listenerController: AbortController | null = null;
 
 
     constructor(element: HTMLElement, entityUrl: string, params: Customization.ParamValue[], settings: Customization.Setting[],
@@ -128,6 +137,14 @@ class CustomEmbed extends LibraryBase {
 
     public buildPage = async (): Promise<void> => {
         try {
+            // Abort any stale document/window listeners from a previous session
+            if (this._listenerController) this._listenerController.abort();
+            this._listenerController = new AbortController();
+
+            // Clean up any orphaned dropdown menu left in document.body from a previous session
+            const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+            if (orphanedMenu) orphanedMenu.remove();
+
             this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
@@ -161,9 +178,19 @@ class CustomEmbed extends LibraryBase {
 
             this.element.innerHTML = styles + datasetHtml;
 
-            this.setupEventListeners();
+            if (this.dataSet.IsActive == false) {
+                const requestBtn = document.getElementById('requestDatasetBtn') as HTMLButtonElement;
+                if (requestBtn) {
+                    requestBtn.disabled = true;
+                    requestBtn.textContent = "Data Set is Inactive";
+                }
+                alert("This dataset is currently inactive and cannot be requested. Please contact your platform administrator for more information.");
+            }
+
+            this.setupEventListeners(this._listenerController.signal);
             this.renderColumnNameCheckboxes();
             this.updateTable();
+            this.renderVersionFooter();
         } catch (ex: unknown) {
             console.error("Error:", ex);
             const error = ex as Error;
@@ -189,6 +216,7 @@ class CustomEmbed extends LibraryBase {
                                     <label for="RequestName">Request Name</label>
                                     <input id="RequestName" class="form-input" placeholder="Name for this request" required maxlength="100">
                                     <span class="char-counter" id="RequestNameCounter">0/100</span>
+                                    <span class="form-error" id="requestFormError"></span>
                                 </div>
                                 <div class="form-group">
                                     <label for="RequestPurpose">Purpose</label>
@@ -316,18 +344,13 @@ class CustomEmbed extends LibraryBase {
 
     
     private generateStyles(): string {
-        if (!document.querySelector('#material-icons-font')) {
-            const link = document.createElement('link');
-            link.id = 'material-icons-font';
-            link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-            document.head.appendChild(link);
-        }
         return `
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
             <style>
                 #datasetRoot {
                     padding: 24px;
                     font-family: "Roboto", "Helvetica", "Arial";
+                    position: relative;
                 }
                 #entity-page-embed {
                     overflow:scroll;
@@ -373,6 +396,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 #dataTable {
                     width: 100%;
+                    min-height: 500px;
                     border-collapse: collapse;
                 }
                 #dataTable th {
@@ -394,6 +418,7 @@ class CustomEmbed extends LibraryBase {
                 }
                 .column-name-header .dropdown {
                     position: relative;
+                    left: 30%;
                 }
                 .dropdown-toggle {
                     display: inline-flex;
@@ -517,7 +542,7 @@ class CustomEmbed extends LibraryBase {
                     transform-origin: top right;
                 }
                 .dropdown-menu.show {
-                    display: flex;
+                    display: block !important;
                     width: fit-content;
                 }
                 .dropdown-search input {
@@ -639,8 +664,38 @@ class CustomEmbed extends LibraryBase {
                     padding: 2px 6px;
                     border-radius: 4px;
                 }
-
-                /* Modal styles */
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
                 .modal {
                     display: none;
                     position: fixed;
@@ -781,11 +836,108 @@ class CustomEmbed extends LibraryBase {
                     color: #d32f2f;
                     font-weight: 600;
                 }
+
+                .no-projects-alert {
+                    padding: 16px;
+                    background: #fef3f3;
+                    border: 1px solid #f5a9a9;
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+
+                .no-projects-alert .alert-icon {
+                    font-size: 1.5rem;
+                    flex-shrink: 0;
+                }
+
+                .no-projects-alert .alert-content h4 {
+                    margin: 0 0 8px 0;
+                    font-size: 1rem;
+                    color: #c41c3b;
+                    font-weight: 600;
+                }
+
+                .no-projects-alert .alert-content p {
+                    margin: 0;
+                    font-size: 0.95rem;
+                    color: #5a2e2e;
+                    line-height: 1.5;
+                }
+
+                .column-name-header {
+                    position: relative; 
+                }
+
+                #columnNameDropdown {
+                    position: absolute;
+                    top: 100%;          
+                    left: 0;            
+                    display: none; 
+                    min-width: 250px; 
+                    
+                    background: #ffffff;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                    z-index: 999999; 
+                    padding: 12px;
+                    box-sizing: border-box;
+                }
+
+                .dropdown-search input {
+                    width: 100%;
+                    padding: 6px 10px;
+                    margin-bottom: 8px;
+                    box-sizing: border-box;
+                }
+
+                .cell-text-wrap {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;  
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;     
+                    text-overflow: ellipsis; 
+                    white-space: pre-wrap;
+                    word-break: break-word; 
+                    line-height: 1.4;
+                    cursor: default;
+                    position: relative;
+                }
+                .cell-text-wrap:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    left: 0;
+                    top: 100%;
+                    z-index: 9999;
+                    background: #fff;
+                    border: 1px solid #d0d7e0;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+                    padding: 8px 12px;
+                    min-width: 200px;
+                    max-width: 400px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    font-size: 0.875rem;
+                    line-height: 1.5;
+                    color: #1f2a37;
+                    pointer-events: none;
+                }
+                .form-error {
+                    display: block;
+                    color: #d32f2f;
+                    font-size: 0.85rem;
+                    margin-top: 4px;
+                    font-weight: 500;
+                }
+
             </style>
         `;
     }
 
-    public setupEventListeners = (): void => {
+    public setupEventListeners = (signal?: AbortSignal): void => {
         try {
             // Sort headers
             const headers = document.querySelectorAll('#dataTable th[data-sort]');
@@ -833,7 +985,8 @@ class CustomEmbed extends LibraryBase {
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(this.allColumns.length / this.rowsPerPage);
+                    const totalEntries = this.getFilteredColumns().length;
+                    const totalPages = Math.max(1, Math.ceil(totalEntries / this.rowsPerPage));
                     if (this.currentPage < totalPages) {
                         this.currentPage++;
                         this.updateTable();
@@ -897,12 +1050,13 @@ class CustomEmbed extends LibraryBase {
                         const emptyFields: string[] = [];
                         if (!formData.requestName) emptyFields.push('Request Name');
                         if (!formData.purpose) emptyFields.push('Purpose');
+                        if (!formData.projectId) emptyFields.push('Assist Project');
                         if (emptyFields.length > 0) {
                             alert(`The following field(s) cannot be empty or whitespace only: ${emptyFields.join(', ')}.`);
                             return;
                         }
 
-                        const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
+                        const specialCharPattern = /[<>"`;\\{}|^~\[\]]/;
                         const invalidFields: string[] = [];
                         if (specialCharPattern.test(formData.requestName)) invalidFields.push('Request Name');
                         if (specialCharPattern.test(formData.purpose)) invalidFields.push('Purpose');
@@ -913,20 +1067,39 @@ class CustomEmbed extends LibraryBase {
 
 
                         const response = await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
-                            DataSetID: formData.datasetId,
-                            approvers: formData.approvers,
-                            assistProjectID: parseInt(formData.projectId),
-                            purpose: formData.purpose,
-                            requestName: formData.requestName,
+                            "DataSetID": formData.datasetId,
+                            "payload": {
+                                approvers: formData.approvers,
+                                assistProjectID: parseInt(formData.projectId),
+                                purpose: formData.purpose,
+                                requestName: formData.requestName,
+                                dateTimeFilters: this.dateTimeFilters.map(f => ({
+                                    field: f.field,
+                                    from: f.from || null,
+                                    to: f.to || null
+                                }))
+                            }
                         });
 
-                        if (response && response.status_code && response.status_code >= 400) {
-                            console.error(`Error ${response.status_code}: ${response.detail}`);
-                            alert(`Error ${response.status_code}: ${response.detail}`);
+                        console.log('API Response:', response);
+                        
+                        // Check for error response - API returns {detail: "error message"} on errors
+                        if (response && response.detail) {
+                            console.error(`Error: ${response.detail}`);
+                            const errorElement = document.getElementById('requestFormError');
+                            if (errorElement) {
+                                errorElement.textContent = response.detail;
+                            }
                             return;
                         }
                          
                         alert('Request submitted successfully!');
+                        
+                        // Clear the form for next submission
+                        const requestForm = document.getElementById('requestForm') as HTMLFormElement;
+                        if (requestForm) requestForm.reset();
+                        const errorElement = document.getElementById('requestFormError');
+                        if (errorElement) errorElement.textContent = '';
                         
                         // Close the modal on success
                         const modal = document.getElementById('requestDatasetModal');
@@ -934,7 +1107,20 @@ class CustomEmbed extends LibraryBase {
 
                     } catch (error) {
                         console.error('Error submitting request:', error);
-                        alert('Failed to submit request. Please try again.');
+                        
+                        // Extract error message from exception
+                        let errorMessage = 'Failed to submit request. Please try again.';
+                        if (error instanceof Error) {
+                            errorMessage = error.message;
+                        } else if (typeof error === 'object' && error !== null) {
+                            const errObj = error as any;
+                            errorMessage = errObj.detail || errObj.message || JSON.stringify(error);
+                        }
+                        
+                        const errorElement = document.getElementById('requestFormError');
+                        if (errorElement) {
+                            errorElement.textContent = errorMessage;
+                        }
                     }
                 });
             }
@@ -1011,25 +1197,81 @@ class CustomEmbed extends LibraryBase {
                     deidentifiedPopover.classList.remove('show');
                     deidentifiedToggle.setAttribute('aria-expanded', 'false');
                 }
-            });
+            }, { signal });
 
-            const searchInput = document.getElementById('columnNameSearchInput') as HTMLInputElement | null;
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    this.columnNameSearchTerm = (searchInput.value || '').trim().toLowerCase();
-                    this.renderColumnNameCheckboxes();
-                });
-            }
-
-            const columnDropdown = document.getElementById('columnNameDropdown');
+            const columnDropdown = document.getElementById('columnNameDropdown') as HTMLDivElement | null;
             const dropdownMenu = columnDropdown?.querySelector('.dropdown-menu') as HTMLDivElement | null;
             const headerToggle = document.getElementById('columnNameToggle') as HTMLElement | null;
 
             if (headerToggle && dropdownMenu) {
+                const searchInput = dropdownMenu.querySelector<HTMLInputElement>('#columnNameSearchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', () => {
+                        this.columnNameSearchTerm = searchInput.value.trim().toLowerCase();
+                        const selStart = searchInput.selectionStart;
+                        const selEnd = searchInput.selectionEnd;
+                        this.renderColumnNameCheckboxes();
+                        searchInput.focus();
+                        try { searchInput.setSelectionRange(selStart ?? 0, selEnd ?? 0); } catch (_) {}
+                    });
+                }
+                let activeScrollAncestors: HTMLElement[] = [];
+
+                const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
+                    const ancestors: HTMLElement[] = [];
+                    let current = el.parentElement;
+                    while (current && current !== document.body) {
+                        const style = window.getComputedStyle(current);
+                        if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+                            ancestors.push(current);
+                        }
+                        current = current.parentElement;
+                    }
+                    return ancestors;
+                };
+
+                // Helper function to calculate and update position in real-time
+                const repositionDropdown = () => {
+                    const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                    if (thCell && dropdownMenu.classList.contains('show')) {
+                        const rect = thCell.getBoundingClientRect();
+                        dropdownMenu.style.position = 'fixed';
+                        dropdownMenu.style.top = `${rect.bottom}px`;
+                        dropdownMenu.style.left = `${rect.left}px`;
+                        dropdownMenu.style.right = 'auto';
+                        dropdownMenu.style.minWidth = '250px';
+                        dropdownMenu.style.zIndex = '2000001';
+                    }
+                };
+
+                const cleanupScrollListeners = () => {
+                    window.removeEventListener('scroll', repositionDropdown);
+                    activeScrollAncestors.forEach(el => el.removeEventListener('scroll', repositionDropdown));
+                    activeScrollAncestors = [];
+                };
+
                 const toggleFn = (event: Event) => {
                     event.stopPropagation();
                     const isVisible = dropdownMenu.classList.toggle('show');
                     headerToggle.setAttribute('aria-expanded', String(isVisible));
+
+                    if (isVisible) {
+                        // Move to body to bypass layout clipping rules
+                        document.body.appendChild(dropdownMenu);
+                        
+                        // Calculate position immediately upon opening
+                        repositionDropdown();
+
+                        // Listen to window scroll and all scrollable ancestors
+                        window.addEventListener('scroll', repositionDropdown, { passive: true });
+                        const thCell = headerToggle.closest('.column-name-header-cell') as HTMLElement | null;
+                        if (thCell) {
+                            activeScrollAncestors = getScrollableAncestors(thCell);
+                            activeScrollAncestors.forEach(el => el.addEventListener('scroll', repositionDropdown, { passive: true }));
+                        }
+                    } else {
+                        cleanupScrollListeners();
+                    }
                 };
 
                 headerToggle.addEventListener('click', toggleFn);
@@ -1077,13 +1319,24 @@ class CustomEmbed extends LibraryBase {
                 }
                 setSortButtonsState();
 
+                // Ensure we close and cleanup if the user clicks away
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('show');
                     headerToggle.setAttribute('aria-expanded', 'false');
-                });
+                    cleanupScrollListeners();
+                }, { signal });
+
+                // Close dropdown on browser back/forward navigation
+                window.addEventListener('popstate', () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
+                }, { signal });
             }
 
 
+
+        
         } catch (error) {
             console.error('Error setting up event listeners:', error);
         }
@@ -1236,13 +1489,20 @@ class CustomEmbed extends LibraryBase {
         selectAllContainer.appendChild(selectAllLabel);
 
         selectAllCheckbox.addEventListener('change', () => {
-            if (selectAllCheckbox.checked) {
+            const isChecked = selectAllCheckbox.checked;
+            if (isChecked) {
                 visibleOptions.forEach(name => this.selectedColumnNames.add(name));
             } else {
                 visibleOptions.forEach(name => this.selectedColumnNames.delete(name));
             }
+            // Directly update individual checkbox states without rebuilding DOM
+            const checkboxInputs = listContainer.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-column-name]');
+            checkboxInputs.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            selectAllCheckbox.indeterminate = false;
             this.currentPage = 1;
-            this.renderColumnNameCheckboxes();
+            this.updateColumnFilterCount();
             this.updateTable();
         });
 
@@ -1339,38 +1599,131 @@ class CustomEmbed extends LibraryBase {
         return results;
     }
 
+    private safeParseJson(response: any): any {
+        if (typeof response === 'string') {
+            try {
+                return JSON.parse(response);
+            } catch {
+                return response;
+            }
+        }
+        return response;
+    }
 
+    private getFromAPI = async (API_ID: string, initialParams: any): Promise<any[]> => {
+        let allResults: any[] = [];
+
+        try {
+            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const parsedInitial = this.safeParseJson(initialResponse);
+
+            // Early exit if the response is null, undefined, etc.
+            if (!parsedInitial) {
+                console.log("API returned no data.");
+                return [];
+            }
+
+            // --- DETECTION LOGIC ---
+            if (parsedInitial.PageCount !== undefined && Array.isArray(parsedInitial.Results)) {
+                // --- PAGINATED PATH ---
+                console.log("Detected a paginated response.");
+
+                allResults = parsedInitial.Results;
+                const totalPages = parsedInitial.PageCount;
+
+                if (totalPages > 1) {
+                    for (let page = 2; page <= totalPages; page++) {
+                        console.log(`Fetching page ${page} of ${totalPages}...`);
+
+                        // Construct params for the next page, preserving other initial params
+                        const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
+                        console.log(params);
+                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const parsed = this.safeParseJson(response);
+
+                        if (parsed && parsed.Results) {
+                            allResults = allResults.concat(parsed.Results);
+                        }
+                    }
+                }
+            } else {
+                // --- NON-PAGINATED PATH ---
+                console.log("Detected a non-paginated response.");
+
+                if (Array.isArray(parsedInitial)) {
+                    allResults = parsedInitial;
+                } else {
+                    allResults = [parsedInitial];
+                }
+            }
+
+            console.log(`Finished fetching for API ID ${API_ID}. Total items: ${allResults.length}`);
+            return allResults;
+
+        } catch (error) {
+            console.error(`An error occurred while fetching from ${API_ID}:`, error);
+            return [];
+        }
+    }
 
     private createRequestModal = async (): Promise<void> => {
         const modal = document.getElementById('requestDatasetModal');
         if (!modal) return;
 
         try {
-            console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_ASSIST_PROJECTS, {});
-
-            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
-                throw new Error(`Invalid API response structure.`);
-            }
+            console.log('Fetching all projects from all pages...');
+            
+            // Use the new generic pagination function
+            const allProjects = await this.getFromAPI(API_ASSIST_PROJECTS, {
+                "page": 1,
+                "page_size": 50
+            });
 
             const projectSelect = document.getElementById('ProjectID') as HTMLSelectElement;
             if (!projectSelect) {
                 throw new Error('Project select element not found');
             }
 
+            const requestForm = document.getElementById('requestForm');
+            const submitBtn = requestForm?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+
             const defaultOption = projectSelect.options[0];
             projectSelect.innerHTML = '';
-            projectSelect.appendChild(defaultOption);
 
-            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
-                if (project.IsActive) {
+            // Check if there are any active projects
+            const activeProjects = Array.isArray(allProjects) 
+                ? allProjects.filter((p: ProjectResponse['Results'][0]) => p.IsActive)
+                : [];
+
+            if (activeProjects.length === 0) {
+                // No projects available - show alert message instead of dropdown
+                const alertBox = document.createElement('div');
+                alertBox.className = 'no-projects-alert';
+                alertBox.innerHTML = `
+                  <div class="alert-icon">⚠️</div>
+                  <div class="alert-content">
+                    <h4>No Workspace Projects Available</h4>
+                    <p>You do not currently have access to any workspace projects. Please contact your data administrator to request project access.</p>
+                  </div>
+                `;
+                projectSelect.parentElement?.replaceChild(alertBox, projectSelect);
+                if (submitBtn) submitBtn.disabled = true;  // Disable submit
+                console.log('No active projects found for the current user');
+            } else {
+                // Add back default option only when we have projects
+                projectSelect.appendChild(defaultOption);
+                
+                // Populate with all active projects from all pages
+                activeProjects.forEach((project: ProjectResponse['Results'][0]) => {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();
                     option.textContent = project.Name;
                     option.title = project.Description || '';
                     projectSelect.appendChild(option);
-                }
-            });
+                });
+                projectSelect.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;  // Re-enable submit
+            }
 
             modal.classList.add('show');
             
@@ -1402,6 +1755,7 @@ class CustomEmbed extends LibraryBase {
         }
     }
 
+
     private disableBrowserCache(): void {
         const head = document.head;
         const metaTags = [
@@ -1419,6 +1773,15 @@ class CustomEmbed extends LibraryBase {
                 head.appendChild(meta);
             }
         });
+    }
+
+    public dispose = (): void => {
+        if (this._listenerController) {
+            this._listenerController.abort();
+            this._listenerController = null;
+        }
+        const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
+        if (orphanedMenu) orphanedMenu.remove();
     }
 
     private async loadResources(): Promise<void> {
