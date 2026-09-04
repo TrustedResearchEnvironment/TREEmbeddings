@@ -1056,7 +1056,7 @@ class CustomEmbed extends LibraryBase {
                             return;
                         }
 
-                        const specialCharPattern = /[<>"'`;\\{}|^~\[\]]/;
+                        const specialCharPattern = /[<>"`;\\{}|^~\[\]]/;
                         const invalidFields: string[] = [];
                         if (specialCharPattern.test(formData.requestName)) invalidFields.push('Request Name');
                         if (specialCharPattern.test(formData.purpose)) invalidFields.push('Purpose');
