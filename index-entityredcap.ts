@@ -808,18 +808,13 @@ class CustomEmbed extends LibraryBase {
                 }
 
                 #columnNameDropdown {
-                    position: absolute;
-                    top: 4px;          
-                    left: 0;
-
-                    min-width: 250px;  
-                    width: max-content; 
-                    
-                    background: #ffffff;
-                    border: 1px solid #dee2e6;
-                    border-radius: 8px;
-                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-                    z-index: 99999;     
+                    position: relative;
+                    min-width: 0;
+                    width: auto;
+                    background: transparent;
+                    border: 0;
+                    box-shadow: none;
+                    z-index: auto;
                 }
                     
                 .cell-text-wrap {
@@ -1147,6 +1142,27 @@ class CustomEmbed extends LibraryBase {
 
                 let activeScrollAncestors: HTMLElement[] = [];
 
+                const originalDropdownParent = dropdownMenu.parentElement as HTMLElement | null;
+
+                const closeColumnDropdown = () => {
+                    dropdownMenu.classList.remove('show');
+                    headerToggle.setAttribute('aria-expanded', 'false');
+                    cleanupScrollListeners();
+
+                    // Put menu back where it belongs so it doesn't float above modal
+                    if (originalDropdownParent && dropdownMenu.parentElement !== originalDropdownParent) {
+                        originalDropdownParent.appendChild(dropdownMenu);
+                    }
+
+                    // Clear runtime positioning styles
+                    dropdownMenu.style.position = '';
+                    dropdownMenu.style.top = '';
+                    dropdownMenu.style.left = '';
+                    dropdownMenu.style.right = '';
+                    dropdownMenu.style.minWidth = '';
+                    dropdownMenu.style.zIndex = '';
+                };
+
                 const getScrollableAncestors = (el: HTMLElement): HTMLElement[] => {
                     const ancestors: HTMLElement[] = [];
                     let current = el.parentElement;
@@ -1170,7 +1186,7 @@ class CustomEmbed extends LibraryBase {
                         dropdownMenu.style.left = `${rect.left}px`;
                         dropdownMenu.style.right = 'auto';
                         dropdownMenu.style.minWidth = '250px';
-                        dropdownMenu.style.zIndex = '2000001';
+                        dropdownMenu.style.zIndex = '999';
                     }
                 };
 
@@ -1200,7 +1216,7 @@ class CustomEmbed extends LibraryBase {
                             activeScrollAncestors.forEach(el => el.addEventListener('scroll', repositionDropdown, { passive: true }));
                         }
                     } else {
-                        cleanupScrollListeners();
+                        closeColumnDropdown();
                     }
                 };
 
@@ -1251,16 +1267,12 @@ class CustomEmbed extends LibraryBase {
 
                 // Ensure we close and cleanup if the user clicks away
                 document.addEventListener('click', () => {
-                    dropdownMenu.classList.remove('show');
-                    headerToggle.setAttribute('aria-expanded', 'false');
-                    cleanupScrollListeners();
+                    closeColumnDropdown();
                 }, { signal });
 
                 // Close dropdown on browser back/forward navigation
                 window.addEventListener('popstate', () => {
-                    dropdownMenu.classList.remove('show');
-                    headerToggle.setAttribute('aria-expanded', 'false');
-                    cleanupScrollListeners();
+                    closeColumnDropdown();
                 }, { signal });
             }
 
@@ -1670,6 +1682,25 @@ class CustomEmbed extends LibraryBase {
                 });
                 projectSelect.disabled = false;
                 if (submitBtn) submitBtn.disabled = false;  // Re-enable submit
+            }
+
+            const headerToggle = document.getElementById('columnNameToggle');
+            const dropdownMenu = document.getElementById('columnNameDropdownMenu');
+            if (headerToggle && dropdownMenu) {
+                dropdownMenu.classList.remove('show');
+                headerToggle.setAttribute('aria-expanded', 'false');
+
+                const originalParent = document.getElementById('columnNameDropdown');
+                if (originalParent && dropdownMenu.parentElement !== originalParent) {
+                    originalParent.appendChild(dropdownMenu);
+                }
+
+                (dropdownMenu as HTMLElement).style.position = '';
+                (dropdownMenu as HTMLElement).style.top = '';
+                (dropdownMenu as HTMLElement).style.left = '';
+                (dropdownMenu as HTMLElement).style.right = '';
+                (dropdownMenu as HTMLElement).style.minWidth = '';
+                (dropdownMenu as HTMLElement).style.zIndex = '';
             }
 
             modal.classList.add('show');
