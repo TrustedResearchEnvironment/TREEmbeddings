@@ -1313,6 +1313,62 @@ class CustomEmbed extends LibraryBase {
         return filtered;
     }
 
+    
+    private getFromAPI = async (API_ID: string, initialParams: any): Promise<any[]> => {
+        let allResults: any[] = [];
+
+        try {
+            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const parsedInitial = this.safeParseJson(initialResponse);
+
+            // Early exit if the response is null, undefined, etc.
+            if (!parsedInitial) {
+                console.log("API returned no data.");
+                return [];
+            }
+
+            // --- DETECTION LOGIC ---
+            if (parsedInitial.PageCount !== undefined && Array.isArray(parsedInitial.Results)) {
+                // --- PAGINATED PATH ---
+                console.log("Detected a paginated response.");
+
+                allResults = parsedInitial.Results;
+                const totalPages = parsedInitial.PageCount;
+
+                if (totalPages > 1) {
+                    for (let page = 2; page <= totalPages; page++) {
+                        console.log(`Fetching page ${page} of ${totalPages}...`);
+
+                        // Construct params for the next page, preserving other initial params
+                        const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
+                        console.log(params);
+                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const parsed = this.safeParseJson(response);
+
+                        if (parsed && parsed.Results) {
+                            allResults = allResults.concat(parsed.Results);
+                        }
+                    }
+                }
+            } else {
+                // --- NON-PAGINATED PATH ---
+                console.log("Detected a non-paginated response.");
+
+                if (Array.isArray(parsedInitial)) {
+                    allResults = parsedInitial;
+                } else {
+                    allResults = [parsedInitial];
+                }
+            }
+
+            console.log(`Finished fetching for API ID ${API_ID}. Total items: ${allResults.length}`);
+            return allResults;
+
+        } catch (error) {
+            console.error(`An error occurred while fetching from ${API_ID}:`, error);
+            return [];
+        }
+    }
 
 
     private createRequestModal = async (): Promise<void> => {
@@ -1321,7 +1377,11 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
+            // const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
+            const projectsResponse = await this.getFromAPI(API_GET_PROJECTS, {
+                "page": 1,
+                "page_size": 50
+            });
 
             if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
                 throw new Error(`Invalid API response structure.`);
