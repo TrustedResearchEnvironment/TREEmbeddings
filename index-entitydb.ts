@@ -1313,6 +1313,16 @@ class CustomEmbed extends LibraryBase {
         return filtered;
     }
 
+    private safeParseJson(response: any): any {
+        if (typeof response === 'string') {
+            try {
+                return JSON.parse(response);
+            } catch {
+                return response;
+            }
+        }
+        return response;
+    }
     
     private getFromAPI = async (API_ID: string, initialParams: any): Promise<any[]> => {
         let allResults: any[] = [];
