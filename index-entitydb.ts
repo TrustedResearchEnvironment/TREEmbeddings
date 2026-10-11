@@ -1393,7 +1393,8 @@ class CustomEmbed extends LibraryBase {
                 "page_size": 50
             });
 
-            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
+            // getFromAPI already flattens paginated `Results` into an array
+            if (!Array.isArray(projectsResponse)) {
                 throw new Error(`Invalid API response structure.`);
             }
 
@@ -1406,7 +1407,7 @@ class CustomEmbed extends LibraryBase {
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
+            projectsResponse.forEach((project: ProjectResponse['Results'][0]) => {
                 if (project.IsActive) {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();

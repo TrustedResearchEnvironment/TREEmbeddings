@@ -1336,9 +1336,12 @@ class CustomEmbed extends LibraryBase {
 
         try {
             console.log('Fetching projects...');
-            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {});
+            const projectsResponse = await window.loomeApi.runApiRequest(API_GET_PROJECTS, {
+                "page": 1,
+                "page_size": 50
+            });
 
-            if (!projectsResponse || !Array.isArray(projectsResponse.Results)) {
+            if (!Array.isArray(projectsResponse)) {
                 throw new Error(`Invalid API response structure.`);
             }
 
@@ -1351,7 +1354,7 @@ class CustomEmbed extends LibraryBase {
             projectSelect.innerHTML = '';
             projectSelect.appendChild(defaultOption);
 
-            projectsResponse.Results.forEach((project: ProjectResponse['Results'][0]) => {
+            projectsResponse.forEach((project: ProjectResponse['Results'][0]) => {
                 if (project.IsActive) {
                     const option = document.createElement('option');
                     option.value = project.AssistProjectID.toString();
