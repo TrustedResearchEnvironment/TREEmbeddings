@@ -8,6 +8,9 @@ const API_DATASETFOLDERFILE_ID = 'GetDataSetFolderFileByDataSetID';
 const API_ASSIST_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 const API_REQUEST_DATASET = 'RequestDataSet';
 
+declare const __TRE_APP_URL__: string;
+const TRE_APP_URL = __TRE_APP_URL__;
+
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
     ColumnName: string;
@@ -1832,9 +1835,19 @@ export const definition: Customization.CustomizationLibrary = {
         },
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
+            if ((window as any).TRE_APP_HOST) {
                 const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
                 element.instance = instance;
+                return;
             }
+
+            const dataSetId = paramValues.find(p => p.id === 'DataSetID')?.value ?? '';
+            element.innerHTML = '';
+            const iframe = document.createElement('iframe');
+            iframe.src = `${TRE_APP_URL}/Dashboards/Catalogue/dataset.html?DataSetID=${encodeURIComponent(dataSetId)}`;
+            iframe.style.cssText = 'border:0;width:100%;min-height:900px;';
+            element.appendChild(iframe);
+        }
     }
 };
 

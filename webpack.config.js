@@ -44,6 +44,8 @@ const commonConfig = {
     // Inject git commit hash for version footer
     new webpack.DefinePlugin({
       __GIT_COMMIT_HASH__: JSON.stringify(gitHash),
+      // Override per environment with TRE_APP_URL=... npm run build
+      __TRE_APP_URL__: JSON.stringify(process.env.TRE_APP_URL ?? 'https://ca-tre-portal-dev-treport4ce7fd.wonderfulgrass-933e3c92.australiaeast.azurecontainerapps.io'),
     }),
   ],
 };
