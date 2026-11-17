@@ -1,5 +1,6 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
+import { callTreApi } from './tre-api';
 import { 
     Table, 
     TableBody, 
@@ -507,9 +508,6 @@ const API_SUBMIT_DATASET_REQUEST = 'RequestDataSet';
 const API_GET_PROJECTS = 'GetAssistProjectsFilteredByUpn';
 const API_GET_DATETIME_FIELDS = 'GetDataSetDateTimeFields';
 
-declare const __TRE_APP_URL__: string;
-const TRE_APP_URL = __TRE_APP_URL__;
-
 class CustomEmbed extends LibraryBase {
     public token: string = "";
     private allColumns: DataSetColumn[] = [];
@@ -565,11 +563,11 @@ class CustomEmbed extends LibraryBase {
             const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
             if (orphanedMenu) orphanedMenu.remove();
 
-            this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
+            this.dataSet = await callTreApi(API_GET_DATASET_METADATA, { //GetDataSetID
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
+            const columnsResponse: ColumnsResponse = await callTreApi(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -1781,7 +1779,7 @@ class CustomEmbed extends LibraryBase {
                             return;
                         }
 
-                        const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                        const response = await callTreApi(API_SUBMIT_DATASET_REQUEST, {
                             "DataSetID": formData.datasetId,
                             "payload": {
                                 approvers: formData.approvers,
@@ -2307,7 +2305,7 @@ class CustomEmbed extends LibraryBase {
         try {
             const dataSetID = this.dataSet?.DataSetID;
             if (!dataSetID) return;
-            const result = await window.loomeApi.runApiRequest(API_GET_DATETIME_FIELDS, { data_set_id: dataSetID });
+            const result = await callTreApi(API_GET_DATETIME_FIELDS, { data_set_id: dataSetID });
             this.datetimeFields = Array.isArray(result)
                 ? result.map((f: any) => ({
                     DataSetColumnID: f.DataSetColumnID,
@@ -2415,7 +2413,7 @@ class CustomEmbed extends LibraryBase {
         let allResults: any[] = [];
 
         try {
-            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const initialResponse = await callTreApi(API_ID, initialParams);
             const parsedInitial = this.safeParseJson(initialResponse);
 
             // Early exit if the response is null, undefined, etc.
@@ -2439,7 +2437,7 @@ class CustomEmbed extends LibraryBase {
                         // Construct params for the next page, preserving other initial params
                         const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
                         console.log(params);
-                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const response = await callTreApi(API_ID, params);
                         const parsed = this.safeParseJson(response);
 
                         if (parsed && parsed.Results) {
@@ -2633,18 +2631,8 @@ export const definition: Customization.CustomizationLibrary = {
         },
         run: (element: Customization.HTMLElementWithCleanup, entityUrl: string, paramValues: Customization.ParamValue[], settings: Customization.Setting[],
                 errorCallback: (title: string, subTitle: string, message: string, element: Customization.HTMLElementWithCleanup) => void): void => {
-            if ((window as any).TRE_APP_HOST) {
-                const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
-                element.instance = instance;
-                return;
-            }
-
-            const dataSetId = paramValues.find(p => p.id === 'DataSetID')?.value ?? '';
-            element.innerHTML = '';
-            const iframe = document.createElement('iframe');
-            iframe.src = `${TRE_APP_URL}/Dashboards/Catalogue/dataset.html?DataSetID=${encodeURIComponent(dataSetId)}`;
-            iframe.style.cssText = 'border:0;width:100%;min-height:900px;';
-            element.appendChild(iframe);
+            const instance = new CustomEmbed(element, entityUrl, paramValues, settings, errorCallback);
+            element.instance = instance;
         }
     }
 };
