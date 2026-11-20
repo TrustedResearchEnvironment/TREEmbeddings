@@ -1,5 +1,6 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
+import { callTreApi } from './tre-api';
 
 // Expected structure and types for dataset and columns
 interface DataSetColumn {
@@ -113,11 +114,11 @@ class CustomEmbed extends LibraryBase {
             const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
             if (orphanedMenu) orphanedMenu.remove();
 
-            this.dataSet = await window.loomeApi.runApiRequest(API_GET_DATASET_METADATA, { //GetDataSetID
+            this.dataSet = await callTreApi(API_GET_DATASET_METADATA, { //GetDataSetID
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
-            const columnsResponse: ColumnsResponse = await window.loomeApi.runApiRequest(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
+            const columnsResponse: ColumnsResponse = await callTreApi(API_GET_DATASET_COLUMNS, { //GetDatasetIDColumns
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
@@ -990,7 +991,7 @@ class CustomEmbed extends LibraryBase {
                             return;
                         }
 
-                        const response = await window.loomeApi.runApiRequest(API_SUBMIT_DATASET_REQUEST, {
+                        const response = await callTreApi(API_SUBMIT_DATASET_REQUEST, {
                             "DataSetID": formData.datasetId,
                             "payload": {
                                 approvers: formData.approvers,
@@ -1574,7 +1575,7 @@ class CustomEmbed extends LibraryBase {
         let allResults: any[] = [];
 
         try {
-            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const initialResponse = await callTreApi(API_ID, initialParams);
             const parsedInitial = this.safeParseJson(initialResponse);
 
             // Early exit if the response is null, undefined, etc.
@@ -1598,7 +1599,7 @@ class CustomEmbed extends LibraryBase {
                         // Construct params for the next page, preserving other initial params
                         const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
                         console.log(params);
-                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const response = await callTreApi(API_ID, params);
                         const parsed = this.safeParseJson(response);
 
                         if (parsed && parsed.Results) {

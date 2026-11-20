@@ -16,6 +16,8 @@ const OPERATIONS: Record<string, Operation> = {
     GetDatasetIDColumns: { method: 'GET', path: '/api/DataSet/{DataSetID}/columns' },
     GetAssistProjectsFilteredByUpn: { method: 'GET', path: '/api/Request/AssistProjects', query: ['page', 'page_size'] },
     RequestDataSet: { method: 'POST', path: '/api/DataSet/{DataSetID}/Request', bodyParam: 'payload' },
+    // Path is a guess from the other DataSet routes; verify against the API.
+    GetDataSetFolderFileByDataSetID: { method: 'GET', path: '/api/DataSetFolderFile/DataSetID/{data_set_id}' },
     GetDataSetDateTimeFields: { method: 'GET', path: '/api/DataSetColumns/Datetime/DataSetID/{data_set_id}' },
 };
 

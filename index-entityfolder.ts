@@ -1,5 +1,6 @@
 import { LibraryBase } from "./library-base";
 import { Customization } from './customization';
+import { callTreApi } from './tre-api';
 
 
 // API Constants
@@ -148,13 +149,13 @@ class CustomEmbed extends LibraryBase {
             const orphanedMenu = document.body.querySelector('#columnNameDropdownMenu');
             if (orphanedMenu) orphanedMenu.remove();
 
-            this.dataSet = await window.loomeApi.runApiRequest(API_DATASET_ID, {
+            this.dataSet = await callTreApi(API_DATASET_ID, {
                 DataSetID: this.getParamValue('DataSetID')?.value || '',
             });
 
             console.log("Dataset Information:", this.dataSet);
 
-            const folderFilesResponse = await window.loomeApi.runApiRequest(API_DATASETFOLDERFILE_ID, {
+            const folderFilesResponse = await callTreApi(API_DATASETFOLDERFILE_ID, {
                 data_set_id: parseInt(this.getParamValue('DataSetID')?.value || '0'),
             });
 
@@ -1062,7 +1063,7 @@ class CustomEmbed extends LibraryBase {
                         }
 
 
-                        const response = await window.loomeApi.runApiRequest(API_REQUEST_DATASET, {
+                        const response = await callTreApi(API_REQUEST_DATASET, {
                             "DataSetID": formData.datasetId,
                             "payload": {
                                 approvers: formData.approvers,
@@ -1627,7 +1628,7 @@ class CustomEmbed extends LibraryBase {
         let allResults: any[] = [];
 
         try {
-            const initialResponse = await window.loomeApi.runApiRequest(API_ID, initialParams);
+            const initialResponse = await callTreApi(API_ID, initialParams);
             const parsedInitial = this.safeParseJson(initialResponse);
 
             // Early exit if the response is null, undefined, etc.
@@ -1651,7 +1652,7 @@ class CustomEmbed extends LibraryBase {
                         // Construct params for the next page, preserving other initial params
                         const params = { ...initialParams, "page": page, "page_size": initialParams["page_size"] };
                         console.log(params);
-                        const response = await window.loomeApi.runApiRequest(API_ID, params);
+                        const response = await callTreApi(API_ID, params);
                         const parsed = this.safeParseJson(response);
 
                         if (parsed && parsed.Results) {
